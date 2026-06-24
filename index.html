@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aventura de Lectura en el Reino de las Palabras</title>
+    <link rel="stylesheet" href="css/styles.css?v=1.0.1" />
+  </head>
+  <body>
+    <header class="app-header">
+      <nav class="topbar" aria-label="Navegacion principal">
+        <a class="brand" href="#inicio" aria-label="Ir al inicio">
+          <span class="brand-mark">R</span>
+          <span>Reino de las Palabras</span>
+        </a>
+        <div class="nav-actions">
+          <a href="#unidades">Unidades</a>
+          <a href="#biblioteca">Biblioteca</a>
+          <a href="#mapa">Mapa</a>
+          <button class="icon-btn" id="soundToggle" type="button" aria-label="Activar o desactivar sonido" title="Sonido">
+            <span aria-hidden="true">♪</span>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="inicio">
+        <div class="hero-copy">
+          <p class="eyebrow">Software educativo interactivo</p>
+          <h1>Aventura de Lectura en el Reino de las Palabras</h1>
+          <p>
+            Explora castillos, bosques, montanas y oceanos mientras practicas letras,
+            palabras, cuentos y comprension lectora.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="#unidades">Comenzar aventura</a>
+            <button class="secondary-btn" type="button" id="narrateIntro">Escuchar narracion</button>
+          </div>
+        </div>
+        <div class="kingdom-stage" aria-label="Escenario animado del reino">
+          <div class="sun"></div>
+          <div class="cloud cloud-a"></div>
+          <div class="cloud cloud-b"></div>
+          <div class="castle">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="path"></div>
+          <div class="reader reader-hero" id="heroAvatar" aria-hidden="true">🧙</div>
+        </div>
+      </section>
+
+      <section class="dashboard" aria-label="Panel principal">
+        <article class="avatar-panel">
+          <div>
+            <p class="eyebrow">Avatar lector</p>
+            <h2>Elige tu companero</h2>
+          </div>
+          <div class="avatar-grid" id="avatarGrid"></div>
+        </article>
+
+        <article class="progress-panel">
+          <div>
+            <p class="eyebrow">Progreso</p>
+            <h2>Tu ruta de lectura</h2>
+          </div>
+          <div class="progress-ring" id="progressRing" aria-label="Progreso general">
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="reward-strip" id="rewardStrip" aria-label="Recompensas obtenidas"></div>
+        </article>
+      </section>
+
+      <section class="section-shell" id="unidades">
+        <div class="section-heading">
+          <p class="eyebrow">Acceso rapido</p>
+          <h2>Cuatro regiones para aprender</h2>
+        </div>
+        <div class="unit-grid" id="unitGrid"></div>
+      </section>
+
+      <section class="activity-zone" id="actividad" hidden>
+        <div class="activity-card">
+          <button class="close-btn" id="closeActivity" type="button" aria-label="Cerrar actividad">×</button>
+          <div class="activity-scene" id="activityScene"></div>
+          <div class="activity-content">
+            <p class="eyebrow" id="activityUnit"></p>
+            <h2 id="activityTitle"></h2>
+            <p id="activityPrompt"></p>
+            <div class="activity-workspace" id="activityWorkspace"></div>
+            <div class="feedback" id="feedback" role="status"></div>
+            <div class="activity-actions">
+              <button class="primary-btn" id="checkAnswer" type="button">Revisar</button>
+              <button class="secondary-btn" id="listenPrompt" type="button">Escuchar</button>
+              <button class="secondary-btn" id="pronunciationBtn" type="button">Practicar voz</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="library-map">
+        <article class="library" id="biblioteca">
+          <div class="section-heading">
+            <p class="eyebrow">Biblioteca virtual</p>
+            <h2>Lecturas recomendadas</h2>
+          </div>
+          <div class="book-list" id="bookList"></div>
+        </article>
+
+        <article class="map-panel" id="mapa">
+          <div class="section-heading">
+            <p class="eyebrow">Mapa del reino</p>
+            <h2>Viaje lector</h2>
+          </div>
+          <div class="map-board" id="mapBoard" aria-label="Mapa interactivo del reino"></div>
+        </article>
+      </section>
+    </main>
+
+    <template id="unitTemplate">
+      <article class="unit-card">
+        <div class="unit-art"></div>
+        <div class="unit-body">
+          <p class="unit-kicker"></p>
+          <h3></h3>
+          <p class="unit-description"></p>
+          <div class="mini-list"></div>
+          <button class="primary-btn unit-start" type="button">Abrir unidad</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="js/app.js?v=1.0.1" type="module"></script>
+  </body>
+</html>

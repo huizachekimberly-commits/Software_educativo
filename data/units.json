@@ -1,0 +1,199 @@
+{
+  "avatars": [
+    { "id": "mago", "name": "Mago Lector", "emoji": "🧙" },
+    { "id": "princesa", "name": "Princesa Alba", "emoji": "👸" },
+    { "id": "caballero", "name": "Caballero Leo", "emoji": "🛡️" },
+    { "id": "exploradora", "name": "Exploradora Lila", "emoji": "🧭" }
+  ],
+  "library": [
+    {
+      "title": "La llave de la A",
+      "level": "Letras y sonidos",
+      "icon": "🔑",
+      "summary": "Un cuento breve para reconocer vocales y silabas iniciales."
+    },
+    {
+      "title": "El sendero de las palabras",
+      "level": "Oraciones",
+      "icon": "🌿",
+      "summary": "Lectura guiada para unir imagen, palabra y significado."
+    },
+    {
+      "title": "Tres escenas para un final",
+      "level": "Narracion",
+      "icon": "📖",
+      "summary": "Historia corta para ordenar acciones y descubrir personajes."
+    },
+    {
+      "title": "El mensaje bajo el mar",
+      "level": "Comprension",
+      "icon": "🫧",
+      "summary": "Texto informativo con pistas para inferir ideas importantes."
+    }
+  ],
+  "units": [
+    {
+      "id": "castillo",
+      "number": 1,
+      "title": "Castillo de las Letras",
+      "icon": "🏰",
+      "theme": "theme-castle",
+      "description": "Reconoce letras y sonidos, forma silabas y lee palabras simples.",
+      "content": [
+        "Reconocimiento de letras y sonidos.",
+        "Formacion de silabas.",
+        "Lectura de palabras simples."
+      ],
+      "activities": [
+        "Encontrar letras perdidas.",
+        "Formar palabras magicas.",
+        "Relacionar imagenes con palabras."
+      ],
+      "evaluation": [
+        "Identificacion de letras y silabas.",
+        "Lectura de palabras basicas."
+      ],
+      "feedback": [
+        "Correccion de pronunciacion.",
+        "Explicacion visual de sonidos y silabas."
+      ],
+      "reward": "Insignia de la Letra Brillante",
+      "activity": {
+        "type": "choice",
+        "title": "Encuentra la letra perdida",
+        "prompt": "La palabra es C_SA. Elige la letra que completa la palabra casa.",
+        "speak": "La palabra es casa. Busca la letra que falta.",
+        "question": "C_SA",
+        "options": ["A", "E", "O", "I"],
+        "answer": "A",
+        "success": "Muy bien. La letra A suena /a/ y completa la palabra casa.",
+        "hint": "Observa como suena la primera silaba: ca. Necesita la vocal A."
+      }
+    },
+    {
+      "id": "bosque",
+      "number": 2,
+      "title": "Bosque de las Palabras",
+      "icon": "🌳",
+      "theme": "theme-forest",
+      "description": "Lee palabras y oraciones, amplia vocabulario y relaciona conceptos.",
+      "content": [
+        "Lectura de palabras y oraciones.",
+        "Vocabulario basico.",
+        "Relacion entre palabras e imagenes."
+      ],
+      "activities": [
+        "Completar oraciones.",
+        "Encontrar palabras ocultas.",
+        "Juegos de asociacion de conceptos."
+      ],
+      "evaluation": [
+        "Comprension de oraciones.",
+        "Reconocimiento de vocabulario."
+      ],
+      "feedback": [
+        "Resaltado de errores.",
+        "Explicacion del significado de palabras desconocidas."
+      ],
+      "reward": "Hoja del Vocabulario",
+      "activity": {
+        "type": "input",
+        "title": "Completa la oracion",
+        "prompt": "Escribe la palabra que completa la oracion: El sol sale por la manana y da ____.",
+        "speak": "El sol sale por la manana y da luz.",
+        "question": "El sol sale por la manana y da ____.",
+        "answer": "luz",
+        "success": "Exacto. Luz significa claridad; por eso completa la idea de la oracion.",
+        "hint": "Piensa en lo que recibimos del sol para poder ver."
+      }
+    },
+    {
+      "id": "montanas",
+      "number": 3,
+      "title": "Montanas de los Cuentos",
+      "icon": "⛰️",
+      "theme": "theme-mountain",
+      "description": "Lee cuentos cortos e identifica personajes, lugares, acciones y secuencias.",
+      "content": [
+        "Lectura de cuentos cortos.",
+        "Identificacion de personajes, lugares y acciones.",
+        "Secuencia de acontecimientos."
+      ],
+      "activities": [
+        "Ordenar escenas de una historia.",
+        "Responder preguntas sobre cuentos.",
+        "Descubrir finales alternativos."
+      ],
+      "evaluation": [
+        "Comprension de textos narrativos.",
+        "Identificacion de elementos principales de una historia."
+      ],
+      "feedback": [
+        "Explicaciones sobre respuestas correctas.",
+        "Relectura guiada de fragmentos importantes."
+      ],
+      "reward": "Corona del Narrador",
+      "activity": {
+        "type": "sequence",
+        "title": "Ordena las escenas",
+        "prompt": "Selecciona las escenas en el orden correcto de la historia.",
+        "speak": "Primero Ana encuentra un mapa. Luego sube la montana. Al final descubre una biblioteca escondida.",
+        "items": [
+          "Ana encuentra un mapa.",
+          "Ana sube la montana.",
+          "Ana descubre una biblioteca escondida."
+        ],
+        "answer": [
+          "Ana encuentra un mapa.",
+          "Ana sube la montana.",
+          "Ana descubre una biblioteca escondida."
+        ],
+        "success": "Correcto. La historia tiene inicio, desarrollo y final.",
+        "hint": "Busca primero la accion que inicia la aventura y deja el descubrimiento para el final."
+      }
+    },
+    {
+      "id": "oceano",
+      "number": 4,
+      "title": "Oceano de la Comprension Lectora",
+      "icon": "🌊",
+      "theme": "theme-ocean",
+      "description": "Lee textos informativos y narrativos, realiza inferencias y analiza mensajes.",
+      "content": [
+        "Lectura de textos informativos y narrativos.",
+        "Inferencias y analisis de informacion.",
+        "Interpretacion de mensajes y ensenanzas."
+      ],
+      "activities": [
+        "Resolver misterios mediante la lectura.",
+        "Busqueda de informacion en textos.",
+        "Desafios de comprension avanzada."
+      ],
+      "evaluation": [
+        "Cuestionarios de comprension lectora.",
+        "Proyecto final de lectura y analisis."
+      ],
+      "feedback": [
+        "Comentarios personalizados.",
+        "Recomendaciones de lectura segun el desempeno."
+      ],
+      "reward": "Perla de la Comprension",
+      "activity": {
+        "type": "choice",
+        "title": "Resuelve el misterio",
+        "prompt": "Texto: La playa amanecio con huellas mojadas junto a una concha abierta. El mensaje decia: 'Solo aparece cuando baja la marea'. Que se puede inferir?",
+        "speak": "La playa amanecio con huellas mojadas junto a una concha abierta. Solo aparece cuando baja la marea.",
+        "question": "Que se puede inferir?",
+        "options": [
+          "El objeto estaba oculto por el agua.",
+          "La concha venia de una montana.",
+          "La marea nunca cambia.",
+          "Las huellas eran de fuego."
+        ],
+        "answer": "El objeto estaba oculto por el agua.",
+        "success": "Muy bien. Inferiste informacion que no estaba escrita directamente: al bajar la marea, el agua dejo ver el objeto.",
+        "hint": "Relaciona la pista 'baja la marea' con lo que el agua puede cubrir u ocultar."
+      }
+    }
+  ]
+}
