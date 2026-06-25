@@ -25,7 +25,7 @@
     </header>
 
     <main>
-      <section class="hero" id="inicio">
+      <section class="hero hero-split" id="inicio">
         <div class="hero-copy">
           <p class="eyebrow">Software educativo interactivo</p>
           <h1>Aventura de Lectura en el Reino de las Palabras</h1>
@@ -38,27 +38,20 @@
             <button class="secondary-btn" type="button" id="narrateIntro">Escuchar narracion</button>
           </div>
         </div>
-        <div class="kingdom-stage" aria-label="Escenario animado del reino">
-          <div class="sun"></div>
-          <div class="cloud cloud-a"></div>
-          <div class="cloud cloud-b"></div>
-          <div class="castle">
-            <span></span><span></span><span></span>
+
+        <aside class="hero-avatar-panel" aria-label="Seleccion de avatar lector">
+          <div class="avatar-panel-heading">
+            <div>
+              <p class="eyebrow">Avatar lector</p>
+              <h2>Elige tu companero</h2>
+            </div>
+            <div class="reader reader-hero" id="heroAvatar" aria-hidden="true">🧙</div>
           </div>
-          <div class="path"></div>
-          <div class="reader reader-hero" id="heroAvatar" aria-hidden="true">🧙</div>
-        </div>
+          <div class="avatar-grid avatar-grid-vertical" id="avatarGrid"></div>
+        </aside>
       </section>
 
       <section class="dashboard" aria-label="Panel principal">
-        <article class="avatar-panel">
-          <div>
-            <p class="eyebrow">Avatar lector</p>
-            <h2>Elige tu companero</h2>
-          </div>
-          <div class="avatar-grid" id="avatarGrid"></div>
-        </article>
-
         <article class="progress-panel">
           <div>
             <p class="eyebrow">Progreso</p>
@@ -130,6 +123,7 @@
       </article>
     </template>
 
+    <audio id="Audio_de_inicio" src= "assets/avatars/Audio_de_inicio.mp3" preload="auto"></audio>
     <script src="js/app.js?v=1.0.1" type="module"></script>
   </body>
 </html>

@@ -1,9 +1,32 @@
 {
   "avatars": [
-    { "id": "mago", "name": "Mago Lector", "emoji": "🧙" },
-    { "id": "princesa", "name": "Princesa Alba", "emoji": "👸" },
-    { "id": "caballero", "name": "Caballero Leo", "emoji": "🛡️" },
-    { "id": "exploradora", "name": "Exploradora Lila", "emoji": "🧭" }
+    {
+      "id": "mago",
+      "name": "Rey Lector",
+      "emoji": "R",
+      "model": "assets/avatars/King.fbx",
+      "texture": "assets/avatars/Texture.png"
+    },
+    {
+      "id": "princesa",
+      "name": "Reina Alba",
+      "emoji": "Q",
+      "model": "assets/avatars/Queen.fbx",
+      "texture": "assets/avatars/Texture.png"
+    },
+    {
+      "id": "caballero",
+      "name": "Principe Leo",
+      "emoji": "P",
+      "model": "assets/avatars/Prince.fbx",
+      "texture": "assets/avatars/Texture.png"
+    },
+    {
+      "id": "exploradora",
+      "name": "Exploradora Lila",
+      "emoji": "E",
+      "model": ""
+    }
   ],
   "library": [
     {
