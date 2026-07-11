@@ -1,11 +1,13 @@
 const state = {
   data: null,
+  user: null,
   avatar: localStorage.getItem("reino.avatar") || "mago",
-  completed: JSON.parse(localStorage.getItem("reino.completed") || "[]"),
+  completed: [],
   activeUnit: null,
   selectedAnswer: null,
   sequenceAnswer: [],
-  sound: localStorage.getItem("reino.sound") !== "off"
+  sound: localStorage.getItem("reino.sound") !== "off",
+  authMode: "login"
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -25,9 +27,223 @@ const progressRing = $("#progressRing");
 const progressPercent = $("#progressPercent");
 const soundToggle = $("#soundToggle");
 const heroAvatar = $("#heroAvatar");
+const authScreen = $("#authScreen");
+const appShell = $("#appShell");
+const authNav = $("#authNav");
+const loginForm = $("#loginForm");
+const signupForm = $("#signupForm");
+const authMessage = $("#authMessage");
+const showLoginButton = $("#showLogin");
+const showSignupButton = $("#showSignup");
 
 let threeRuntimePromise = null;
 let avatarViewer = null;
+
+function getStoredUsers() {
+  try {
+    return JSON.parse(localStorage.getItem("reino.users") || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredUsers(users) {
+  localStorage.setItem("reino.users", JSON.stringify(users));
+}
+
+function normalizeIdentifier(value) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function buildPassword(birthday, lastName) {
+  return normalizeIdentifier(`${birthday}${lastName}`);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;");
+}
+
+function persistCurrentUser() {
+  if (!state.user) return;
+
+  state.user.avatar = state.avatar;
+  state.user.completed = [...state.completed];
+  state.user.sound = state.sound ? "on" : "off";
+
+  const users = getStoredUsers();
+  users[state.user.username] = state.user;
+  saveStoredUsers(users);
+  localStorage.setItem("reino.sessionUser", state.user.username);
+}
+
+function showAuthScreen() {
+  if (authScreen) authScreen.hidden = false;
+  if (appShell) appShell.hidden = true;
+  if (authNav) authNav.innerHTML = "";
+}
+
+function showAppScreen() {
+  if (authScreen) authScreen.hidden = true;
+  if (appShell) appShell.hidden = false;
+  renderAuthNav();
+}
+
+function setAuthFeedback(message, kind = "info") {
+  if (!authMessage) return;
+  authMessage.textContent = message;
+  authMessage.className = `auth-feedback ${kind === "error" ? "error" : kind === "success" ? "success" : ""}`.trim();
+}
+
+function setAuthMode(mode) {
+  state.authMode = mode;
+  loginForm.hidden = mode !== "login";
+  signupForm.hidden = mode !== "signup";
+  showLoginButton.classList.toggle("active", mode === "login");
+  showSignupButton.classList.toggle("active", mode === "signup");
+}
+
+function renderAuthNav() {
+  if (!authNav) return;
+
+  if (!state.user) {
+    authNav.innerHTML = '<button class="auth-link" id="openAuth" type="button">Iniciar sesión</button>';
+    const openAuthButton = $("#openAuth");
+    openAuthButton?.addEventListener("click", () => {
+      showAuthScreen();
+      setAuthMode("login");
+    });
+    return;
+  }
+
+  authNav.innerHTML = `
+    <span class="user-badge">Hola, ${escapeHtml(state.user.name)} ✨</span>
+    <button class="auth-link" id="logoutBtn" type="button">Cerrar sesión</button>
+  `;
+
+  $("#logoutBtn")?.addEventListener("click", logoutUser);
+}
+
+function loginUser({ username, birthday, lastName }) {
+  const users = getStoredUsers();
+  const normalizedUsername = normalizeIdentifier(username);
+  const user = users[normalizedUsername];
+  const expectedPassword = buildPassword(birthday, lastName);
+
+  if (!user || user.password !== expectedPassword) {
+    setAuthFeedback("Ese nombre, fecha o apellido no coinciden. Intenta otra vez o crea una cuenta nueva.", "error");
+    return;
+  }
+
+  state.user = user;
+  state.avatar = user.avatar || state.avatar;
+  state.completed = [...(user.completed || [])];
+  state.sound = user.sound !== "off";
+  persistCurrentUser();
+
+  renderAvatars();
+  renderUnits();
+  renderProgress();
+  updateHeroAvatar();
+  syncSoundButton();
+  showAppScreen();
+  setAuthFeedback(`¡Qué alegría, ${user.name}! Tu progreso ya está listo.`, "success");
+}
+
+function signupUser({ username, birthday, lastName }) {
+  const users = getStoredUsers();
+  const normalizedUsername = normalizeIdentifier(username);
+
+  if (!username || !birthday || !lastName) {
+    setAuthFeedback("Completa los tres campos para crear una cuenta.", "error");
+    return;
+  }
+
+  if (users[normalizedUsername]) {
+    setAuthFeedback("Ese nombre ya existe. Elige otro o inicia sesión con el que ya registraste.", "error");
+    return;
+  }
+
+  const password = buildPassword(birthday, lastName);
+  const newUser = {
+    username: normalizedUsername,
+    name: username.trim(),
+    lastName: lastName.trim(),
+    birthday,
+    password,
+    avatar: "mago",
+    completed: [],
+    sound: "on"
+  };
+
+  users[normalizedUsername] = newUser;
+  saveStoredUsers(users);
+
+  state.user = newUser;
+  state.avatar = newUser.avatar;
+  state.completed = [];
+  state.sound = true;
+  persistCurrentUser();
+
+  renderAvatars();
+  renderUnits();
+  renderProgress();
+  updateHeroAvatar();
+  syncSoundButton();
+  showAppScreen();
+  setAuthFeedback(`Cuenta creada para ${newUser.name}. ¡A aprender!`, "success");
+}
+
+function logoutUser() {
+  state.user = null;
+  state.completed = [];
+  state.avatar = localStorage.getItem("reino.avatar") || "mago";
+  state.sound = localStorage.getItem("reino.sound") !== "off";
+  localStorage.removeItem("reino.sessionUser");
+  showAuthScreen();
+  setAuthMode("login");
+  renderAuthNav();
+  setAuthFeedback("Sesión cerrada. Vuelve cuando quieras continuar tu aventura.", "success");
+}
+
+function restoreSession() {
+  const storedUser = localStorage.getItem("reino.sessionUser");
+  if (!storedUser) {
+    showAuthScreen();
+    setAuthMode("login");
+    setAuthFeedback("Inicia sesión para guardar tu progreso y volver más tarde.", "info");
+    return;
+  }
+
+  const users = getStoredUsers();
+  const stored = users[storedUser];
+  if (!stored) {
+    localStorage.removeItem("reino.sessionUser");
+    showAuthScreen();
+    setAuthMode("login");
+    return;
+  }
+
+  state.user = stored;
+  state.avatar = stored.avatar || state.avatar;
+  state.completed = [...(stored.completed || [])];
+  state.sound = stored.sound !== "off";
+  showAppScreen();
+  renderAvatars();
+  renderUnits();
+  renderProgress();
+  updateHeroAvatar();
+  syncSoundButton();
+  setAuthFeedback(`¡Hola otra vez, ${stored.name}! Tu progreso quedó guardado.`, "success");
+}
 
 async function init() {
   const response = await fetch("data/units.json");
@@ -39,7 +255,30 @@ async function init() {
   renderMap();
   renderProgress();
   bindGlobalEvents();
-  updateHeroAvatar();
+  bindAuthEvents();
+  renderAuthNav();
+  restoreSession();
+}
+
+function bindAuthEvents() {
+  showLoginButton.addEventListener("click", () => setAuthMode("login"));
+  showSignupButton.addEventListener("click", () => setAuthMode("signup"));
+
+  loginForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const username = $("#loginName").value.trim();
+    const birthday = $("#loginBirthday").value;
+    const lastName = $("#loginLastName").value.trim();
+    loginUser({ username, birthday, lastName });
+  });
+
+  signupForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const username = $("#signupName").value.trim();
+    const birthday = $("#signupBirthday").value;
+    const lastName = $("#signupLastName").value.trim();
+    signupUser({ username, birthday, lastName });
+  });
 }
 
 function bindGlobalEvents() {
@@ -65,10 +304,15 @@ function bindGlobalEvents() {
   soundToggle.addEventListener("click", () => {
     state.sound = !state.sound;
     localStorage.setItem("reino.sound", state.sound ? "on" : "off");
-    soundToggle.classList.toggle("muted", !state.sound);
-    soundToggle.querySelector("span").textContent = state.sound ? "♪" : "×";
+    syncSoundButton();
+    persistCurrentUser();
   });
 
+  syncSoundButton();
+}
+
+function syncSoundButton() {
+  soundToggle.classList.toggle("muted", !state.sound);
   soundToggle.querySelector("span").textContent = state.sound ? "♪" : "×";
 }
 
@@ -89,6 +333,7 @@ function renderAvatars() {
     button.addEventListener("click", () => {
       state.avatar = avatar.id;
       localStorage.setItem("reino.avatar", avatar.id);
+      persistCurrentUser();
       renderAvatars();
       updateHeroAvatar();
       playTone("tap");
@@ -461,7 +706,7 @@ function checkAnswer() {
 function markCompleted(unitId) {
   if (!state.completed.includes(unitId)) {
     state.completed.push(unitId);
-    localStorage.setItem("reino.completed", JSON.stringify(state.completed));
+    persistCurrentUser();
     renderProgress();
     renderUnits();
   }

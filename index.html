@@ -14,6 +14,7 @@
           <span>Reino de las Palabras</span>
         </a>
         <div class="nav-actions">
+          <div id="authNav" class="auth-nav"></div>
           <a href="#unidades">Unidades</a>
           <a href="#biblioteca">Biblioteca</a>
           <a href="#mapa">Mapa</a>
@@ -24,7 +25,57 @@
       </nav>
     </header>
 
-    <main>
+    <section class="auth-screen" id="authScreen" aria-label="Ingreso al app">
+      <div class="auth-card">
+        <p class="eyebrow">Acceso infantil</p>
+        <h2>¡Bienvenido al Reino de las Palabras!</h2>
+        <p class="auth-intro">
+          Cada estudiante tiene su propia cuenta para guardar el progreso y seguir aprendiendo desde donde lo dejó.
+        </p>
+        <div class="auth-tabs" role="tablist" aria-label="Opciones de acceso">
+          <button class="auth-tab active" id="showLogin" type="button">Iniciar sesión</button>
+          <button class="auth-tab" id="showSignup" type="button">Crear cuenta</button>
+        </div>
+
+        <form class="auth-form" id="loginForm">
+          <label class="auth-field">
+            <span>Tu nombre</span>
+            <input type="text" name="loginName" id="loginName" placeholder="Ej: Sofia" required />
+          </label>
+          <label class="auth-field">
+            <span>Tu fecha de nacimiento</span>
+            <input type="date" name="loginBirthday" id="loginBirthday" required />
+          </label>
+          <label class="auth-field">
+            <span>Tu apellido</span>
+            <input type="text" name="loginLastName" id="loginLastName" placeholder="Ej: Pérez" required />
+          </label>
+          <p class="password-hint">Tu contraseña se forma con tu fecha de nacimiento y tu apellido.</p>
+          <button class="primary-btn auth-submit" type="submit">Entrar al reino</button>
+        </form>
+
+        <form class="auth-form" id="signupForm" hidden>
+          <label class="auth-field">
+            <span>Tu nombre</span>
+            <input type="text" name="signupName" id="signupName" placeholder="Ej: Mateo" required />
+          </label>
+          <label class="auth-field">
+            <span>Tu fecha de nacimiento</span>
+            <input type="date" name="signupBirthday" id="signupBirthday" required />
+          </label>
+          <label class="auth-field">
+            <span>Tu apellido</span>
+            <input type="text" name="signupLastName" id="signupLastName" placeholder="Ej: López" required />
+          </label>
+          <p class="password-hint">Tu contraseña queda guardada automáticamente como tu fecha de nacimiento + apellido.</p>
+          <button class="primary-btn auth-submit" type="submit">Crear mi cuenta</button>
+        </form>
+
+        <p class="auth-feedback" id="authMessage" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <main id="appShell" hidden>
       <section class="hero hero-split" id="inicio">
         <div class="hero-copy">
           <p class="eyebrow">Software educativo interactivo</p>
