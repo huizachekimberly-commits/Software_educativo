@@ -854,6 +854,25 @@ a {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.24);
 }
 
+.unit-fullscreen .activity-card {
+  width: min(1180px, calc(100vw - 28px));
+  grid-template-columns: 1fr;
+}
+
+.unit-fullscreen .activity-scene {
+  display: none;
+}
+
+.unit-fullscreen .activity-content {
+  min-height: min(780px, calc(100vh - 36px));
+  display: flex;
+  flex-direction: column;
+}
+
+.unit-fullscreen .activity-workspace {
+  flex: 1;
+}
+
 .close-btn {
   position: absolute;
   top: 10px;
@@ -1075,6 +1094,523 @@ a {
   50% {
     transform: translate(-50%, -58%);
   }
+}
+
+/* =============================================
+   CASTLE MAP — Unidad 1 sub-activity selector
+   ============================================= */
+.castle-map-container {
+  position: relative;
+  width: 100%;
+  min-height: min(640px, 62vh);
+  background: url('../assets/castle_images/castle_map.jpeg') no-repeat center center;
+  background-size: cover;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.25);
+}
+
+.castle-map-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.castle-map-title {
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  margin: 0 0 24px;
+  font-size: 1.6rem;
+  text-align: center;
+}
+
+.castle-path-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 700px;
+}
+
+.castle-node {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1.2rem;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.castle-node:hover:not(.locked) {
+  transform: scale(1.15);
+}
+
+.castle-node .node-label {
+  font-size: 0.5rem;
+  margin-top: 2px;
+  opacity: 0.9;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.castle-node.unlocked {
+  background: linear-gradient(135deg, #f5b84b, #e86f68);
+  box-shadow: 0 0 16px rgba(245,184,75,0.5);
+}
+
+.castle-node.completed {
+  background: linear-gradient(135deg, #1d9a8a, #5c9f52);
+  box-shadow: 0 0 16px rgba(29,154,138,0.5);
+}
+
+.castle-node.completed::after {
+  content: "✓";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  color: #1d9a8a;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.castle-node.locked {
+  background: rgba(100,100,100,0.6);
+  cursor: not-allowed;
+  filter: grayscale(0.7);
+}
+
+.castle-node.locked::before {
+  content: "🔒";
+  font-size: 1rem;
+  position: absolute;
+}
+
+.castle-path-connector {
+  width: 28px;
+  height: 4px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.castle-node .node-check {
+  display: none;
+}
+
+.castle-node.completed .node-check {
+  display: none;
+}
+
+/* =============================================
+   GLOBO ACTIVITY — Floating balloons
+   ============================================= */
+.globo-container {
+  min-height: min(540px, 52vh);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 0;
+}
+
+.globo {
+  width: 100px;
+  height: 130px;
+  border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: globoFloat 3s ease-in-out infinite;
+  position: relative;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  user-select: none;
+}
+
+.globo::after {
+  content: "";
+  position: absolute;
+  bottom: -18px;
+  width: 2px;
+  height: 20px;
+  background: #888;
+}
+
+.globo:nth-child(1) { background: linear-gradient(135deg, #e86f68, #f5b84b); animation-delay: 0s; }
+.globo:nth-child(2) { background: linear-gradient(135deg, #79b9df, #7467bf); animation-delay: 0.4s; }
+.globo:nth-child(3) { background: linear-gradient(135deg, #5c9f52, #1d9a8a); animation-delay: 0.8s; }
+.globo:nth-child(4) { background: linear-gradient(135deg, #f5b84b, #e86f68); animation-delay: 1.2s; }
+
+.globo:hover {
+  transform: scale(1.08);
+}
+
+.globo.selected-globo {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 6px rgba(255,255,255,0.8), 0 8px 24px rgba(0,0,0,0.2);
+}
+
+.globo.incorrect {
+  animation: shake 0.5s ease;
+}
+
+@keyframes globoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+/* =============================================
+   BALCON ACTIVITY — 3-box positional selection
+   ============================================= */
+.balcon-container {
+  min-height: min(520px, 52vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.balcon-word {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: var(--ink);
+  letter-spacing: 12px;
+  text-transform: uppercase;
+}
+
+.balcon-boxes {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.balcon-box {
+  width: 110px;
+  height: 100px;
+  border: 3px solid var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: #f9fbfb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 800;
+}
+
+.balcon-box .box-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.balcon-box .box-icon {
+  font-size: 1.8rem;
+}
+
+.balcon-box:hover:not(.selected-balcon) {
+  border-color: var(--teal);
+  background: #eef8f7;
+}
+
+.balcon-box.selected-balcon {
+  border-color: var(--teal);
+  background: #e5f6f3;
+  box-shadow: 0 0 0 4px rgba(29,154,138,0.2);
+}
+
+.balcon-box.correct-box {
+  border-color: #5c9f52;
+  background: #e1f5e0;
+  box-shadow: 0 0 0 4px rgba(92,159,82,0.3);
+}
+
+.balcon-box.incorrect-box {
+  border-color: #e86f68;
+  background: #ffe8e7;
+  box-shadow: 0 0 0 4px rgba(232,111,104,0.2);
+}
+
+/* =============================================
+   INTRUSO ACTIVITY — Find the different one
+   ============================================= */
+.intruso-container {
+  min-height: min(520px, 52vh);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+}
+
+.intruso-card {
+  width: 130px;
+  min-height: 150px;
+  border: 3px solid var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.intruso-card .card-icon {
+  font-size: 2.8rem;
+}
+
+.intruso-card .card-label {
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.intruso-card:hover:not(.selected-intruso) {
+  border-color: var(--teal);
+  transform: translateY(-3px);
+}
+
+.intruso-card.selected-intruso {
+  border-color: var(--teal);
+  background: #e5f6f3;
+  transform: translateY(-3px);
+  box-shadow: 0 0 0 4px rgba(29,154,138,0.2);
+}
+
+.intruso-card.correct-intruso {
+  border-color: #5c9f52;
+  background: #e1f5e0;
+}
+
+/* =============================================
+   ESCUDO ACTIVITY — Shield & timer
+   ============================================= */
+.escudo-container {
+  min-height: min(520px, 52vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.escudo-shield {
+  width: 140px;
+  height: 160px;
+  background: linear-gradient(135deg, #79b9df, #7467bf);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 900;
+  box-shadow: 0 8px 24px rgba(116,103,191,0.3);
+  position: relative;
+}
+
+.escudo-shield .shield-icon {
+  font-size: 2.8rem;
+  margin-bottom: 4px;
+}
+
+.escudo-shield .shield-letter {
+  font-size: 2rem;
+  background: rgba(255,255,255,0.2);
+  padding: 2px 12px;
+  border-radius: 8px;
+}
+
+.escudo-timer-ring {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 6px solid #e86f68;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--ink);
+  position: relative;
+  transition: border-color 0.3s ease;
+}
+
+.escudo-timer-ring.timer-warning {
+  border-color: #f5b84b;
+}
+
+.escudo-timer-ring.timer-critical {
+  border-color: #e86f68;
+  animation: timerPulse 0.5s ease infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.escudo-key-display {
+  width: 80px;
+  height: 80px;
+  border: 3px solid var(--teal);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 900;
+  background: #eef8f7;
+  color: var(--teal);
+}
+
+.escudo-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* =============================================
+   COFRE ACTIVITY — Drag & Drop
+   ============================================= */
+.cofre-container {
+  min-height: min(520px, 52vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.cofre-boxes {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+}
+
+.cofre-box {
+  width: 140px;
+  height: 120px;
+  border: 3px dashed var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #f9fbfb;
+  transition: all 0.2s ease;
+}
+
+.cofre-box .cofre-letter {
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: var(--teal);
+}
+
+.cofre-box .cofre-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.cofre-box.drag-over {
+  border-color: var(--teal);
+  background: #e5f6f3;
+  border-style: solid;
+}
+
+.cofre-box.dropped {
+  border-color: #5c9f52;
+  background: #e1f5e0;
+  border-style: solid;
+}
+
+.draggable-card {
+  width: 160px;
+  min-height: 60px;
+  border: 3px solid var(--gold);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #fff4cf, #ffffff);
+  font-weight: 900;
+  font-size: 1.3rem;
+  cursor: grab;
+  user-select: none;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.draggable-card:active {
+  cursor: grabbing;
+  transform: scale(1.05);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.15);
+}
+
+.draggable-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.draggable-card.tap-selected {
+  border-color: var(--teal);
+  background: linear-gradient(135deg, #e5f6f3, #ffffff);
+  box-shadow: 0 0 0 5px rgba(29, 154, 138, 0.2), 0 8px 18px rgba(38, 50, 56, 0.12);
+}
+
+.cofre-feedback-zone {
+  min-height: 40px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--muted);
 }
 
 @media (max-width: 980px) {

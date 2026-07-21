@@ -61,6 +61,7 @@
       "title": "Castillo de las Letras",
       "icon": "🏰",
       "theme": "theme-castle",
+      "castleMapImage": "assets/castle_images/castle_map.jpeg",
       "description": "Reconoce letras y sonidos, forma silabas y lee palabras simples.",
       "content": [
         "Reconocimiento de letras y sonidos.",
@@ -81,17 +82,105 @@
         "Explicacion visual de sonidos y silabas."
       ],
       "reward": "Insignia de la Letra Brillante",
-      "activity": {
-        "type": "choice",
-        "title": "Encuentra la letra perdida",
-        "prompt": "La palabra es C_SA. Elige la letra que completa la palabra casa.",
-        "speak": "La palabra es casa. Busca la letra que falta.",
-        "question": "C_SA",
-        "options": ["A", "E", "O", "I"],
-        "answer": "A",
-        "success": "Muy bien. La letra A suena /a/ y completa la palabra casa.",
-        "hint": "Observa como suena la primera silaba: ca. Necesita la vocal A."
-      }
+      "subActivities": [
+        {
+          "id": "globo",
+          "title": "Los Globos del Hechizo Real",
+          "prompt": "¡Atrapemos el sonido /s/!",
+          "speak": "Atrapemos el sonido S. Busca el globo con la letra S.",
+          "type": "globo",
+          "question": "¿Cuál globo tiene la letra que suena /s/?",
+          "letters": [
+            "M",
+            "S",
+            "P",
+            "L"
+          ],
+          "answer": "S",
+          "success": "¡Muy bien! El globo con la letra S tiene el sonido /s/.",
+          "hint": "Escucha el sonido /s/... busca la letra que representa ese sonido.",
+          "letterSounds": {
+            "S": "assets/phonemes/s.mp3"
+          }
+        },
+        {
+          "id": "balcon",
+          "title": "Los Tres Balcones del Rey",
+          "prompt": "La palabra es GATO. ¿En cuál casilla suena la vocal /a/?",
+          "speak": "Gato. La palabra gato tiene la vocal A. ¿Suena al inicio, en el medio o al final?",
+          "type": "balcon",
+          "question": "GATO",
+          "word": "GATO",
+          "vowel": "A",
+          "positions": [
+            "Inicio",
+            "Medio",
+            "Fin"
+          ],
+          "answer": "Medio",
+          "success": "¡Correcto! En GATO, la letra A suena en el Medio de la palabra.",
+          "hint": "Pronuncia GATO despacio: G - A - TO. ¿Dónde escuchas la A?"
+        },
+        {
+          "id": "intruso",
+          "title": "El Intruso Sonoro",
+          "prompt": "Escucha: Oso... Olla... Ola... Árbol. ¿Cuál empezó con un sonido diferente?",
+          "speak": "Oso, Olla, Ola, Arbol. Tres empiezan parecido y una es diferente.",
+          "type": "intruso",
+          "question": "¿Cuál palabra empezó con un sonido diferente?",
+          "options": [
+            "Oso",
+            "Olla",
+            "Ola",
+            "Árbol"
+          ],
+          "icons": [
+            "🐻",
+            "🍲",
+            "🌊",
+            "🌳"
+          ],
+          "answer": "Árbol",
+          "success": "¡Muy bien! Oso, Olla y Ola empiezan con sonido /o/, pero Árbol empieza con /a/.",
+          "hint": "Escucha el sonido inicial: Oso, Olla y Ola empiezan con /o/. ¿Cuál empieza con /a/?"
+        },
+        {
+          "id": "escudo",
+          "title": "El Escudo Mágico",
+          "prompt": "Presiona la tecla de la letra que corresponde al sonido que escuchaste.",
+          "speak": "Escucha el sonido y presiona la tecla correcta antes de que el tiempo se acabe.",
+          "type": "escudo",
+          "question": "Presiona la tecla correcta",
+          "phoneme": "s",
+          "phonemeFile": "assets/phonemes/s.mp3",
+          "answer": "s",
+          "timeLimit": 5,
+          "success": "¡Escudo activado! Presionaste la tecla correcta a tiempo.",
+          "hint": "Concéntrate en el sonido. ¿Qué letra produce ese sonido?"
+        },
+        {
+          "id": "cofre",
+          "title": "Los Cofres de la Corona",
+          "prompt": "Arrastra la palabra al cofre que tiene la letra con la que inicia.",
+          "speak": "Elefante. Arrastra la palabra al cofre con la letra E.",
+          "type": "cofre",
+          "question": "Arrastra la palabra al cofre correcto",
+          "word": "Elefante",
+          "boxes": [
+            {
+              "letter": "A",
+              "label": "Letra A"
+            },
+            {
+              "letter": "E",
+              "label": "Letra E"
+            }
+          ],
+          "answer": "E",
+          "success": "¡Correcto! Elefante empieza con la letra E, como en el cofre de la letra E.",
+          "hint": "Di la palabra en voz alta: E - le - fan - te. ¿Con qué letra empieza?"
+        }
+      ]
     },
     {
       "id": "bosque",

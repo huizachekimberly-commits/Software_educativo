@@ -4,10 +4,15 @@ const state = {
   avatar: localStorage.getItem("reino.avatar") || "mago",
   completed: [],
   activeUnit: null,
+  activeSubActivityIndex: null,
   selectedAnswer: null,
   sequenceAnswer: [],
+  escudoTimer: null,
+  escudoExpired: false,
   sound: localStorage.getItem("reino.sound") !== "off",
-  authMode: "login"
+  authMode: "login",
+  inCastleMap: false,
+  cofreDropped: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -298,7 +303,22 @@ function bindGlobalEvents() {
 
   $("#closeActivity").addEventListener("click", closeActivity);
   $("#checkAnswer").addEventListener("click", checkAnswer);
-  $("#listenPrompt").addEventListener("click", () => speak(state.activeUnit?.activity.speak || state.activeUnit?.activity.prompt));
+  $("#listenPrompt").addEventListener("click", () => {
+    // Handle sub-activities
+    if (state.activeSubActivityIndex !== null && state.activeUnit?.subActivities) {
+      const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
+      if (sub) {
+        // For escudo, replay the phoneme sound
+        if (sub.type === "escudo") {
+          playPhonemeSound(sub.phonemeFile, sub.phoneme);
+          return;
+        }
+        speak(sub.speak || sub.prompt);
+        return;
+      }
+    }
+    speak(state.activeUnit?.activity.speak || state.activeUnit?.activity.prompt);
+  });
   $("#pronunciationBtn").addEventListener("click", practicePronunciation);
 
   soundToggle.addEventListener("click", () => {
@@ -522,13 +542,55 @@ function stopAvatarViewer() {
   avatarViewer = null;
 }
 
+/* =============================================
+   SUB-ACTIVITY HELPERS for castle map units
+   ============================================= */
+function getSubKey(unitId, index) {
+  return `${unitId}-${index}`;
+}
+
+function isSubActivityCompleted(unitId, index) {
+  return state.completed.includes(getSubKey(unitId, index));
+}
+
+function isActivityUnlocked(unitId, index) {
+  if (index === 0) return true;
+  return isSubActivityCompleted(unitId, index - 1);
+}
+
+function allSubActivitiesCompleted(unit) {
+  if (!unit.subActivities) return false;
+  return unit.subActivities.every((_, i) => isSubActivityCompleted(unit.id, i));
+}
+
+function completeSubActivity(unitId, index) {
+  const key = getSubKey(unitId, index);
+  if (!state.completed.includes(key)) {
+    state.completed.push(key);
+    persistCurrentUser();
+    renderProgress();
+    renderUnits();
+  }
+}
+
+function countCompletedSubs(unitId, count) {
+  let done = 0;
+  for (let i = 0; i < count; i++) {
+    if (isSubActivityCompleted(unitId, i)) done++;
+  }
+  return done;
+}
+
 function renderUnits() {
   unitGrid.innerHTML = "";
   const template = $("#unitTemplate");
 
   state.data.units.forEach((unit) => {
     const card = template.content.firstElementChild.cloneNode(true);
-    card.classList.toggle("completed", state.completed.includes(unit.id));
+    const isUnitCompleted = unit.subActivities
+      ? allSubActivitiesCompleted(unit)
+      : state.completed.includes(unit.id);
+    card.classList.toggle("completed", isUnitCompleted);
     card.querySelector(".unit-art").classList.add(unit.theme);
     card.querySelector(".unit-art").dataset.icon = unit.icon;
     card.querySelector(".unit-kicker").textContent = `Unidad ${unit.number}`;
@@ -579,13 +641,31 @@ function renderMap() {
 }
 
 function renderProgress() {
+  // Calculate progress: count fully completed units
+  // For units with subActivities, count as complete only if all sub-activities done
   const total = state.data.units.length;
-  const done = state.completed.length;
+  let done = 0;
+
+  state.data.units.forEach((unit) => {
+    if (unit.subActivities && unit.subActivities.length > 0) {
+      if (allSubActivitiesCompleted(unit)) {
+        done++;
+      }
+    } else if (state.completed.includes(unit.id)) {
+      done++;
+    }
+  });
+
   const percent = Math.round((done / total) * 100);
   progressPercent.textContent = `${percent}%`;
   progressRing.style.setProperty("--value", `${percent * 3.6}deg`);
 
-  const rewards = state.data.units.filter((unit) => state.completed.includes(unit.id));
+  const rewards = state.data.units.filter((unit) => {
+    if (unit.subActivities && unit.subActivities.length > 0) {
+      return allSubActivitiesCompleted(unit);
+    }
+    return state.completed.includes(unit.id);
+  });
   rewardStrip.innerHTML = rewards.length
     ? rewards.map((unit) => `<span class="badge">${unit.icon} ${unit.reward}</span>`).join("")
     : `<span class="badge">Comienza una unidad para ganar recompensas</span>`;
@@ -596,15 +676,36 @@ function openActivity(unitId) {
   state.activeUnit = unit;
   state.selectedAnswer = null;
   state.sequenceAnswer = [];
+  state.escudoTimer = null;
+  state.escudoExpired = false;
+  state.cofreDropped = null;
+  state.activeSubActivityIndex = null;
 
+  // If unit has subActivities (castle map), show the map
+  if (unit.subActivities && unit.subActivities.length > 0) {
+    state.inCastleMap = true;
+    activityZone.classList.add("unit-fullscreen");
+    renderCastleMap(unit);
+    activityZone.hidden = false;
+    playTone("open");
+    return;
+  }
+
+  // Otherwise standard single-activity unit (bosque, montanas, oceano)
+  state.inCastleMap = false;
+  activityZone.classList.remove("unit-fullscreen");
   activityScene.className = `activity-scene ${unit.theme}`;
   activityScene.textContent = unit.icon;
+  activityScene.hidden = false;
   activityUnit.textContent = `Unidad ${unit.number}: ${unit.title}`;
   activityTitle.textContent = unit.activity.title;
   activityPrompt.textContent = unit.activity.prompt;
   feedback.className = "feedback";
   feedback.textContent = buildFeedbackSummary(unit);
   activityWorkspace.innerHTML = "";
+  $("#checkAnswer").hidden = false;
+  $("#listenPrompt").hidden = false;
+  $("#pronunciationBtn").hidden = false;
 
   if (unit.activity.type === "choice") renderChoiceActivity(unit.activity);
   if (unit.activity.type === "input") renderInputActivity(unit.activity);
@@ -672,8 +773,528 @@ function renderSequenceActivity(activity) {
   });
 }
 
+/* =============================================
+   CASTLE MAP RENDERER
+   ============================================= */
+function renderCastleMap(unit) {
+  activityScene.hidden = true;
+  activityZone.classList.add("unit-fullscreen");
+  activityUnit.textContent = `Unidad ${unit.number}: ${unit.title}`;
+  activityTitle.textContent = "Mapa del Castillo — Elige una actividad";
+  activityPrompt.textContent = "Completa cada actividad para desbloquear la siguiente.";
+  feedback.className = "feedback";
+  feedback.textContent = `Progreso: ${countCompletedSubs(unit.id, unit.subActivities.length)}/${unit.subActivities.length} actividades completadas.`;
+  activityWorkspace.innerHTML = "";
+  $("#checkAnswer").hidden = true;
+  $("#listenPrompt").hidden = true;
+  $("#pronunciationBtn").hidden = true;
+
+  const total = unit.subActivities.length;
+  const done = countCompletedSubs(unit.id, total);
+  const allDone = done === total;
+
+  const container = document.createElement("div");
+  container.className = "castle-map-container";
+  if (unit.castleMapImage) {
+    container.style.backgroundImage = `url("${unit.castleMapImage}")`;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "castle-map-overlay";
+
+  if (!allDone) {
+    const title = document.createElement("h3");
+    title.className = "castle-map-title";
+    title.textContent = `🗺️ ${done}/${total} actividades completadas`;
+    overlay.appendChild(title);
+  } else {
+    const title = document.createElement("h3");
+    title.className = "castle-map-title";
+    title.textContent = "🏰 ¡Todas las actividades completadas! 🎉";
+    overlay.appendChild(title);
+  }
+
+  const row = document.createElement("div");
+  row.className = "castle-path-row";
+
+  unit.subActivities.forEach((sub, i) => {
+    if (i > 0) {
+      const connector = document.createElement("div");
+      connector.className = "castle-path-connector";
+      row.appendChild(connector);
+    }
+
+    const node = document.createElement("button");
+    node.type = "button";
+    node.className = "castle-node";
+    node.dataset.index = i;
+
+    const unlocked = isActivityUnlocked(unit.id, i);
+    const completed = isSubActivityCompleted(unit.id, i);
+
+    if (completed) {
+      node.classList.add("completed");
+      node.innerHTML = `<span>${i + 1}</span><span class="node-label">${sub.title.substring(0, 12)}</span>`;
+    } else if (unlocked) {
+      node.classList.add("unlocked");
+      const emojis = ["🎈", "🏠", "🕵️", "🛡️", "👑"];
+      node.innerHTML = `<span>${emojis[i] || "⭐"}</span><span class="node-label">${sub.title.substring(0, 12)}</span>`;
+    } else {
+      node.classList.add("locked");
+      node.innerHTML = `<span>${i + 1}</span><span class="node-label">Bloqueado</span>`;
+    }
+
+    if (unlocked && !completed) {
+      node.addEventListener("click", () => openSubActivity(unit.id, i));
+    }
+
+    row.appendChild(node);
+  });
+
+  overlay.appendChild(row);
+
+  // If all done show a completion message
+  if (allDone) {
+    const completeMsg = document.createElement("p");
+    completeMsg.style.cssText = "color:#fff;font-weight:800;text-shadow:0 2px 6px rgba(0,0,0,0.6);margin-top:16px;text-align:center;";
+    completeMsg.textContent = `🎊 ¡Has ganado: ${unit.reward}! 🎊`;
+    overlay.appendChild(completeMsg);
+  }
+
+  container.appendChild(overlay);
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   SUB-ACTIVITY LAUNCHER
+   ============================================= */
+function openSubActivity(unitId, index) {
+  const unit = state.data.units.find((u) => u.id === unitId);
+  if (!unit) return;
+  const sub = unit.subActivities[index];
+  if (!sub) return;
+
+  state.activeSubActivityIndex = index;
+  state.selectedAnswer = null;
+  state.sequenceAnswer = [];
+  state.escudoTimer = null;
+  state.escudoExpired = false;
+  state.cofreDropped = null;
+
+  activityScene.hidden = true;
+  activityZone.classList.add("unit-fullscreen");
+  activityUnit.textContent = `Unidad ${unit.number}: ${unit.title}`;
+  activityTitle.textContent = sub.title;
+  activityPrompt.textContent = sub.prompt;
+  feedback.className = "feedback";
+  feedback.textContent = "";
+  activityWorkspace.innerHTML = "";
+  $("#checkAnswer").hidden = sub.type === "escudo"; // Escudo is auto-checked by keypress
+  $("#listenPrompt").hidden = false;
+  $("#pronunciationBtn").hidden = true;
+
+  switch (sub.type) {
+    case "globo":
+      renderGloboActivity(sub);
+      break;
+    case "balcon":
+      renderBalconActivity(sub);
+      break;
+    case "intruso":
+      renderIntrusoActivity(sub);
+      break;
+    case "escudo":
+      renderEscudoActivity(sub);
+      break;
+    case "cofre":
+      renderCofreActivity(sub);
+      break;
+    default:
+      feedback.textContent = "Actividad no disponible.";
+  }
+}
+
+/* =============================================
+   GLOBO ACTIVITY
+   ============================================= */
+function renderGloboActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "globo-container";
+
+  sub.letters.forEach((letter) => {
+    const balloon = document.createElement("button");
+    balloon.type = "button";
+    balloon.className = "globo";
+    balloon.textContent = letter;
+    balloon.addEventListener("click", () => {
+      document.querySelectorAll(".globo").forEach((g) => g.classList.remove("selected-globo"));
+      balloon.classList.add("selected-globo");
+      state.selectedAnswer = letter;
+      playLetterSound(sub, letter);
+      playTone("tap");
+    });
+    container.appendChild(balloon);
+  });
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   BALCON ACTIVITY
+   ============================================= */
+function renderBalconActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "balcon-container";
+
+  const wordDisplay = document.createElement("div");
+  wordDisplay.className = "balcon-word";
+  wordDisplay.textContent = sub.word;
+  container.appendChild(wordDisplay);
+
+  const boxes = document.createElement("div");
+  boxes.className = "balcon-boxes";
+
+  const icons = ["🔤", "🎯", "🔚"];
+
+  sub.positions.forEach((pos, i) => {
+    const box = document.createElement("button");
+    box.type = "button";
+    box.className = "balcon-box";
+    box.dataset.position = pos;
+    box.innerHTML = `<span class="box-icon">${icons[i] || "⬜"}</span><span class="box-label">${pos}</span>`;
+    box.addEventListener("click", () => {
+      document.querySelectorAll(".balcon-box").forEach((b) => b.classList.remove("selected-balcon"));
+      box.classList.add("selected-balcon");
+      state.selectedAnswer = pos;
+      playTone("tap");
+    });
+    boxes.appendChild(box);
+  });
+
+  container.appendChild(boxes);
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   INTRUSO ACTIVITY
+   ============================================= */
+function renderIntrusoActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "intruso-container";
+
+  sub.options.forEach((option, i) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "intruso-card";
+    card.innerHTML = `<span class="card-icon">${sub.icons[i]}</span><span class="card-label">${option}</span>`;
+    card.addEventListener("click", () => {
+      document.querySelectorAll(".intruso-card").forEach((c) => c.classList.remove("selected-intruso"));
+      card.classList.add("selected-intruso");
+      state.selectedAnswer = option;
+      playTone("tap");
+    });
+    container.appendChild(card);
+  });
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   ESCUDO ACTIVITY
+   ============================================= */
+function renderEscudoActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "escudo-container";
+
+  // Shield display
+  const shield = document.createElement("div");
+  shield.className = "escudo-shield";
+  shield.innerHTML = `<span class="shield-icon">🛡️</span><span class="shield-letter">?</span>`;
+  container.appendChild(shield);
+
+  // Timer ring
+  const timerRing = document.createElement("div");
+  timerRing.className = "escudo-timer-ring";
+  timerRing.id = "escudoTimerRing";
+  timerRing.textContent = sub.timeLimit;
+  container.appendChild(timerRing);
+
+  // Key press display
+  const keyDisplay = document.createElement("div");
+  keyDisplay.className = "escudo-key-display";
+  keyDisplay.id = "escudoKeyDisplay";
+  keyDisplay.textContent = "—";
+  container.appendChild(keyDisplay);
+
+  // Hint
+  const hint = document.createElement("p");
+  hint.className = "escudo-hint";
+  hint.textContent = "Presiona la tecla en tu teclado que corresponda al sonido.";
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+
+  // Play phoneme sound
+  playPhonemeSound(sub.phonemeFile, sub.phoneme);
+
+  // Start timer
+  startEscudoTimer(sub);
+}
+
+function playPhonemeSound(file, fallbackLetter) {
+  if (!state.sound) return;
+  const audio = new Audio(file);
+  audio.play().catch(() => {
+    // Fallback: speak the phoneme
+    speak(`Sonido de la letra ${fallbackLetter}`);
+  });
+}
+
+function playLetterSound(sub, letter) {
+  const normalizedLetter = String(letter).toUpperCase();
+  const soundFile = sub.letterSounds?.[normalizedLetter];
+  if (soundFile) {
+    playPhonemeSound(soundFile, normalizedLetter);
+    return;
+  }
+
+  speak(`Sonido de la letra ${normalizedLetter}`);
+}
+
+function startEscudoTimer(sub) {
+  let timeLeft = sub.timeLimit;
+  state.escudoExpired = false;
+  const timerRing = $("#escudoTimerRing");
+  const keyDisplay = $("#escudoKeyDisplay");
+
+  if (state.escudoTimer) {
+    clearInterval(state.escudoTimer);
+  }
+
+  function updateTimer() {
+    if (timerRing) timerRing.textContent = timeLeft;
+    if (timerRing) {
+      timerRing.classList.remove("timer-warning", "timer-critical");
+      if (timeLeft <= 1) timerRing.classList.add("timer-critical");
+      else if (timeLeft <= 3) timerRing.classList.add("timer-warning");
+    }
+  }
+
+  updateTimer();
+
+  state.escudoTimer = setInterval(() => {
+    timeLeft--;
+    updateTimer();
+
+    if (timeLeft <= 0) {
+      clearInterval(state.escudoTimer);
+      state.escudoTimer = null;
+      state.escudoExpired = true;
+      if (timerRing) timerRing.textContent = "0";
+      feedback.className = "feedback try";
+      feedback.textContent = "¡Se acabó el tiempo! Intenta de nuevo.";
+      playTone("error");
+    }
+  }, 1000);
+
+  // Listen for keypress
+  function onKeyDown(e) {
+    if (state.escudoExpired) return;
+    const key = e.key.toLowerCase();
+    if (keyDisplay) keyDisplay.textContent = key.toUpperCase();
+
+    // Check answer
+    if (key === sub.answer.toLowerCase()) {
+      clearInterval(state.escudoTimer);
+      state.escudoTimer = null;
+      state.selectedAnswer = key;
+      feedback.className = "feedback ok";
+      feedback.textContent = sub.success;
+      completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+      speak(sub.success);
+      playTone("success");
+      document.removeEventListener("keydown", onKeyDown);
+      state.escudoTimerCleanup = null;
+      setTimeout(() => {
+        openActivity(state.activeUnit.id);
+      }, 1600);
+    } else {
+      // Show incorrect but don't stop timer
+      keyDisplay.style.borderColor = "#e86f68";
+      keyDisplay.style.background = "#ffe8e7";
+      setTimeout(() => {
+        keyDisplay.style.borderColor = "";
+        keyDisplay.style.background = "";
+      }, 300);
+    }
+  }
+
+  document.addEventListener("keydown", onKeyDown);
+
+  // Store cleanup
+  state.escudoTimerCleanup = () => {
+    document.removeEventListener("keydown", onKeyDown);
+    if (state.escudoTimer) {
+      clearInterval(state.escudoTimer);
+      state.escudoTimer = null;
+    }
+  };
+}
+
+/* =============================================
+   COFRE ACTIVITY
+   ============================================= */
+function renderCofreActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "cofre-container";
+
+  function dropIntoBox(box, letter) {
+    document.querySelectorAll(".cofre-box").forEach((item) => item.classList.remove("drag-over", "dropped"));
+    state.selectedAnswer = letter;
+    state.cofreDropped = letter;
+    box.classList.add("dropped");
+
+    const dragged = $("#draggableCard");
+    if (dragged) {
+      box.appendChild(dragged);
+      dragged.draggable = false;
+      dragged.classList.remove("tap-selected");
+    }
+
+    const fbZone = $("#cofreFeedback");
+    if (fbZone) fbZone.textContent = `Elegiste el cofre de la letra ${letter}. Presiona Revisar.`;
+    playTone("tap");
+  }
+
+  // Draggable card
+  const card = document.createElement("div");
+  card.className = "draggable-card";
+  card.id = "draggableCard";
+  card.draggable = true;
+  card.textContent = sub.word;
+  card.tabIndex = 0;
+  card.title = "Arrastra la tarjeta o tócala y luego elige un cofre.";
+  card.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", sub.word);
+    card.classList.add("dragging");
+  });
+  card.addEventListener("dragend", () => {
+    card.classList.remove("dragging");
+  });
+  card.addEventListener("click", () => {
+    card.classList.toggle("tap-selected");
+    const fbZone = $("#cofreFeedback");
+    if (fbZone) fbZone.textContent = card.classList.contains("tap-selected")
+      ? "Ahora toca el cofre correcto."
+      : "Arrastra la palabra al cofre correcto.";
+  });
+  container.appendChild(card);
+
+  // Boxes row
+  const boxes = document.createElement("div");
+  boxes.className = "cofre-boxes";
+
+  sub.boxes.forEach((boxData) => {
+    const box = document.createElement("div");
+    box.className = "cofre-box";
+    box.dataset.letter = boxData.letter;
+    box.innerHTML = `<span class="cofre-letter">${boxData.letter}</span><span class="cofre-label">${boxData.label}</span>`;
+
+    box.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      document.querySelectorAll(".cofre-box").forEach((b) => b.classList.remove("drag-over"));
+      box.classList.add("drag-over");
+    });
+
+    box.addEventListener("dragleave", () => {
+      box.classList.remove("drag-over");
+    });
+
+    box.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropIntoBox(box, boxData.letter);
+    });
+
+    box.addEventListener("click", () => {
+      const dragged = $("#draggableCard");
+      if (!dragged || !dragged.classList.contains("tap-selected")) return;
+      dropIntoBox(box, boxData.letter);
+    });
+
+    boxes.appendChild(box);
+  });
+
+  container.appendChild(boxes);
+
+  // Feedback zone
+  const fbZone = document.createElement("div");
+  fbZone.className = "cofre-feedback-zone";
+  fbZone.id = "cofreFeedback";
+  fbZone.textContent = "Arrastra la palabra al cofre correcto.";
+  container.appendChild(fbZone);
+
+  activityWorkspace.appendChild(container);
+}
+
 function checkAnswer() {
   if (!state.activeUnit) return;
+
+  // Handle sub-activities (globo, balcon, intruso, escudo, cofre)
+  if (state.activeSubActivityIndex !== null) {
+    const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
+    if (!sub) return;
+
+    let isCorrect = false;
+
+    switch (sub.type) {
+      case "globo":
+        isCorrect = state.selectedAnswer === sub.answer;
+        break;
+      case "balcon":
+        isCorrect = state.selectedAnswer === sub.answer;
+        break;
+      case "intruso":
+        isCorrect = state.selectedAnswer === sub.answer;
+        break;
+      case "escudo":
+        // Already handled via keydown, but check state
+        isCorrect = state.selectedAnswer === sub.answer.toLowerCase() && !state.escudoExpired;
+        break;
+      case "cofre":
+        isCorrect = state.selectedAnswer === sub.answer;
+        break;
+      default:
+        isCorrect = false;
+    }
+
+    if (isCorrect) {
+      feedback.className = "feedback ok";
+      feedback.textContent = `${sub.success} ¡Has completado esta actividad!`;
+      completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+      speak(sub.success);
+      playTone("success");
+
+      // After a short delay, go back to the castle map
+      setTimeout(() => {
+        openActivity(state.activeUnit.id);
+      }, 2000);
+    } else {
+      // Give a more specific hint based on type
+      let hint = sub.hint || "Intenta de nuevo.";
+      if (sub.type === "cofre") {
+        hint = state.selectedAnswer ? `Elegiste la letra ${state.selectedAnswer}. ${sub.hint}` : sub.hint;
+      } else if (sub.type === "globo" || sub.type === "balcon" || sub.type === "intruso") {
+        hint = !state.selectedAnswer ? "Selecciona una opción primero." : sub.hint;
+      }
+      feedback.className = "feedback try";
+      feedback.textContent = hint;
+      playTone("error");
+    }
+
+    return;
+  }
+
+  // Standard activity types (bosque, montanas, oceano)
   const activity = state.activeUnit.activity;
   let isCorrect = false;
 
@@ -713,8 +1334,21 @@ function markCompleted(unitId) {
 }
 
 function closeActivity() {
+  // Cleanup escudo timer if active
+  if (state.escudoTimerCleanup) {
+    state.escudoTimerCleanup();
+    state.escudoTimerCleanup = null;
+  }
+  if (state.escudoTimer) {
+    clearInterval(state.escudoTimer);
+    state.escudoTimer = null;
+  }
+
   activityZone.hidden = true;
+  activityZone.classList.remove("unit-fullscreen");
   state.activeUnit = null;
+  state.activeSubActivityIndex = null;
+  state.inCastleMap = false;
 }
 
 function practicePronunciation() {
