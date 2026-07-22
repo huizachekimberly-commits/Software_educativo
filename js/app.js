@@ -1255,6 +1255,7 @@ function startEscudoTimer(sub) {
       completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
       speak(sub.success);
       playTone("success");
+      celebrateConfetti();
       document.removeEventListener("keydown", onKeyDown);
       state.escudoTimerCleanup = null;
       setTimeout(() => {
@@ -1415,6 +1416,7 @@ function checkAnswer() {
       completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
       speak(sub.success);
       playTone("success");
+      celebrateConfetti();
 
       // After a short delay, go back to the castle map
       setTimeout(() => {
@@ -1459,6 +1461,7 @@ function checkAnswer() {
     markCompleted(state.activeUnit.id);
     speak(activity.success);
     playTone("success");
+    celebrateConfetti();
   } else {
     feedback.className = "feedback try";
     feedback.textContent = activity.hint;
@@ -1566,6 +1569,61 @@ function playTone(kind) {
   oscillator.start();
   oscillator.stop(context.currentTime + duration + 0.02);
 }
+
+/* =============================================
+   🎉 CONFETTI CELEBRATION
+   ============================================= */
+function celebrateConfetti() {
+  const colors = ["#ff4d9e", "#8ce63d", "#00b8ff", "#9b7eff", "#ff6b2b", "#ffe44d", "#00d4aa"];
+  const container = document.body;
+
+  for (let i = 0; i < 50; i++) {
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece";
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const left = Math.random() * 100;
+    const delay = Math.random() * 1.5;
+    const duration = 2 + Math.random() * 2;
+    const size = 8 + Math.random() * 10;
+
+    piece.style.cssText = `
+      left: ${left}%;
+      width: ${size}px;
+      height: ${size}px;
+      background: ${color};
+      animation-delay: ${delay}s;
+      animation-duration: ${duration}s;
+      box-shadow: 0 0 6px rgba(255,255,255,0.3);
+    `;
+
+    container.appendChild(piece);
+    setTimeout(() => piece.remove(), (duration + delay) * 1000 + 100);
+  }
+}
+
+/* =============================================
+   🎯 POP BUTTON ANIMATION
+   ============================================= */
+function popButton(element) {
+  if (!element) return;
+  element.style.transition = "transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)";
+  element.style.transform = "scale(0.92)";
+  setTimeout(() => {
+    element.style.transform = "scale(1)";
+    setTimeout(() => {
+      element.style.transform = "";
+      element.style.transition = "";
+    }, 150);
+  }, 100);
+}
+
+// Apply pop effect to all primary and secondary buttons
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start");
+  if (btn) {
+    popButton(btn);
+  }
+});
 
 function normalize(value) {
   return value

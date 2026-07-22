@@ -1,34 +1,31 @@
-# TODO: Castle Map for Unidad 1 with 5 Gated Activities
+# Child-Friendly Design Overhaul — ✅ COMPLETED
 
-## Step 1: Update `data/units.json`
-- [x] Restructure "castillo" unit with 5 sub-activities
-- [x] Add `castleMapImage` field pointing to `castle_map.jpeg`
-- [x] Define content/answer data for: Globos, Balcones, Intruso, Escudo, Cofres
+## ✅ 1. HTML — Google Fonts Added
+- Fredoka (300-900 weight) + Balsamiq Sans loaded from Google Fonts
 
-## Step 2: Update `css/styles.css`
-- [x] Castle map layout (background image, node pins, paths)
-- [x] Locked/unlocked/completed node states
-- [x] Globo (balloon) floating activity styles
-- [x] Balcon (3-box) positional selection styles
-- [x] Intruso card selection styles
-- [x] Escudo timer/shield styles
-- [x] Cofre drag & drop styles
+## ✅ 2. CSS — Complete Child-Friendly Rewrite
+- **Vibrant palette**: More saturated pinks, greens, blues, purples, oranges, yellows
+- **Playful shadows**: Colored `box-shadow` vars (pink, purple, blue, orange tints)
+- **Soft rounding**: Increased `border-radius` everywhere (16px→24px, 32px→48px, 64px→XL)
+- **Bigger everything**: Buttons are 56px tall, inputs 56px+ , fonts bigger (h1 up to 5.8rem)
+- **Dashed/dotted borders**: Forms, auth cards, inputs have playful dashed borders
+- **Animation keyframes**: wiggle, bounce, floaty, popIn, pulseGlow, sparkle, rainbowGlow, fadeIn, shakeHead, shake, globoFloat, timerPulse, confettiFall
+- **Progress ring**: Star sparkle decoration
+- **Badges**: Sticker-like with gradients, hover animation
+- **Unit cards**: Treasure chest feel with bigger icons, floating animations, hover lift
+- **Castle nodes**: Bigger (80px), colorful gradients, glow animation, rainbow connectors
+- **Activity components**: All styled bigger and bouncier (globo 120px, balcon boxes 130px, intruso cards 150px, cofre boxes 160px)
+- **Feedback**: Animated popIn (success) and shakeHead (try again)
+- **Auth card**: Playful with gradient heading, dashed borders, star decorations
 
-## Step 3: Update `js/app.js`
-- [x] Import castle phoneme audio system
-- [x] Add sub-activity tracking in state (e.g., "castillo-0" to "castillo-4")
-- [x] Modify `openActivity` to detect castle unit → show castle map
-- [x] `renderCastleMap()` — show map image + numbered pins + path connections
-- [x] Gate logic: `isActivityUnlocked(unitId, index)`
-- [x] `renderGloboActivity()` — 4 floating balloons with letters
-- [x] `renderBalconActivity()` — word + 3 boxes (Inicio, Medio, Fin)
-- [x] `renderIntrusoActivity()` — 4 picture/word cards
-- [x] `renderEscudoActivity()` — phoneme audio + 5s countdown
-- [x] `renderCofreActivity()` — drag word card to vowel boxes
-- [x] Modify `checkAnswer` for all 5 types
-- [x] Modify unit completion logic (all 5 sub-activities marked done)
+## ✅ 3. JS — Celebratory Effects
+- `celebrateConfetti()` — 50 colorful pieces that fall and disappear
+- `popButton()` — Scale-down bounce on EVERY clickable element
+- Confetti triggers on ALL 3 success paths:
+  - Sub-activity completion (checkAnswer)
+  - Standard activity completion (checkAnswer)
+  - Escudo keypress success
 
-## Step 4: Verify & Cleanup
-- [x] Verify `index.html` needs no changes (uses existing activity zone)
-- [x] Final review of all files
+## ✅ 4. Responsive
+- All breakpoints preserved and enhanced for mobile
 
