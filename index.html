@@ -30,7 +30,7 @@
         <p class="eyebrow">Acceso infantil</p>
         <h2>¡Bienvenido al Reino de las Palabras!</h2>
         <p class="auth-intro">
-          Cada estudiante tiene su propia cuenta para guardar el progreso y seguir aprendiendo desde donde lo dejó.
+          Cada estudiante tiene su propia cuenta para guardar el progreso. Puede haber varios alumnos con el mismo nombre.
         </p>
         <div class="auth-tabs" role="tablist" aria-label="Opciones de acceso">
           <button class="auth-tab active" id="showLogin" type="button">Iniciar sesión</button>
@@ -40,34 +40,34 @@
         <form class="auth-form" id="loginForm">
           <label class="auth-field">
             <span>Tu nombre</span>
-            <input type="text" name="loginName" id="loginName" placeholder="Ej: Sofia" required />
+            <input type="text" name="loginName" id="loginName" placeholder="Ej: Sofia" autocomplete="given-name" required />
           </label>
           <label class="auth-field">
             <span>Tu fecha de nacimiento</span>
-            <input type="date" name="loginBirthday" id="loginBirthday" required />
+            <input type="date" name="loginBirthday" id="loginBirthday" autocomplete="bday" required />
           </label>
           <label class="auth-field">
             <span>Tu apellido</span>
-            <input type="text" name="loginLastName" id="loginLastName" placeholder="Ej: Pérez" required />
+            <input type="text" name="loginLastName" id="loginLastName" placeholder="Ej: Pérez" autocomplete="family-name" required />
           </label>
-          <p class="password-hint">Tu contraseña se forma con tu fecha de nacimiento y tu apellido.</p>
+          <p class="password-hint">No importa si escribes Iker, iker o iKeR. Tu cuenta se identifica con nombre, apellido y cumpleaños.</p>
           <button class="primary-btn auth-submit" type="submit">Entrar al reino</button>
         </form>
 
         <form class="auth-form" id="signupForm" hidden>
           <label class="auth-field">
             <span>Tu nombre</span>
-            <input type="text" name="signupName" id="signupName" placeholder="Ej: Mateo" required />
+            <input type="text" name="signupName" id="signupName" placeholder="Ej: Mateo" autocomplete="given-name" required />
           </label>
           <label class="auth-field">
             <span>Tu fecha de nacimiento</span>
-            <input type="date" name="signupBirthday" id="signupBirthday" required />
+            <input type="date" name="signupBirthday" id="signupBirthday" autocomplete="bday" required />
           </label>
           <label class="auth-field">
             <span>Tu apellido</span>
-            <input type="text" name="signupLastName" id="signupLastName" placeholder="Ej: López" required />
+            <input type="text" name="signupLastName" id="signupLastName" placeholder="Ej: López" autocomplete="family-name" required />
           </label>
-          <p class="password-hint">Tu contraseña queda guardada automáticamente como tu fecha de nacimiento + apellido.</p>
+          <p class="password-hint">Pueden existir varios usuarios con el mismo nombre; el apellido y cumpleaños distinguen la cuenta.</p>
           <button class="primary-btn auth-submit" type="submit">Crear mi cuenta</button>
         </form>
 
@@ -175,6 +175,6 @@
     </template>
 
     <audio id="Audio_de_inicio" src= "assets/avatars/Audio_de_inicio.mp3" preload="auto"></audio>
-    <script src="js/app.js?v=1.0.1" type="module"></script>
+    <script src="js/app.js?v=1.0.2" type="module"></script>
   </body>
 </html>

@@ -82,11 +82,11 @@ async function hashValue(value) {
     .join("");
 }
 
-async function getCloudUser(username) {
+async function getCloudUser(accountId) {
   const runtime = await getFirebaseRuntime();
   if (!runtime) return null;
 
-  const userDoc = await runtime.getDoc(runtime.doc(runtime.db, "usuarios", username));
+  const userDoc = await runtime.getDoc(runtime.doc(runtime.db, "usuarios", accountId));
   return userDoc.exists() ? userDoc.data() : null;
 }
 
@@ -100,7 +100,8 @@ async function saveCloudUser(user) {
   };
   delete cloudUser.password;
 
-  await runtime.setDoc(runtime.doc(runtime.db, "usuarios", user.username), cloudUser, { merge: true });
+  const accountId = user.accountId || user.username;
+  await runtime.setDoc(runtime.doc(runtime.db, "usuarios", accountId), cloudUser, { merge: true });
   return true;
 }
 
@@ -129,12 +130,19 @@ function buildPassword(birthday, lastName) {
   return normalizeIdentifier(`${birthday}${lastName}`);
 }
 
+function buildAccountId(username, birthday, lastName) {
+  const nameKey = normalizeIdentifier(username);
+  const lastNameKey = normalizeIdentifier(lastName);
+  const birthdayKey = normalizeIdentifier(birthday);
+  return [nameKey, lastNameKey, birthdayKey].filter(Boolean).join("__");
+}
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;");
+    .replace(/"/g, "&quot;");
 }
 
 async function persistCurrentUser() {
@@ -144,11 +152,31 @@ async function persistCurrentUser() {
   state.user.completed = [...state.completed];
   state.user.sound = state.sound ? "on" : "off";
 
-  const users = getStoredUsers();
-  users[state.user.username] = state.user;
-  saveStoredUsers(users);
-  localStorage.setItem("reino.sessionUser", state.user.username);
+  cacheUserLocally(state.user);
   await saveCloudUser(state.user);
+}
+
+function cacheUserLocally(user) {
+  const users = getStoredUsers();
+  const accountId = user.accountId || user.username;
+  users[accountId] = user;
+  saveStoredUsers(users);
+  localStorage.setItem("reino.sessionUser", accountId);
+}
+
+function applyUserSession(user) {
+  state.user = user;
+  state.avatar = user.avatar || "mago";
+  state.completed = [...(user.completed || [])];
+  state.sound = user.sound !== "off";
+
+  cacheUserLocally(user);
+  renderAvatars();
+  renderUnits();
+  renderProgress();
+  updateHeroAvatar();
+  syncSoundButton();
+  showAppScreen();
 }
 
 function showAuthScreen() {
@@ -181,7 +209,7 @@ function renderAuthNav() {
   if (!authNav) return;
 
   if (!state.user) {
-    authNav.innerHTML = '<button class="auth-link" id="openAuth" type="button">Iniciar sesión</button>';
+    authNav.innerHTML = '<button class="auth-link" id="openAuth" type="button">Iniciar sesion</button>';
     const openAuthButton = $("#openAuth");
     openAuthButton?.addEventListener("click", () => {
       showAuthScreen();
@@ -191,81 +219,129 @@ function renderAuthNav() {
   }
 
   authNav.innerHTML = `
-    <span class="user-badge">Hola, ${escapeHtml(state.user.name)} ✨</span>
-    <button class="auth-link" id="logoutBtn" type="button">Cerrar sesión</button>
+    <span class="user-badge">Hola, ${escapeHtml(state.user.name)}</span>
+    <button class="auth-link" id="logoutBtn" type="button">Cerrar sesion</button>
   `;
 
   $("#logoutBtn")?.addEventListener("click", logoutUser);
 }
 
-function loginUser({ username, birthday, lastName }) {
-  const users = getStoredUsers();
+async function loginUser({ username, birthday, lastName }) {
   const normalizedUsername = normalizeIdentifier(username);
-  const user = users[normalizedUsername];
+  const normalizedLastName = normalizeIdentifier(lastName);
+  const accountId = buildAccountId(username, birthday, lastName);
   const expectedPassword = buildPassword(birthday, lastName);
+  const expectedHash = await hashValue(expectedPassword);
 
-  if (!user || user.password !== expectedPassword) {
+  if (!username || !birthday || !lastName) {
+    setAuthFeedback("Completa los tres campos para iniciar sesion.", "error");
+    return;
+  }
+
+  setAuthFeedback("Buscando tu cuenta...", "info");
+
+  let user = null;
+  try {
+    user = await getCloudUser(accountId);
+    if (!user) {
+      user = await getCloudUser(normalizedUsername);
+    }
+  } catch (error) {
+    console.warn("No se pudo buscar en Firebase:", error);
+  }
+
+  if (!user) {
+    const users = getStoredUsers();
+    user = users[accountId] || users[normalizedUsername] || null;
+  }
+
+  const storedPasswordOk = user?.password === expectedPassword;
+  const storedHashOk = user?.passwordHash === expectedHash;
+
+  if (!user || (!storedPasswordOk && !storedHashOk)) {
     setAuthFeedback("Ese nombre, fecha o apellido no coinciden. Intenta otra vez o crea una cuenta nueva.", "error");
     return;
   }
 
-  state.user = user;
-  state.avatar = user.avatar || state.avatar;
-  state.completed = [...(user.completed || [])];
-  state.sound = user.sound !== "off";
-  persistCurrentUser();
+  const normalizedUser = {
+    ...user,
+    accountId,
+    username: normalizedUsername,
+    lastNameKey: normalizedLastName,
+    name: user.name || username.trim(),
+    lastName: user.lastName || lastName.trim(),
+    birthday: user.birthday || birthday,
+    password: expectedPassword,
+    passwordHash: user.passwordHash || expectedHash,
+    avatar: user.avatar || "mago",
+    completed: [...(user.completed || [])],
+    sound: user.sound || "on"
+  };
 
-  renderAvatars();
-  renderUnits();
-  renderProgress();
-  updateHeroAvatar();
-  syncSoundButton();
-  showAppScreen();
-  setAuthFeedback(`¡Qué alegría, ${user.name}! Tu progreso ya está listo.`, "success");
+  applyUserSession(normalizedUser);
+  await persistCurrentUser();
+  setAuthFeedback(`Que alegria, ${normalizedUser.name}. Tu progreso ya esta listo.`, "success");
 }
 
-function signupUser({ username, birthday, lastName }) {
-  const users = getStoredUsers();
+async function signupUser({ username, birthday, lastName }) {
   const normalizedUsername = normalizeIdentifier(username);
+  const normalizedLastName = normalizeIdentifier(lastName);
+  const accountId = buildAccountId(username, birthday, lastName);
 
   if (!username || !birthday || !lastName) {
     setAuthFeedback("Completa los tres campos para crear una cuenta.", "error");
     return;
   }
 
-  if (users[normalizedUsername]) {
-    setAuthFeedback("Ese nombre ya existe. Elige otro o inicia sesión con el que ya registraste.", "error");
-    return;
+  setAuthFeedback("Creando tu cuenta...", "info");
+
+  const users = getStoredUsers();
+  const password = buildPassword(birthday, lastName);
+  const passwordHash = await hashValue(password);
+  const localExactUser = users[accountId] || null;
+  const localLegacyUser = users[normalizedUsername] || null;
+  const legacyPasswordOk = localLegacyUser?.password === password || localLegacyUser?.passwordHash === passwordHash;
+  const localExistingUser = localExactUser || (legacyPasswordOk ? localLegacyUser : null);
+
+  try {
+    const existingCloudUser = await getCloudUser(accountId);
+    if (existingCloudUser) {
+      setAuthFeedback("Ya existe una cuenta con ese nombre, apellido y cumpleanos. Intenta iniciar sesion.", "error");
+      return;
+    }
+  } catch (error) {
+    console.warn("No se pudo verificar Firebase antes del registro:", error);
   }
 
-  const password = buildPassword(birthday, lastName);
   const newUser = {
+    ...localExistingUser,
+    accountId,
     username: normalizedUsername,
+    lastNameKey: normalizedLastName,
     name: username.trim(),
     lastName: lastName.trim(),
     birthday,
     password,
-    avatar: "mago",
-    completed: [],
-    sound: "on"
+    passwordHash,
+    avatar: localExistingUser?.avatar || "mago",
+    completed: [...(localExistingUser?.completed || [])],
+    sound: localExistingUser?.sound || "on"
   };
 
-  users[normalizedUsername] = newUser;
-  saveStoredUsers(users);
+  try {
+    const savedInCloud = await saveCloudUser(newUser);
+    if (!savedInCloud && firebaseEnabled) {
+      setAuthFeedback("No se pudo guardar en Firebase. Revisa la conexion o las reglas de Firestore.", "error");
+      return;
+    }
+  } catch (error) {
+    console.error("Error guardando usuario en Firebase:", error);
+    setAuthFeedback(`Firebase rechazo el registro: ${error.message}`, "error");
+    return;
+  }
 
-  state.user = newUser;
-  state.avatar = newUser.avatar;
-  state.completed = [];
-  state.sound = true;
-  persistCurrentUser();
-
-  renderAvatars();
-  renderUnits();
-  renderProgress();
-  updateHeroAvatar();
-  syncSoundButton();
-  showAppScreen();
-  setAuthFeedback(`Cuenta creada para ${newUser.name}. ¡A aprender!`, "success");
+  applyUserSession(newUser);
+  setAuthFeedback(`Cuenta creada para ${newUser.name}. A aprender.`, "success");
 }
 
 function logoutUser() {
@@ -277,20 +353,35 @@ function logoutUser() {
   showAuthScreen();
   setAuthMode("login");
   renderAuthNav();
-  setAuthFeedback("Sesión cerrada. Vuelve cuando quieras continuar tu aventura.", "success");
+  setAuthFeedback("Sesion cerrada. Vuelve cuando quieras continuar tu aventura.", "success");
 }
 
-function restoreSession() {
+async function restoreSession() {
   const storedUser = localStorage.getItem("reino.sessionUser");
   if (!storedUser) {
     showAuthScreen();
     setAuthMode("login");
-    setAuthFeedback("Inicia sesión para guardar tu progreso y volver más tarde.", "info");
+    setAuthFeedback("Inicia sesion para guardar tu progreso y volver mas tarde.", "info");
     return;
   }
 
   const users = getStoredUsers();
-  const stored = users[storedUser];
+  let stored = users[storedUser];
+
+  try {
+    const cloudUser = await getCloudUser(storedUser);
+    if (cloudUser) {
+      stored = {
+        ...stored,
+        ...cloudUser,
+        password: stored?.password || buildPassword(cloudUser.birthday || "", cloudUser.lastName || "")
+      };
+      cacheUserLocally(stored);
+    }
+  } catch (error) {
+    console.warn("No se pudo restaurar desde Firebase:", error);
+  }
+
   if (!stored) {
     localStorage.removeItem("reino.sessionUser");
     showAuthScreen();
@@ -298,19 +389,9 @@ function restoreSession() {
     return;
   }
 
-  state.user = stored;
-  state.avatar = stored.avatar || state.avatar;
-  state.completed = [...(stored.completed || [])];
-  state.sound = stored.sound !== "off";
-  showAppScreen();
-  renderAvatars();
-  renderUnits();
-  renderProgress();
-  updateHeroAvatar();
-  syncSoundButton();
-  setAuthFeedback(`¡Hola otra vez, ${stored.name}! Tu progreso quedó guardado.`, "success");
+  applyUserSession(stored);
+  setAuthFeedback(`Hola otra vez, ${stored.name}. Tu progreso quedo guardado.`, "success");
 }
-
 async function init() {
   const response = await fetch("data/units.json");
   state.data = await response.json();
@@ -323,27 +404,27 @@ async function init() {
   bindGlobalEvents();
   bindAuthEvents();
   renderAuthNav();
-  restoreSession();
+  await restoreSession();
 }
 
 function bindAuthEvents() {
   showLoginButton.addEventListener("click", () => setAuthMode("login"));
   showSignupButton.addEventListener("click", () => setAuthMode("signup"));
 
-  loginForm.addEventListener("submit", (event) => {
+  loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const username = $("#loginName").value.trim();
     const birthday = $("#loginBirthday").value;
     const lastName = $("#loginLastName").value.trim();
-    loginUser({ username, birthday, lastName });
+    await loginUser({ username, birthday, lastName });
   });
 
-  signupForm.addEventListener("submit", (event) => {
+  signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const username = $("#signupName").value.trim();
     const birthday = $("#signupBirthday").value;
     const lastName = $("#signupLastName").value.trim();
-    signupUser({ username, birthday, lastName });
+    await signupUser({ username, birthday, lastName });
   });
 }
 
@@ -394,7 +475,7 @@ function bindGlobalEvents() {
 
 function syncSoundButton() {
   soundToggle.classList.toggle("muted", !state.sound);
-  soundToggle.querySelector("span").textContent = state.sound ? "♪" : "×";
+  soundToggle.querySelector("span").textContent = state.sound ? "\u266a" : "\u00d7";
 }
 
 function renderAvatars() {
@@ -659,7 +740,7 @@ function renderUnits() {
     card.querySelector(".unit-description").textContent = unit.description;
     card.querySelector(".mini-list").innerHTML = unit.activities
       .slice(0, 3)
-      .map((activity) => `<span><strong>•</strong>${activity}</span>`)
+      .map((activity) => `<span><strong>\u2022</strong>${activity}</span>`)
       .join("");
     card.querySelector(".unit-start").addEventListener("click", () => openActivity(unit.id));
     unitGrid.appendChild(card);
@@ -841,7 +922,7 @@ function renderCastleMap(unit) {
   activityScene.hidden = true;
   activityZone.classList.add("unit-fullscreen");
   activityUnit.textContent = `Unidad ${unit.number}: ${unit.title}`;
-  activityTitle.textContent = "Mapa del Castillo — Elige una actividad";
+  activityTitle.textContent = "Mapa del Castillo \u2014 Elige una actividad";
   activityPrompt.textContent = "Completa cada actividad para desbloquear la siguiente.";
   feedback.className = "feedback";
   feedback.textContent = `Progreso: ${countCompletedSubs(unit.id, unit.subActivities.length)}/${unit.subActivities.length} actividades completadas.`;
@@ -866,12 +947,12 @@ function renderCastleMap(unit) {
   if (!allDone) {
     const title = document.createElement("h3");
     title.className = "castle-map-title";
-    title.textContent = `🗺️ ${done}/${total} actividades completadas`;
+    title.textContent = `\ud83d\uddfa\ufe0f ${done}/${total} actividades completadas`;
     overlay.appendChild(title);
   } else {
     const title = document.createElement("h3");
     title.className = "castle-map-title";
-    title.textContent = "🏰 ¡Todas las actividades completadas! 🎉";
+    title.textContent = "\ud83c\udff0 \u00a1Todas las actividades completadas! \ud83c\udf89";
     overlay.appendChild(title);
   }
 
@@ -898,8 +979,8 @@ function renderCastleMap(unit) {
       node.innerHTML = `<span>${i + 1}</span><span class="node-label">${sub.title.substring(0, 12)}</span>`;
     } else if (unlocked) {
       node.classList.add("unlocked");
-      const emojis = ["🎈", "🏠", "🕵️", "🛡️", "👑"];
-      node.innerHTML = `<span>${emojis[i] || "⭐"}</span><span class="node-label">${sub.title.substring(0, 12)}</span>`;
+      const emojis = ["\ud83c\udf88", "\ud83c\udfe0", "\ud83d\udd75\ufe0f", "\ud83d\udee1\ufe0f", "\ud83d\udc51"];
+      node.innerHTML = `<span>${emojis[i] || "\u2b50"}</span><span class="node-label">${sub.title.substring(0, 12)}</span>`;
     } else {
       node.classList.add("locked");
       node.innerHTML = `<span>${i + 1}</span><span class="node-label">Bloqueado</span>`;
@@ -918,7 +999,7 @@ function renderCastleMap(unit) {
   if (allDone) {
     const completeMsg = document.createElement("p");
     completeMsg.style.cssText = "color:#fff;font-weight:800;text-shadow:0 2px 6px rgba(0,0,0,0.6);margin-top:16px;text-align:center;";
-    completeMsg.textContent = `🎊 ¡Has ganado: ${unit.reward}! 🎊`;
+    completeMsg.textContent = `\ud83c\udf8a \u00a1Has ganado: ${unit.reward}! \ud83c\udf8a`;
     overlay.appendChild(completeMsg);
   }
 
@@ -1015,14 +1096,14 @@ function renderBalconActivity(sub) {
   const boxes = document.createElement("div");
   boxes.className = "balcon-boxes";
 
-  const icons = ["🔤", "🎯", "🔚"];
+  const icons = ["\ud83d\udd24", "\ud83c\udfaf", "\ud83d\udd1a"];
 
   sub.positions.forEach((pos, i) => {
     const box = document.createElement("button");
     box.type = "button";
     box.className = "balcon-box";
     box.dataset.position = pos;
-    box.innerHTML = `<span class="box-icon">${icons[i] || "⬜"}</span><span class="box-label">${pos}</span>`;
+    box.innerHTML = `<span class="box-icon">${icons[i] || "\u2b1c"}</span><span class="box-label">${pos}</span>`;
     box.addEventListener("click", () => {
       document.querySelectorAll(".balcon-box").forEach((b) => b.classList.remove("selected-balcon"));
       box.classList.add("selected-balcon");
@@ -1070,7 +1151,7 @@ function renderEscudoActivity(sub) {
   // Shield display
   const shield = document.createElement("div");
   shield.className = "escudo-shield";
-  shield.innerHTML = `<span class="shield-icon">🛡️</span><span class="shield-letter">?</span>`;
+  shield.innerHTML = `<span class="shield-icon">\ud83d\udee1\ufe0f</span><span class="shield-letter">?</span>`;
   container.appendChild(shield);
 
   // Timer ring
@@ -1084,7 +1165,7 @@ function renderEscudoActivity(sub) {
   const keyDisplay = document.createElement("div");
   keyDisplay.className = "escudo-key-display";
   keyDisplay.id = "escudoKeyDisplay";
-  keyDisplay.textContent = "—";
+  keyDisplay.textContent = "\u2014";
   container.appendChild(keyDisplay);
 
   // Hint
@@ -1153,7 +1234,7 @@ function startEscudoTimer(sub) {
       state.escudoExpired = true;
       if (timerRing) timerRing.textContent = "0";
       feedback.className = "feedback try";
-      feedback.textContent = "¡Se acabó el tiempo! Intenta de nuevo.";
+      feedback.textContent = "\u00a1Se acab\u00f3 el tiempo! Intenta de nuevo.";
       playTone("error");
     }
   }, 1000);
@@ -1234,7 +1315,7 @@ function renderCofreActivity(sub) {
   card.draggable = true;
   card.textContent = sub.word;
   card.tabIndex = 0;
-  card.title = "Arrastra la tarjeta o tócala y luego elige un cofre.";
+  card.title = "Arrastra la tarjeta o t\u00f3cala y luego elige un cofre.";
   card.addEventListener("dragstart", (e) => {
     e.dataTransfer.setData("text/plain", sub.word);
     card.classList.add("dragging");
@@ -1330,7 +1411,7 @@ function checkAnswer() {
 
     if (isCorrect) {
       feedback.className = "feedback ok";
-      feedback.textContent = `${sub.success} ¡Has completado esta actividad!`;
+      feedback.textContent = `${sub.success} \u00a1Has completado esta actividad!`;
       completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
       speak(sub.success);
       playTone("success");
@@ -1345,7 +1426,7 @@ function checkAnswer() {
       if (sub.type === "cofre") {
         hint = state.selectedAnswer ? `Elegiste la letra ${state.selectedAnswer}. ${sub.hint}` : sub.hint;
       } else if (sub.type === "globo" || sub.type === "balcon" || sub.type === "intruso") {
-        hint = !state.selectedAnswer ? "Selecciona una opción primero." : sub.hint;
+        hint = !state.selectedAnswer ? "Selecciona una opci\u00f3n primero." : sub.hint;
       }
       feedback.className = "feedback try";
       feedback.textContent = hint;
