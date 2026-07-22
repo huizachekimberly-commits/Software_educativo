@@ -1,22 +1,14 @@
-# Child-Friendly Design Overhaul — TODO
+# Child-Friendly Design Overhaul — Status
 
-## ✅ Step 1: CSS — Color Vibrancy & Playful Variables [DONE]
-## ✅ Step 2: CSS — Rounded & Soft Everything [DONE]
-## ✅ Step 3: CSS — Typography Overhaul [DONE]
-## ✅ Step 4: CSS — Fun Animations [DONE]
-## ✅ Step 5: CSS — Game-like Interface Components [DONE]
-## ✅ Step 6: CSS — Unit Cards (Treasure Chest Feel) [DONE]
-## ✅ Step 7: CSS — Castle Map Enhancements [DONE]
-## ✅ Step 8: CSS — Reward & Achievement Styling [DONE]
-## ✅ Step 9: JS — Interactive Feedback & Celebrations [DONE]
-## ✅ Step 10: HTML — Font Loading & Meta [DONE]
-## ✅ Step 11: Final Review & Testing [DONE]
+## ✅ All prior CSS/JS improvements complete
+## ✅ Unit 1 Sound Enhancements complete
 
-# Unit 1 Sound Enhancements
-
-## ✅ All balloons play their own phoneme sound (M, S, P, L)
-## ✅ Listen button plays MP3 from `assets/unit_1_sounds/activity_{N}.mp3`
-## ✅ Correct answer sequence: correct sound → feedback → return to map
-## ✅ Escudo keeps phoneme (no MP4 needed)
-## ✅ feedback5.mp3 naming inconsistency handled
+## Fixes applied for Escudo Activity (activity 4):
+- ✅ Added "▶ ¡Empezar!" button — timer only starts after clicking it
+- ✅ Shield is now in its own `.escudo-top-row` (centered, no overlapping text)
+- ✅ Timer ring + key display in `.escudo-middle-row` (side by side, centered)
+- ✅ Phoneme plays on start button click (not on load)
+- ✅ Timer starts 800ms after "Empezar" click (kid has time to hear the phoneme)
+- ✅ Guard prevents timer from starting if activity was closed
+- ✅ `escudoStarted` state properly reset on open/close
 

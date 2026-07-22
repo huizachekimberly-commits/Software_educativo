@@ -1514,11 +1514,21 @@ a {
   align-items: center;
   justify-content: center;
   gap: 24px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.escudo-top-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 
 .escudo-shield {
-  width: 160px;
-  height: 180px;
+  width: 180px;
+  height: 200px;
   background: linear-gradient(135deg, #79b9df, #9b7eff);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   display: flex;
@@ -1529,20 +1539,28 @@ a {
   font-size: 1.4rem;
   font-weight: 900;
   box-shadow: 0 12px 32px rgba(155, 126, 255, 0.35);
-  position: relative;
   animation: floaty 3s ease-in-out infinite;
+  margin: 0 auto;
 }
 
 .escudo-shield .shield-icon {
-  font-size: 3.2rem;
-  margin-bottom: 6px;
+  font-size: 3.6rem;
+  margin-bottom: 8px;
 }
 
 .escudo-shield .shield-letter {
-  font-size: 2.4rem;
+  font-size: 2.8rem;
   background: rgba(255,255,255,0.2);
-  padding: 4px 16px;
-  border-radius: 12px;
+  padding: 6px 20px;
+  border-radius: 14px;
+}
+
+.escudo-middle-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
 }
 
 .escudo-timer-ring {
@@ -1556,20 +1574,22 @@ a {
   font-size: 2.6rem;
   font-weight: 900;
   color: var(--ink);
-  position: relative;
   transition: all 0.3s ease;
   background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 16px rgba(255, 107, 107, 0.2);
 }
 
 .escudo-timer-ring.timer-warning {
   border-color: #ffb84d;
   animation: pulseGlow 1s ease infinite;
+  box-shadow: 0 4px 16px rgba(255, 184, 77, 0.3);
 }
 
 .escudo-timer-ring.timer-critical {
   border-color: #ff6b6b;
   animation: timerPulse 0.5s ease infinite;
   color: #ff6b6b;
+  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
 }
 
 .escudo-key-display {
@@ -1580,18 +1600,29 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.4rem;
+  font-size: 2.6rem;
   font-weight: 900;
   background: linear-gradient(135deg, #eef8f7, #d0f0ec);
   color: var(--teal);
+  box-shadow: 0 4px 16px rgba(0, 184, 148, 0.15);
 }
 
 .escudo-hint {
   color: var(--muted);
-  font-size: 1rem;
+  font-size: 1.05rem;
   text-align: center;
-  max-width: 300px;
+  max-width: 340px;
   line-height: 1.5;
+  margin: 0;
+  font-weight: 700;
+}
+
+.escudo-start-btn {
+  min-width: 200px;
+  font-size: 1.4rem;
+  padding: 0 40px;
+  min-height: 60px;
+  animation: popIn 0.5s var(--bounce);
 }
 
 /* =============================================

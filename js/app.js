@@ -1,4 +1,4 @@
-import { firebaseConfig, firebaseEnabled } from "./firebase-config.js";
+﻿import { firebaseConfig, firebaseEnabled } from "./firebase-config.js";
 
 const state = {
   data: null,
@@ -11,6 +11,8 @@ const state = {
   sequenceAnswer: [],
   escudoTimer: null,
   escudoExpired: false,
+  escudoStarted: false,
+  audioLock: false, // prevents stacked audio from rapid clicks
   sound: localStorage.getItem("reino.sound") !== "off",
   authMode: "login",
   inCastleMap: false,
@@ -57,7 +59,6 @@ async function getFirebaseRuntime() {
     ]).then(([appModule, firestoreModule]) => {
       const app = appModule.initializeApp(firebaseConfig);
       const db = firestoreModule.getFirestore(app);
-
       return {
         db,
         doc: firestoreModule.doc,
@@ -70,7 +71,6 @@ async function getFirebaseRuntime() {
       return null;
     });
   }
-
   return firebaseRuntimePromise;
 }
 
@@ -85,7 +85,6 @@ async function hashValue(value) {
 async function getCloudUser(accountId) {
   const runtime = await getFirebaseRuntime();
   if (!runtime) return null;
-
   const userDoc = await runtime.getDoc(runtime.doc(runtime.db, "usuarios", accountId));
   return userDoc.exists() ? userDoc.data() : null;
 }
@@ -93,13 +92,8 @@ async function getCloudUser(accountId) {
 async function saveCloudUser(user) {
   const runtime = await getFirebaseRuntime();
   if (!runtime) return false;
-
-  const cloudUser = {
-    ...user,
-    updatedAt: runtime.serverTimestamp()
-  };
+  const cloudUser = { ...user, updatedAt: runtime.serverTimestamp() };
   delete cloudUser.password;
-
   const accountId = user.accountId || user.username;
   await runtime.setDoc(runtime.doc(runtime.db, "usuarios", accountId), cloudUser, { merge: true });
   return true;
@@ -108,9 +102,7 @@ async function saveCloudUser(user) {
 function getStoredUsers() {
   try {
     return JSON.parse(localStorage.getItem("reino.users") || "{}") || {};
-  } catch {
-    return {};
-  }
+  } catch { return {}; }
 }
 
 function saveStoredUsers(users) {
@@ -118,12 +110,7 @@ function saveStoredUsers(users) {
 }
 
 function normalizeIdentifier(value) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .replace(/[^a-z0-9]+/g, "");
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/[^a-z0-9]+/g, "");
 }
 
 function buildPassword(birthday, lastName) {
@@ -147,11 +134,9 @@ function escapeHtml(value) {
 
 async function persistCurrentUser() {
   if (!state.user) return;
-
   state.user.avatar = state.avatar;
   state.user.completed = [...state.completed];
   state.user.sound = state.sound ? "on" : "off";
-
   cacheUserLocally(state.user);
   await saveCloudUser(state.user);
 }
@@ -169,7 +154,6 @@ function applyUserSession(user) {
   state.avatar = user.avatar || "mago";
   state.completed = [...(user.completed || [])];
   state.sound = user.sound !== "off";
-
   cacheUserLocally(user);
   renderAvatars();
   renderUnits();
@@ -191,10 +175,10 @@ function showAppScreen() {
   renderAuthNav();
 }
 
-function setAuthFeedback(message, kind = "info") {
+function setAuthFeedback(message, kind) {
   if (!authMessage) return;
   authMessage.textContent = message;
-  authMessage.className = `auth-feedback ${kind === "error" ? "error" : kind === "success" ? "success" : ""}`.trim();
+  authMessage.className = "auth-feedback" + (kind === "error" ? " error" : kind === "success" ? " success" : "");
 }
 
 function setAuthMode(mode) {
@@ -207,22 +191,12 @@ function setAuthMode(mode) {
 
 function renderAuthNav() {
   if (!authNav) return;
-
   if (!state.user) {
     authNav.innerHTML = '<button class="auth-link" id="openAuth" type="button">Iniciar sesion</button>';
-    const openAuthButton = $("#openAuth");
-    openAuthButton?.addEventListener("click", () => {
-      showAuthScreen();
-      setAuthMode("login");
-    });
+    $("#openAuth")?.addEventListener("click", () => { showAuthScreen(); setAuthMode("login"); });
     return;
   }
-
-  authNav.innerHTML = `
-    <span class="user-badge">Hola, ${escapeHtml(state.user.name)}</span>
-    <button class="auth-link" id="logoutBtn" type="button">Cerrar sesion</button>
-  `;
-
+  authNav.innerHTML = `<span class="user-badge">Hola, ${escapeHtml(state.user.name)}</span><button class="auth-link" id="logoutBtn" type="button">Cerrar sesion</button>`;
   $("#logoutBtn")?.addEventListener("click", logoutUser);
 }
 
@@ -921,28 +895,59 @@ function renderSequenceActivity(activity) {
 }
 
 /* =============================================
-   🔊 UNIT SOUND PLAYER — Uses MP3 from assets/unit_X_sounds/
+   ðŸŽµ SAFE AUDIO PLAY â€” Debounces & stops previous
+   ============================================= */
+function safePlayAudio(audio, onEnded) {
+  if (!state.sound || state.audioLock) return;
+  state.audioLock = true;
+  stopAllAudio();
+
+  audio.currentTime = 0;
+  audio.play().then(() => {
+    audio.addEventListener("ended", () => {
+      state.audioLock = false;
+      if (onEnded) onEnded();
+    }, { once: true });
+    audio.addEventListener("error", () => {
+      state.audioLock = false;
+      if (onEnded) onEnded();
+    }, { once: true });
+  }).catch(() => {
+    state.audioLock = false;
+    if (onEnded) onEnded();
+  });
+}
+
+/* =============================================
+   ðŸŽµ STOP ALL AUDIO â€” Avoid overlapping voice lines
+   ============================================= */
+function stopAllAudio() {
+  // Cancel speech synthesis
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+  // Stop any currently playing MP3 Audio elements
+  document.querySelectorAll("audio").forEach((el) => {
+    el.pause();
+    el.currentTime = 0;
+  });
+}
+
+/* =============================================
+   ðŸ”Š UNIT SOUND PLAYER â€” Uses MP3 from assets/unit_X_sounds/
    ============================================= */
 function playUnitSound(unitId, subIndex) {
-  if (!state.sound) return;
-  // activity number = index + 1, since activities are 1-based
   const activityNumber = subIndex + 1;
   // Find the unit number from data
   const unit = state.data?.units?.find((u) => u.id === unitId);
   const unitNumber = unit?.number || unitId.replace("unit", "");
   const audioPath = `assets/unit_${unitNumber}_sounds/activity_${activityNumber}.mp3`;
   const audio = new Audio(audioPath);
-  audio.play().catch(() => {
-    // Fallback: speak the sub-activity prompt/speak text
-    const sub = unit?.subActivities?.[subIndex];
-    if (sub) {
-      speak(sub.speak || sub.prompt);
-    }
-  });
+  safePlayAudio(audio);
 }
 
 /* =============================================
-   🎉 CORRECT ANSWER SEQUENCE — Correct sound → Feedback → Done
+   ðŸŽ‰ CORRECT ANSWER SEQUENCE â€” Correct sound â†’ Feedback â†’ Done
    ============================================= */
 function playCorrectThenFeedback(unitId, subIndex, onComplete) {
   if (!state.sound) {
@@ -962,31 +967,13 @@ function playCorrectThenFeedback(unitId, subIndex, onComplete) {
     : `assets/unit_1_sounds/feedback_${activityNumber}.mp3`;
 
   // Play correct sound first
-  correctSound.play();
-  correctSound.onended = () => {
-    // After correct sound ends, play feedback
+  safePlayAudio(correctSound, () => {
+    // After correct sound ends (or fails), play feedback
     const feedbackSound = new Audio(feedbackPath);
-    feedbackSound.play();
-    feedbackSound.onended = () => {
-      // After feedback ends, call onComplete
+    safePlayAudio(feedbackSound, () => {
       if (onComplete) onComplete();
-    };
-    // Fallback if feedback sound fails to load
-    feedbackSound.onerror = () => {
-      if (onComplete) onComplete();
-    };
-  };
-  // Fallback if correct sound fails
-  correctSound.onerror = () => {
-    const feedbackSound = new Audio(feedbackPath);
-    feedbackSound.play();
-    feedbackSound.onended = () => {
-      if (onComplete) onComplete();
-    };
-    feedbackSound.onerror = () => {
-      if (onComplete) onComplete();
-    };
-  };
+    });
+  });
 }
 
 /* =============================================
@@ -1060,7 +1047,9 @@ function renderCastleMap(unit) {
       node.innerHTML = `<span>${i + 1}</span><span class="node-label">Bloqueado</span>`;
     }
 
-    if (unlocked && !completed) {
+    // Allow clicking to re-open even if completed (for review/feedback)
+    // Completed activities can be re-entered without affecting progress
+    if (unlocked) {
       node.addEventListener("click", () => openSubActivity(unit.id, i));
     }
 
@@ -1095,6 +1084,7 @@ function openSubActivity(unitId, index) {
   state.sequenceAnswer = [];
   state.escudoTimer = null;
   state.escudoExpired = false;
+  state.escudoStarted = false;
   state.cofreDropped = null;
 
   activityScene.hidden = true;
@@ -1105,9 +1095,21 @@ function openSubActivity(unitId, index) {
   feedback.className = "feedback";
   feedback.textContent = "";
   activityWorkspace.innerHTML = "";
-  $("#checkAnswer").hidden = sub.type === "escudo"; // Escudo is auto-checked by keypress
-  $("#listenPrompt").hidden = false;
-  $("#pronunciationBtn").hidden = true;
+
+  // If activity is completed â†’ review mode: no check button, show success feedback
+  const alreadyCompleted = isSubActivityCompleted(unitId, index);
+
+  if (alreadyCompleted) {
+    $("#checkAnswer").hidden = true;
+    $("#listenPrompt").hidden = false;
+    $("#pronunciationBtn").hidden = true;
+    feedback.className = "feedback ok";
+    feedback.textContent = `¡Completaste "${sub.title}"! Usa el botón "Escuchar" para repasar las instrucciones.`;
+  } else {
+    $("#checkAnswer").hidden = sub.type === "escudo"; // Escudo is auto-checked by keypress
+    $("#listenPrompt").hidden = false;
+    $("#pronunciationBtn").hidden = true;
+  }
 
   switch (sub.type) {
     case "globo":
@@ -1120,10 +1122,10 @@ function openSubActivity(unitId, index) {
       renderIntrusoActivity(sub);
       break;
     case "escudo":
-      renderEscudoActivity(sub);
+      renderEscudoActivity(sub, alreadyCompleted);
       break;
     case "cofre":
-      renderCofreActivity(sub);
+      renderCofreActivity(sub, alreadyCompleted);
       break;
     default:
       feedback.textContent = "Actividad no disponible.";
@@ -1218,52 +1220,80 @@ function renderIntrusoActivity(sub) {
 /* =============================================
    ESCUDO ACTIVITY
    ============================================= */
-function renderEscudoActivity(sub) {
+function renderEscudoActivity(sub, reviewMode = false) {
   const container = document.createElement("div");
   container.className = "escudo-container";
+
+  // Top row: shield centered, no overlapping text
+  const topRow = document.createElement("div");
+  topRow.className = "escudo-top-row";
 
   // Shield display
   const shield = document.createElement("div");
   shield.className = "escudo-shield";
   shield.innerHTML = `<span class="shield-icon">\ud83d\udee1\ufe0f</span><span class="shield-letter">?</span>`;
-  container.appendChild(shield);
+  topRow.appendChild(shield);
+  container.appendChild(topRow);
+
+  // Middle row: timer + key display
+  const middleRow = document.createElement("div");
+  middleRow.className = "escudo-middle-row";
 
   // Timer ring
   const timerRing = document.createElement("div");
   timerRing.className = "escudo-timer-ring";
   timerRing.id = "escudoTimerRing";
   timerRing.textContent = sub.timeLimit;
-  container.appendChild(timerRing);
+  middleRow.appendChild(timerRing);
 
   // Key press display
   const keyDisplay = document.createElement("div");
   keyDisplay.className = "escudo-key-display";
   keyDisplay.id = "escudoKeyDisplay";
-  keyDisplay.textContent = "\u2014";
-  container.appendChild(keyDisplay);
+  keyDisplay.textContent = reviewMode ? sub.answer.toUpperCase() : "\u2014";
+  middleRow.appendChild(keyDisplay);
+
+  container.appendChild(middleRow);
 
   // Hint
   const hint = document.createElement("p");
   hint.className = "escudo-hint";
-  hint.textContent = "Presiona la tecla en tu teclado que corresponda al sonido.";
+  hint.id = "escudoHint";
+  hint.textContent = reviewMode
+    ? "Actividad completada. Puedes escuchar la instruccion, pero ya no necesitas responder otra vez."
+    : "Escucha el sonido de la letra. Luego presiona la tecla correcta en tu teclado.";
   container.appendChild(hint);
 
+  if (reviewMode) {
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Start button
+  const startBtn = document.createElement("button");
+  startBtn.className = "primary-btn escudo-start-btn";
+  startBtn.id = "escudoStartBtn";
+  startBtn.textContent = "â–¶ Â¡Empezar!";
+  startBtn.addEventListener("click", () => {
+    state.escudoStarted = true;
+    startBtn.hidden = true;
+    hint.textContent = "Â¡Presiona la tecla de la letra que suena!";
+    // Play phoneme sound
+    playPhonemeSound(sub.phonemeFile, sub.phoneme);
+    // Start timer after a short delay so the kid can hear the phoneme first
+    setTimeout(() => {
+      startEscudoTimer(sub);
+    }, 800);
+  });
+  container.appendChild(startBtn);
+
   activityWorkspace.appendChild(container);
-
-  // Play phoneme sound
-  playPhonemeSound(sub.phonemeFile, sub.phoneme);
-
-  // Start timer
-  startEscudoTimer(sub);
 }
 
 function playPhonemeSound(file, fallbackLetter) {
   if (!state.sound) return;
   const audio = new Audio(file);
-  audio.play().catch(() => {
-    // Fallback: speak the phoneme
-    speak(`Sonido de la letra ${fallbackLetter}`);
-  });
+  safePlayAudio(audio);
 }
 
 function playLetterSound(sub, letter) {
@@ -1278,6 +1308,9 @@ function playLetterSound(sub, letter) {
 }
 
 function startEscudoTimer(sub) {
+  // Guard: if the activity was closed or escudo was reset, don't start
+  if (!state.escudoStarted) return;
+
   let timeLeft = sub.timeLimit;
   state.escudoExpired = false;
   const timerRing = $("#escudoTimerRing");
@@ -1332,7 +1365,7 @@ function startEscudoTimer(sub) {
       document.removeEventListener("keydown", onKeyDown);
       state.escudoTimerCleanup = null;
 
-      // Unit 1 (Castillo): play correct sound → feedback → return to map
+      // Unit 1 (Castillo): play correct sound â†’ feedback â†’ return to map
       if (state.activeUnit.id === "castillo") {
         playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
           openActivity(state.activeUnit.id);
@@ -1464,6 +1497,9 @@ function renderCofreActivity(sub) {
 function checkAnswer() {
   if (!state.activeUnit) return;
 
+  // Stop any playing voice line / instruction audio when checking
+  stopAllAudio();
+
   // Handle sub-activities (globo, balcon, intruso, escudo, cofre)
   if (state.activeSubActivityIndex !== null) {
     const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
@@ -1499,7 +1535,7 @@ function checkAnswer() {
       playTone("success");
       celebrateConfetti();
 
-      // Unit 1 (Castillo): play correct sound → feedback → return to map
+      // Unit 1 (Castillo): play correct sound â†’ feedback â†’ return to map
       if (state.activeUnit.id === "castillo") {
         playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
           openActivity(state.activeUnit.id);
@@ -1582,6 +1618,7 @@ function closeActivity() {
   state.activeUnit = null;
   state.activeSubActivityIndex = null;
   state.inCastleMap = false;
+  state.escudoStarted = false;
 }
 
 function practicePronunciation() {
@@ -1623,17 +1660,22 @@ function practicePronunciation() {
 }
 
 function speak(text) {
-  if (!state.sound || !("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
+  if (!state.sound || !("speechSynthesis" in window) || state.audioLock) return;
+  state.audioLock = true;
+  stopAllAudio();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "es-MX";
   utterance.rate = 0.92;
   utterance.pitch = 1.04;
+  utterance.onend = () => { state.audioLock = false; };
+  utterance.onerror = () => { state.audioLock = false; };
   window.speechSynthesis.speak(utterance);
 }
 
 function playTone(kind) {
   if (!state.sound) return;
+  // Stop speech/audio before playing a tone so they don't overlap
+  stopAllAudio();
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return;
 
@@ -1659,7 +1701,7 @@ function playTone(kind) {
 }
 
 /* =============================================
-   🎉 CONFETTI CELEBRATION
+   ðŸŽ‰ CONFETTI CELEBRATION
    ============================================= */
 function celebrateConfetti() {
   const colors = ["#ff4d9e", "#8ce63d", "#00b8ff", "#9b7eff", "#ff6b2b", "#ffe44d", "#00d4aa"];
@@ -1690,7 +1732,7 @@ function celebrateConfetti() {
 }
 
 /* =============================================
-   🎯 POP BUTTON ANIMATION
+   ðŸŽ¯ POP BUTTON ANIMATION
    ============================================= */
 function popButton(element) {
   if (!element) return;
@@ -1730,3 +1772,4 @@ init().catch((error) => {
     </main>
   `;
 });
+
