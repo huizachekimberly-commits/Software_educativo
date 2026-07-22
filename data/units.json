@@ -100,7 +100,7 @@
           "success": "¡Muy bien! El globo con la letra S tiene el sonido /s/.",
           "hint": "Escucha el sonido /s/... busca la letra que representa ese sonido.",
           "letterSounds": {
-            "S": "assets/phonemes/s.mp3"
+"M":"assets/phonemes/m.mp3","S":"assets/phonemes/s.mp3","P":"assets/phonemes/p.mp3","L":"assets/phonemes/l.mp3"
           }
         },
         {

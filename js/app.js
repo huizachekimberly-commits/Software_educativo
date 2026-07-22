@@ -455,6 +455,11 @@ function bindGlobalEvents() {
           playPhonemeSound(sub.phonemeFile, sub.phoneme);
           return;
         }
+        // Unit 1 (Castillo): use MP3 files from assets/unit_1_sounds/
+        if (state.activeUnit.id === "castillo") {
+          playUnitSound(state.activeUnit.id, state.activeSubActivityIndex);
+          return;
+        }
         speak(sub.speak || sub.prompt);
         return;
       }
@@ -916,6 +921,75 @@ function renderSequenceActivity(activity) {
 }
 
 /* =============================================
+   🔊 UNIT SOUND PLAYER — Uses MP3 from assets/unit_X_sounds/
+   ============================================= */
+function playUnitSound(unitId, subIndex) {
+  if (!state.sound) return;
+  // activity number = index + 1, since activities are 1-based
+  const activityNumber = subIndex + 1;
+  // Find the unit number from data
+  const unit = state.data?.units?.find((u) => u.id === unitId);
+  const unitNumber = unit?.number || unitId.replace("unit", "");
+  const audioPath = `assets/unit_${unitNumber}_sounds/activity_${activityNumber}.mp3`;
+  const audio = new Audio(audioPath);
+  audio.play().catch(() => {
+    // Fallback: speak the sub-activity prompt/speak text
+    const sub = unit?.subActivities?.[subIndex];
+    if (sub) {
+      speak(sub.speak || sub.prompt);
+    }
+  });
+}
+
+/* =============================================
+   🎉 CORRECT ANSWER SEQUENCE — Correct sound → Feedback → Done
+   ============================================= */
+function playCorrectThenFeedback(unitId, subIndex, onComplete) {
+  if (!state.sound) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  // 1. Pick a random correct sound from assets/correct_sounds/phrase1-8.mp3
+  const correctSoundIndex = Math.floor(Math.random() * 8) + 1; // 1 to 8
+  const correctSound = new Audio(`assets/correct_sounds/phrase${correctSoundIndex}.mp3`);
+
+  // 2. Determine feedback file: feedback_{N}.mp3 where N = subIndex + 1
+  const activityNumber = subIndex + 1;
+  // feedback5.mp3 has no underscore (naming inconsistency), handle specifically
+  const feedbackPath = activityNumber === 5
+    ? `assets/unit_1_sounds/feedback5.mp3`
+    : `assets/unit_1_sounds/feedback_${activityNumber}.mp3`;
+
+  // Play correct sound first
+  correctSound.play();
+  correctSound.onended = () => {
+    // After correct sound ends, play feedback
+    const feedbackSound = new Audio(feedbackPath);
+    feedbackSound.play();
+    feedbackSound.onended = () => {
+      // After feedback ends, call onComplete
+      if (onComplete) onComplete();
+    };
+    // Fallback if feedback sound fails to load
+    feedbackSound.onerror = () => {
+      if (onComplete) onComplete();
+    };
+  };
+  // Fallback if correct sound fails
+  correctSound.onerror = () => {
+    const feedbackSound = new Audio(feedbackPath);
+    feedbackSound.play();
+    feedbackSound.onended = () => {
+      if (onComplete) onComplete();
+    };
+    feedbackSound.onerror = () => {
+      if (onComplete) onComplete();
+    };
+  };
+}
+
+/* =============================================
    CASTLE MAP RENDERER
    ============================================= */
 function renderCastleMap(unit) {
@@ -1253,14 +1327,22 @@ function startEscudoTimer(sub) {
       feedback.className = "feedback ok";
       feedback.textContent = sub.success;
       completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
-      speak(sub.success);
       playTone("success");
       celebrateConfetti();
       document.removeEventListener("keydown", onKeyDown);
       state.escudoTimerCleanup = null;
-      setTimeout(() => {
-        openActivity(state.activeUnit.id);
-      }, 1600);
+
+      // Unit 1 (Castillo): play correct sound → feedback → return to map
+      if (state.activeUnit.id === "castillo") {
+        playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+          openActivity(state.activeUnit.id);
+        });
+      } else {
+        speak(sub.success);
+        setTimeout(() => {
+          openActivity(state.activeUnit.id);
+        }, 1600);
+      }
     } else {
       // Show incorrect but don't stop timer
       keyDisplay.style.borderColor = "#e86f68";
@@ -1414,14 +1496,20 @@ function checkAnswer() {
       feedback.className = "feedback ok";
       feedback.textContent = `${sub.success} \u00a1Has completado esta actividad!`;
       completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
-      speak(sub.success);
       playTone("success");
       celebrateConfetti();
 
-      // After a short delay, go back to the castle map
-      setTimeout(() => {
-        openActivity(state.activeUnit.id);
-      }, 2000);
+      // Unit 1 (Castillo): play correct sound → feedback → return to map
+      if (state.activeUnit.id === "castillo") {
+        playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+          openActivity(state.activeUnit.id);
+        });
+      } else {
+        speak(sub.success);
+        setTimeout(() => {
+          openActivity(state.activeUnit.id);
+        }, 2000);
+      }
     } else {
       // Give a more specific hint based on type
       let hint = sub.hint || "Intenta de nuevo.";

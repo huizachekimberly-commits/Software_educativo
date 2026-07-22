@@ -1,31 +1,22 @@
-# Child-Friendly Design Overhaul — ✅ COMPLETED
+# Child-Friendly Design Overhaul — TODO
 
-## ✅ 1. HTML — Google Fonts Added
-- Fredoka (300-900 weight) + Balsamiq Sans loaded from Google Fonts
+## ✅ Step 1: CSS — Color Vibrancy & Playful Variables [DONE]
+## ✅ Step 2: CSS — Rounded & Soft Everything [DONE]
+## ✅ Step 3: CSS — Typography Overhaul [DONE]
+## ✅ Step 4: CSS — Fun Animations [DONE]
+## ✅ Step 5: CSS — Game-like Interface Components [DONE]
+## ✅ Step 6: CSS — Unit Cards (Treasure Chest Feel) [DONE]
+## ✅ Step 7: CSS — Castle Map Enhancements [DONE]
+## ✅ Step 8: CSS — Reward & Achievement Styling [DONE]
+## ✅ Step 9: JS — Interactive Feedback & Celebrations [DONE]
+## ✅ Step 10: HTML — Font Loading & Meta [DONE]
+## ✅ Step 11: Final Review & Testing [DONE]
 
-## ✅ 2. CSS — Complete Child-Friendly Rewrite
-- **Vibrant palette**: More saturated pinks, greens, blues, purples, oranges, yellows
-- **Playful shadows**: Colored `box-shadow` vars (pink, purple, blue, orange tints)
-- **Soft rounding**: Increased `border-radius` everywhere (16px→24px, 32px→48px, 64px→XL)
-- **Bigger everything**: Buttons are 56px tall, inputs 56px+ , fonts bigger (h1 up to 5.8rem)
-- **Dashed/dotted borders**: Forms, auth cards, inputs have playful dashed borders
-- **Animation keyframes**: wiggle, bounce, floaty, popIn, pulseGlow, sparkle, rainbowGlow, fadeIn, shakeHead, shake, globoFloat, timerPulse, confettiFall
-- **Progress ring**: Star sparkle decoration
-- **Badges**: Sticker-like with gradients, hover animation
-- **Unit cards**: Treasure chest feel with bigger icons, floating animations, hover lift
-- **Castle nodes**: Bigger (80px), colorful gradients, glow animation, rainbow connectors
-- **Activity components**: All styled bigger and bouncier (globo 120px, balcon boxes 130px, intruso cards 150px, cofre boxes 160px)
-- **Feedback**: Animated popIn (success) and shakeHead (try again)
-- **Auth card**: Playful with gradient heading, dashed borders, star decorations
+# Unit 1 Sound Enhancements
 
-## ✅ 3. JS — Celebratory Effects
-- `celebrateConfetti()` — 50 colorful pieces that fall and disappear
-- `popButton()` — Scale-down bounce on EVERY clickable element
-- Confetti triggers on ALL 3 success paths:
-  - Sub-activity completion (checkAnswer)
-  - Standard activity completion (checkAnswer)
-  - Escudo keypress success
-
-## ✅ 4. Responsive
-- All breakpoints preserved and enhanced for mobile
+## ✅ All balloons play their own phoneme sound (M, S, P, L)
+## ✅ Listen button plays MP3 from `assets/unit_1_sounds/activity_{N}.mp3`
+## ✅ Correct answer sequence: correct sound → feedback → return to map
+## ✅ Escudo keeps phoneme (no MP4 needed)
+## ✅ feedback5.mp3 naming inconsistency handled
 
