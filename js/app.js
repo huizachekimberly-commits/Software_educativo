@@ -1,3 +1,5 @@
+import { firebaseConfig, firebaseEnabled } from "./firebase-config.js";
+
 const state = {
   data: null,
   user: null,
@@ -43,6 +45,64 @@ const showSignupButton = $("#showSignup");
 
 let threeRuntimePromise = null;
 let avatarViewer = null;
+let firebaseRuntimePromise = null;
+
+async function getFirebaseRuntime() {
+  if (!firebaseEnabled) return null;
+
+  if (!firebaseRuntimePromise) {
+    firebaseRuntimePromise = Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js")
+    ]).then(([appModule, firestoreModule]) => {
+      const app = appModule.initializeApp(firebaseConfig);
+      const db = firestoreModule.getFirestore(app);
+
+      return {
+        db,
+        doc: firestoreModule.doc,
+        getDoc: firestoreModule.getDoc,
+        setDoc: firestoreModule.setDoc,
+        serverTimestamp: firestoreModule.serverTimestamp
+      };
+    }).catch((error) => {
+      console.warn("Firebase no pudo iniciar. Se usara localStorage.", error);
+      return null;
+    });
+  }
+
+  return firebaseRuntimePromise;
+}
+
+async function hashValue(value) {
+  const input = new TextEncoder().encode(value);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", input);
+  return [...new Uint8Array(hashBuffer)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function getCloudUser(username) {
+  const runtime = await getFirebaseRuntime();
+  if (!runtime) return null;
+
+  const userDoc = await runtime.getDoc(runtime.doc(runtime.db, "usuarios", username));
+  return userDoc.exists() ? userDoc.data() : null;
+}
+
+async function saveCloudUser(user) {
+  const runtime = await getFirebaseRuntime();
+  if (!runtime) return false;
+
+  const cloudUser = {
+    ...user,
+    updatedAt: runtime.serverTimestamp()
+  };
+  delete cloudUser.password;
+
+  await runtime.setDoc(runtime.doc(runtime.db, "usuarios", user.username), cloudUser, { merge: true });
+  return true;
+}
 
 function getStoredUsers() {
   try {
@@ -77,7 +137,7 @@ function escapeHtml(value) {
     .replace(/\"/g, "&quot;");
 }
 
-function persistCurrentUser() {
+async function persistCurrentUser() {
   if (!state.user) return;
 
   state.user.avatar = state.avatar;
@@ -88,6 +148,7 @@ function persistCurrentUser() {
   users[state.user.username] = state.user;
   saveStoredUsers(users);
   localStorage.setItem("reino.sessionUser", state.user.username);
+  await saveCloudUser(state.user);
 }
 
 function showAuthScreen() {
