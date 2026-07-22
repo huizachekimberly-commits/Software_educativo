@@ -13,6 +13,7 @@ const state = {
   escudoExpired: false,
   escudoStarted: false,
   audioLock: false, // prevents stacked audio from rapid clicks
+  confettiLock: false, // prevents multiple confetti bursts
   sound: localStorage.getItem("reino.sound") !== "off",
   authMode: "login",
   inCastleMap: false,
@@ -1273,11 +1274,11 @@ function renderEscudoActivity(sub, reviewMode = false) {
   const startBtn = document.createElement("button");
   startBtn.className = "primary-btn escudo-start-btn";
   startBtn.id = "escudoStartBtn";
-  startBtn.textContent = "â–¶ Â¡Empezar!";
+  startBtn.textContent = "¡Empezar!";
   startBtn.addEventListener("click", () => {
     state.escudoStarted = true;
     startBtn.hidden = true;
-    hint.textContent = "Â¡Presiona la tecla de la letra que suena!";
+    hint.textContent = "¡Presiona la tecla de la letra que suena!";
     // Play phoneme sound
     playPhonemeSound(sub.phonemeFile, sub.phoneme);
     // Start timer after a short delay so the kid can hear the phoneme first
@@ -1497,6 +1498,8 @@ function renderCofreActivity(sub) {
 function checkAnswer() {
   if (!state.activeUnit) return;
 
+  // Force release audio lock so new sounds can play for checking
+  state.audioLock = false;
   // Stop any playing voice line / instruction audio when checking
   stopAllAudio();
 
@@ -1704,6 +1707,12 @@ function playTone(kind) {
    ðŸŽ‰ CONFETTI CELEBRATION
    ============================================= */
 function celebrateConfetti() {
+  // Prevent multiple confetti bursts from rapid clicks
+  if (state.confettiLock) return;
+  state.confettiLock = true;
+  // Release lock after animation completes (~4s)
+  setTimeout(() => { state.confettiLock = false; }, 4000);
+
   const colors = ["#ff4d9e", "#8ce63d", "#00b8ff", "#9b7eff", "#ff6b2b", "#ffe44d", "#00d4aa"];
   const container = document.body;
 
