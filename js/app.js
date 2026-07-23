@@ -770,8 +770,24 @@ function renderProgress() {
     }
     return state.completed.includes(unit.id);
   });
+
+  // Map reward names to their icon image paths
+  function getBadgeIcon(rewardName) {
+    const iconMap = {
+      "Insignia de la Letra Brillante": "assets/images/icons/insignia_de_la_letra_brillante_icon.png",
+      "Hoja del Vocabulario": "assets/images/icons/hoja_del_vocabulario_icon.png"
+    };
+    const path = iconMap[rewardName];
+    if (path) {
+      return `<img src="${path}" alt="" class="badge-icon" />`;
+    }
+    // Fallback to unit emoji for rewards without a custom icon
+    const unit = state.data.units.find((u) => u.reward === rewardName);
+    return unit?.icon || "🏆";
+  }
+
   rewardStrip.innerHTML = rewards.length
-    ? rewards.map((unit) => `<span class="badge">${unit.icon} ${unit.reward}</span>`).join("")
+    ? rewards.map((unit) => `<span class="badge">${getBadgeIcon(unit.reward)} ${unit.reward}</span>`).join("")
     : `<span class="badge">Comienza una unidad para ganar recompensas</span>`;
 }
 

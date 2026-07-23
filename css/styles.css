@@ -736,6 +736,13 @@ a {
   animation: popIn 0.4s var(--bounce) both;
 }
 
+.badge-icon {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
 .badge:hover {
   transform: scale(1.08) rotate(-2deg);
   box-shadow: 0 4px 14px rgba(240, 208, 123, 0.4);
@@ -784,18 +791,12 @@ a {
   position: relative;
   height: 200px;
   overflow: hidden;
+  background-size: cover;
+  background-position: center;
 }
 
 .unit-art::before {
-  content: attr(data-icon);
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 2;
-  font-size: 6rem;
-  transform: translate(-50%, -50%);
-  animation: floaty 3s ease-in-out infinite;
-  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.15));
+  display: none;
 }
 
 .unit-art::after {
@@ -809,18 +810,34 @@ a {
 
 .theme-castle {
   background: linear-gradient(135deg, #ff7eb3, #ffb84d);
+  background-image: url('../assets/images/icons/unit1_icon.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: overlay;
 }
 
 .theme-forest {
   background: linear-gradient(135deg, #5c9f52, #00d4aa);
+  background-image: url('../assets/images/icons/unit2_icon.png');
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: overlay;
 }
 
 .theme-mountain {
   background: linear-gradient(135deg, #9b7eff, #79b9df);
+  background-image: url('../assets/images/icons/unit3_icon.png');
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: overlay;
 }
 
 .theme-ocean {
   background: linear-gradient(135deg, #00b8ff, #00d4aa);
+  background-image: url('../assets/images/icons/unit4_icon.png');
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: overlay;
 }
 
 .unit-body {
