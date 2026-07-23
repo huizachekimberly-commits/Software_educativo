@@ -1731,6 +1731,235 @@ a {
 }
 
 /* =============================================
+   CALDERO ACTIVITY — Silaba cauldron
+   ============================================= */
+.caldero-container {
+  min-height: min(560px, 55vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 20px;
+}
+
+.caldero-cauldron {
+  width: 200px;
+  height: 180px;
+  background: linear-gradient(145deg, #6b3a2a, #4a2518);
+  border-radius: 50% 50% 45% 45% / 40% 40% 55% 55%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.6rem;
+  font-weight: 900;
+  color: #ffe44d;
+  box-shadow:
+    0 12px 32px rgba(0,0,0,0.25),
+    inset 0 -20px 40px rgba(0,0,0,0.3),
+    inset 0 8px 20px rgba(255, 228, 77, 0.1);
+  position: relative;
+  transition: all 0.4s var(--bounce);
+  text-shadow: 0 0 20px rgba(255, 228, 77, 0.3);
+}
+
+.caldero-cauldron::before {
+  content: "🫧🫧🫧";
+  position: absolute;
+  top: -20px;
+  font-size: 1.6rem;
+  letter-spacing: 6px;
+  opacity: 0.6;
+  animation: floaty 2s ease-in-out infinite;
+}
+
+.caldero-cauldron.bubbling {
+  animation: calderoBoil 0.3s ease-in-out infinite;
+  box-shadow:
+    0 12px 32px rgba(0,0,0,0.25),
+    inset 0 -20px 40px rgba(0,0,0,0.3),
+    0 0 40px rgba(255, 228, 77, 0.3);
+}
+
+.caldero-cauldron.correct-brew {
+  animation: calderoSuccess 0.6s var(--bounce);
+  box-shadow:
+    0 0 50px rgba(255, 228, 77, 0.5),
+    0 12px 32px rgba(0,0,0,0.2);
+}
+
+.caldero-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.caldero-option {
+  min-height: 80px;
+  border: 4px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #fff, #f0f7ff);
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 2rem;
+  color: var(--ink);
+  transition: all 0.25s var(--bounce);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.caldero-option:hover:not(.selected-caldero) {
+  border-color: var(--teal);
+  transform: translateY(-4px) scale(1.04);
+  box-shadow: 0 8px 20px rgba(0, 184, 148, 0.15);
+}
+
+.caldero-option.selected-caldero {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, #fff4cf, #ffe8b8);
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 0 0 6px rgba(255, 184, 77, 0.25);
+}
+
+.caldero-option.correct-caldero {
+  border-color: #5c9f52;
+  background: #d4f0d4;
+}
+
+.caldero-hint {
+  color: var(--muted);
+  font-size: 1.05rem;
+  text-align: center;
+  font-weight: 700;
+  max-width: 400px;
+  margin: 0;
+}
+
+/* =============================================
+   CARRUAJE ACTIVITY — Syllable train wagons
+   ============================================= */
+.carruaje-container {
+  min-height: min(560px, 55vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 20px;
+}
+
+.carruaje-train {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.carruaje-wagon {
+  width: 130px;
+  height: 100px;
+  border: 4px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #fce4d6, #f5d0b8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--ink);
+  position: relative;
+  transition: all 0.3s var(--bounce);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.carruaje-wagon::before {
+  content: "🚃";
+  position: absolute;
+  top: -28px;
+  font-size: 1.4rem;
+}
+
+.carruaje-wagon.filled {
+  border-color: var(--teal);
+  background: linear-gradient(180deg, #d0f0ec, #c0e8e0);
+  box-shadow: 0 4px 16px rgba(0, 184, 148, 0.2);
+  animation: popIn 0.3s var(--bounce);
+}
+
+.carruaje-wagon.filled.correct-wagon {
+  border-color: #5c9f52;
+  background: linear-gradient(180deg, #d4f0d4, #c4e8c4);
+}
+
+.carruaje-blocks {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 500px;
+}
+
+.carruaje-block {
+  width: 100px;
+  height: 80px;
+  border: 4px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #fff4cf, #ffffff);
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 1.8rem;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s var(--bounce);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  user-select: none;
+}
+
+.carruaje-block:hover:not(.used) {
+  transform: translateY(-6px) scale(1.06);
+  border-color: var(--gold);
+  box-shadow: 0 10px 24px rgba(255, 184, 77, 0.2);
+}
+
+.carruaje-block.used {
+  opacity: 0.3;
+  transform: scale(0.85);
+  cursor: default;
+  pointer-events: none;
+}
+
+.carruaje-hint {
+  color: var(--muted);
+  font-size: 1.05rem;
+  text-align: center;
+  font-weight: 700;
+  max-width: 400px;
+  margin: 0;
+}
+
+.carruaje-word-display {
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: var(--ink);
+  min-height: 56px;
+  letter-spacing: 12px;
+}
+
+.carruaje-word-display.done {
+  background: linear-gradient(135deg, var(--teal), #5c9f52);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: popIn 0.4s var(--bounce);
+}
+
+/* =============================================
    CONFETTI CELEBRATION
    ============================================= */
 @keyframes confettiFall {
@@ -1821,6 +2050,19 @@ a {
 @keyframes globoFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-16px); }
+}
+
+@keyframes calderoBoil {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.03) rotate(-1deg); }
+  75% { transform: scale(1.03) rotate(1deg); }
+}
+
+@keyframes calderoSuccess {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.15) rotate(-3deg); }
+  60% { transform: scale(1.08) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); }
 }
 
 @keyframes timerPulse {

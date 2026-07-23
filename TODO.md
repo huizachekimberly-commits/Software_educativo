@@ -12,3 +12,10 @@
 - ✅ Guard prevents timer from starting if activity was closed
 - ✅ `escudoStarted` state properly reset on open/close
 
+## JS Syntax & Logic Fixes (app.js)
+- ✅ Removed duplicate `setAuthMode()` and `renderAuthNav()` function definitions
+- ✅ Added missing `safePlayAudio(audio, onEnded)` function with audio lock management
+- ✅ Added missing `stopAllAudio()` function that cancels speech synthesis and pauses all <audio> elements
+- ✅ Added `checkingLock` auto-release (3s timeout) so "Revisar" button can be reused
+- ✅ Added `state.audioLock` guard in `playPhonemeSound()` to prevent overlapping phoneme sounds
+

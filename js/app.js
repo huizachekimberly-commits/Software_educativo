@@ -12,8 +12,9 @@ const state = {
   escudoTimer: null,
   escudoExpired: false,
   escudoStarted: false,
-  audioLock: false, // prevents stacked audio from rapid clicks
-  confettiLock: false, // prevents multiple confetti bursts
+  audioLock: false,
+  confettiLock: false,
+  checkingLock: false,
   sound: localStorage.getItem("reino.sound") !== "off",
   authMode: "login",
   inCastleMap: false,
@@ -52,7 +53,6 @@ let firebaseRuntimePromise = null;
 
 async function getFirebaseRuntime() {
   if (!firebaseEnabled) return null;
-
   if (!firebaseRuntimePromise) {
     firebaseRuntimePromise = Promise.all([
       import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
@@ -60,13 +60,7 @@ async function getFirebaseRuntime() {
     ]).then(([appModule, firestoreModule]) => {
       const app = appModule.initializeApp(firebaseConfig);
       const db = firestoreModule.getFirestore(app);
-      return {
-        db,
-        doc: firestoreModule.doc,
-        getDoc: firestoreModule.getDoc,
-        setDoc: firestoreModule.setDoc,
-        serverTimestamp: firestoreModule.serverTimestamp
-      };
+      return { db, doc: firestoreModule.doc, getDoc: firestoreModule.getDoc, setDoc: firestoreModule.setDoc, serverTimestamp: firestoreModule.serverTimestamp };
     }).catch((error) => {
       console.warn("Firebase no pudo iniciar. Se usara localStorage.", error);
       return null;
@@ -78,9 +72,7 @@ async function getFirebaseRuntime() {
 async function hashValue(value) {
   const input = new TextEncoder().encode(value);
   const hashBuffer = await crypto.subtle.digest("SHA-256", input);
-  return [...new Uint8Array(hashBuffer)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  return [...new Uint8Array(hashBuffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function getCloudUser(accountId) {
@@ -101,9 +93,7 @@ async function saveCloudUser(user) {
 }
 
 function getStoredUsers() {
-  try {
-    return JSON.parse(localStorage.getItem("reino.users") || "{}") || {};
-  } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem("reino.users") || "{}") || {}; } catch { return {}; }
 }
 
 function saveStoredUsers(users) {
@@ -425,17 +415,9 @@ function bindGlobalEvents() {
     if (state.activeSubActivityIndex !== null && state.activeUnit?.subActivities) {
       const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
       if (sub) {
-        // For escudo, replay the phoneme sound
-        if (sub.type === "escudo") {
-          playPhonemeSound(sub.phonemeFile, sub.phoneme);
-          return;
-        }
-        // Unit 1 (Castillo): use MP3 files from assets/unit_1_sounds/
-        if (state.activeUnit.id === "castillo") {
-          playUnitSound(state.activeUnit.id, state.activeSubActivityIndex);
-          return;
-        }
-        speak(sub.speak || sub.prompt);
+        // Use MP3 files from assets/unit_{N}_sounds/ for any unit with subActivities
+        // This plays activity_{N}.mp3 (the instruction audio) for all sub-activity types
+        playUnitSound(state.activeUnit.id, state.activeSubActivityIndex);
         return;
       }
     }
@@ -802,6 +784,8 @@ function openActivity(unitId) {
   state.escudoExpired = false;
   state.cofreDropped = null;
   state.activeSubActivityIndex = null;
+  state.audioLock = false; // release any stuck audio lock when opening a new activity
+  state.checkingLock = false; // re-enable checkAnswer for new activity
 
   // If unit has subActivities (castle map), show the map
   if (unit.subActivities && unit.subActivities.length > 0) {
@@ -895,15 +879,15 @@ function renderSequenceActivity(activity) {
   });
 }
 
-/* =============================================
-   ðŸŽµ SAFE AUDIO PLAY â€” Debounces & stops previous
-   ============================================= */
 function safePlayAudio(audio, onEnded) {
-  if (!state.sound || state.audioLock) return;
+  if (!state.sound) {
+    if (onEnded) onEnded();
+    return;
+  }
+  // If any audio is already playing, ignore this new request entirely
+  if (state.audioLock) return;
   state.audioLock = true;
   stopAllAudio();
-
-  audio.currentTime = 0;
   audio.play().then(() => {
     audio.addEventListener("ended", () => {
       state.audioLock = false;
@@ -919,11 +903,7 @@ function safePlayAudio(audio, onEnded) {
   });
 }
 
-/* =============================================
-   ðŸŽµ STOP ALL AUDIO â€” Avoid overlapping voice lines
-   ============================================= */
 function stopAllAudio() {
-  // Cancel speech synthesis
   if ("speechSynthesis" in window) {
     window.speechSynthesis.cancel();
   }
@@ -960,12 +940,11 @@ function playCorrectThenFeedback(unitId, subIndex, onComplete) {
   const correctSoundIndex = Math.floor(Math.random() * 8) + 1; // 1 to 8
   const correctSound = new Audio(`assets/correct_sounds/phrase${correctSoundIndex}.mp3`);
 
-  // 2. Determine feedback file: feedback_{N}.mp3 where N = subIndex + 1
+  // 2. Determine feedback file dynamically based on unit number
+  const unit = state.data?.units?.find((u) => u.id === unitId);
+  const unitNumber = unit?.number || 1;
   const activityNumber = subIndex + 1;
-  // feedback5.mp3 has no underscore (naming inconsistency), handle specifically
-  const feedbackPath = activityNumber === 5
-    ? `assets/unit_1_sounds/feedback5.mp3`
-    : `assets/unit_1_sounds/feedback_${activityNumber}.mp3`;
+  const feedbackPath = `assets/unit_${unitNumber}_sounds/feedback${activityNumber}.mp3`;
 
   // Play correct sound first
   safePlayAudio(correctSound, () => {
@@ -1127,6 +1106,12 @@ function openSubActivity(unitId, index) {
       break;
     case "cofre":
       renderCofreActivity(sub, alreadyCompleted);
+      break;
+    case "caldero":
+      renderCalderoActivity(sub);
+      break;
+    case "carruaje":
+      renderCarruajeActivity(sub);
       break;
     default:
       feedback.textContent = "Actividad no disponible.";
@@ -1292,7 +1277,7 @@ function renderEscudoActivity(sub, reviewMode = false) {
 }
 
 function playPhonemeSound(file, fallbackLetter) {
-  if (!state.sound) return;
+  if (!state.sound || state.audioLock) return;
   const audio = new Audio(file);
   safePlayAudio(audio);
 }
@@ -1371,11 +1356,6 @@ function startEscudoTimer(sub) {
         playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
           openActivity(state.activeUnit.id);
         });
-      } else {
-        speak(sub.success);
-        setTimeout(() => {
-          openActivity(state.activeUnit.id);
-        }, 1600);
       }
     } else {
       // Show incorrect but don't stop timer
@@ -1495,18 +1475,156 @@ function renderCofreActivity(sub) {
   activityWorkspace.appendChild(container);
 }
 
+/* =============================================
+   CALDERO ACTIVITY — Silaba cauldron multiple choice
+   ============================================= */
+function renderCalderoActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "caldero-container";
+
+  // Cauldron with reflection
+  const cauldron = document.createElement("div");
+  cauldron.className = "caldero-cauldron";
+  cauldron.id = "calderoCauldron";
+  cauldron.textContent = "?";
+  cauldron.title = "Caldero mágico";
+  container.appendChild(cauldron);
+
+  // Hint text
+  const hint = document.createElement("p");
+  hint.className = "caldero-hint";
+  hint.id = "calderoHint";
+  hint.textContent = "Selecciona la sílaba correcta.";
+  container.appendChild(hint);
+
+  // Option buttons
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "caldero-options";
+
+  sub.options.forEach((option) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "caldero-option";
+    btn.textContent = option;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".caldero-option").forEach((o) => o.classList.remove("selected-caldero"));
+      btn.classList.add("selected-caldero");
+      state.selectedAnswer = option;
+      // Show the selected syllable in the cauldron
+      const cal = $("#calderoCauldron");
+      if (cal) {
+        cal.textContent = option;
+        cal.classList.add("bubbling");
+        setTimeout(() => cal.classList.remove("bubbling"), 600);
+      }
+      speak(`Seleccionaste la sílaba ${option}`);
+      playTone("tap");
+    });
+    optionsRow.appendChild(btn);
+  });
+
+  container.appendChild(optionsRow);
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   CARRUAJE ACTIVITY — Syllable train sequential assembly
+   ============================================= */
+function renderCarruajeActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "carruaje-container";
+
+  // Word display
+  const wordDisplay = document.createElement("div");
+  wordDisplay.className = "carruaje-word-display";
+  wordDisplay.id = "carruajeWordDisplay";
+  wordDisplay.textContent = "";
+  container.appendChild(wordDisplay);
+
+  // Train with wagons
+  const train = document.createElement("div");
+  train.className = "carruaje-train";
+  train.id = "carruajeTrain";
+
+  // Reset state for this activity
+  state.sequenceAnswer = [];
+
+  sub.answer.forEach((_, i) => {
+    const wagon = document.createElement("div");
+    wagon.className = "carruaje-wagon";
+    wagon.id = `carruajeWagon${i}`;
+    wagon.dataset.index = i;
+    train.appendChild(wagon);
+  });
+
+  container.appendChild(train);
+
+  // Hint
+  const hint = document.createElement("p");
+  hint.className = "carruaje-hint";
+  hint.id = "carruajeHint";
+  hint.textContent = "Haz clic en las sílabas en el orden correcto.";
+  container.appendChild(hint);
+
+  // Syllable blocks (shuffled)
+  const blocks = document.createElement("div");
+  blocks.className = "carruaje-blocks";
+
+  const shuffled = [...sub.syllables].sort(() => Math.random() - 0.5);
+
+  shuffled.forEach((syllable) => {
+    const block = document.createElement("button");
+    block.type = "button";
+    block.className = "carruaje-block";
+    block.textContent = syllable;
+    block.dataset.syllable = syllable;
+
+    block.addEventListener("click", () => {
+      // Already used
+      if (block.classList.contains("used")) return;
+
+      const nextIndex = state.sequenceAnswer.length;
+      const total = sub.answer.length;
+
+      // All wagons filled?
+      if (nextIndex >= total) return;
+
+      // Place in wagon
+      const wagon = $(`#carruajeWagon${nextIndex}`);
+      if (wagon) {
+        wagon.textContent = syllable;
+        wagon.classList.add("filled");
+      }
+
+      block.classList.add("used");
+      state.sequenceAnswer.push(syllable);
+
+      // Update word display
+      wordDisplay.textContent = state.sequenceAnswer.join(" - ");
+
+      playTone("tap");
+    });
+
+    blocks.appendChild(block);
+  });
+
+  container.appendChild(blocks);
+  activityWorkspace.appendChild(container);
+}
+
 function checkAnswer() {
   if (!state.activeUnit) return;
+  // Prevent rapid double-clicks from repeating audio/confetti or cutting audio
+  if (state.checkingLock) return;
+  state.checkingLock = true;
 
-  // Force release audio lock so new sounds can play for checking
-  state.audioLock = false;
-  // Stop any playing voice line / instruction audio when checking
-  stopAllAudio();
+  // Release the lock after a reasonable timeout so the button can be used again
+  setTimeout(() => { state.checkingLock = false; }, 3000);
 
   // Handle sub-activities (globo, balcon, intruso, escudo, cofre)
   if (state.activeSubActivityIndex !== null) {
     const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
-    if (!sub) return;
+    if (!sub) { state.checkingLock = false; return; }
 
     let isCorrect = false;
 
@@ -1527,6 +1645,12 @@ function checkAnswer() {
       case "cofre":
         isCorrect = state.selectedAnswer === sub.answer;
         break;
+      case "caldero":
+        isCorrect = state.selectedAnswer === sub.answer;
+        break;
+      case "carruaje":
+        isCorrect = sub.answer.every((item, idx) => state.sequenceAnswer[idx] === item);
+        break;
       default:
         isCorrect = false;
     }
@@ -1538,8 +1662,8 @@ function checkAnswer() {
       playTone("success");
       celebrateConfetti();
 
-      // Unit 1 (Castillo): play correct sound â†’ feedback â†’ return to map
-      if (state.activeUnit.id === "castillo") {
+      // For units with subActivities: play correct sound → feedback → return to map
+      if (state.activeUnit.id === "castillo" || state.activeUnit.id === "bosque") {
         playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
           openActivity(state.activeUnit.id);
         });
@@ -1677,8 +1801,8 @@ function speak(text) {
 
 function playTone(kind) {
   if (!state.sound) return;
-  // Stop speech/audio before playing a tone so they don't overlap
-  stopAllAudio();
+  // If an MP3 or speech is playing, skip the tone to avoid interrupting it
+  if (state.audioLock) return;
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return;
 
