@@ -1,31 +1,20 @@
-# Child-Friendly Design Overhaul — Status
+# TODO: Fix Unit 1/2 Structure
 
-## ✅ All prior CSS/JS improvements complete
-## ✅ Unit 1 Sound Enhancements complete
+## Steps
+- [x] 1. Rename audio files in theme2/ (activity_1→activity_6, activity_2→activity_7, feedback_1→feedback_6, feedback_2→feedback_7)
+- [x] 2. Update data/units.json: move caldero & carruaje to castillo subActivities as activities 6 & 7; remove subActivities from bosque
+- [x] 3. Update js/app.js: make playUnitSound() and playCorrectThenFeedback() theme-aware for Unit 1
+- [x] 4. Fix renderProgress() to count individual activities instead of whole units (per-activity increment)
+- [x] 5. Add background music support (music.mpeg) with syncSoundButton() integration
+- [x] 6. Rename feedback MP3 files (remove underscores) to match code path pattern
 
-## Fixes applied for Escudo Activity (activity 4):
-- ✅ Added "▶ ¡Empezar!" button — timer only starts after clicking it
-- ✅ Shield is now in its own `.escudo-top-row` (centered, no overlapping text)
-- ✅ Timer ring + key display in `.escudo-middle-row` (side by side, centered)
-- ✅ Phoneme plays on start button click (not on load)
-- ✅ Timer starts 800ms after "Empezar" click (kid has time to hear the phoneme)
-- ✅ Guard prevents timer from starting if activity was closed
-- ✅ `escudoStarted` state properly reset on open/close
-
-## ✅ JavaScript Structural Fixes (app.js)
-- ✅ Removed duplicate `setAuthMode()` and `renderAuthNav()` function definitions
-- ✅ Added missing `function safePlayAudio(audio, onEnded)` signature
-- ✅ Added missing `function stopAllAudio()` signature
-- ✅ Added `.badge-icon` CSS class for reward badge images
-
-## 🛠️ JS Syntax & Logic Fixes (app.js)
-- ✅ **Removed duplicate function definitions**: Eliminated the duplicated `setAuthMode()` and `renderAuthNav()` functions that were causing syntax errors (the first `renderAuthNav()` was missing its closing `}` before the second set of definitions began)
-- ✅ **Added `safePlayAudio(audio, onEnded)`**: Wrapped the orphaned audio player code block with a proper function signature. This function now:
-  - Respects `state.sound` toggle (silent mode)
-  - Guards against overlapping audio via `state.audioLock`
-  - Calls `stopAllAudio()` before playing new audio
-  - Fires an `onEnded` callback when audio completes or errors
-- ✅ **Added `stopAllAudio()`**: Wrapped the orphaned audio/speech cleanup code with a proper function signature. Cancels `speechSynthesis` and pauses/resets all `<audio>` elements
-- ✅ **Added `checkingLock` auto-release**: `checkAnswer()` now has a `setTimeout` to release `state.checkingLock` after 3 seconds, so the "Revisar" button can be used again without getting stuck
-- ✅ **Added `state.audioLock` guard in `playPhonemeSound()`**: Prevents phoneme sounds from overlapping if the user clicks rapidly
-
+## Summary of Changes
+- **Audio**: theme2/ files renamed to activity_6, activity_7, feedback6, feedback7
+- **Audio**: theme1/ feedback files renamed feedback1..5.mp3 (no underscores)
+- **data/units.json**: caldero & carruaje moved from bosque to castillo as subActivity items 6 & 7
+- **data/units.json**: bosque subActivities removed
+- **js/app.js**: `playUnitSound()` uses theme1/ for castillo subIndex 0-4, theme2/ for 5-6
+- **js/app.js**: `playCorrectThenFeedback()` same theme-aware logic for feedback paths
+- **js/app.js**: `renderProgress()` now counts individual activity completions, not whole units
+- **js/app.js**: `syncSoundButton()` syncs background music state with sound toggle
+- **js/app.js**: background music plays `assets/music.mpeg` at 35% volume with auto-play

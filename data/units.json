@@ -182,6 +182,44 @@
           "answer": "E",
           "success": "¡Correcto! Elefante empieza con la letra E, como en el cofre de la letra E.",
           "hint": "Di la palabra en voz alta: E - le - fan - te. ¿Con qué letra empieza?"
+        },
+        {
+          "id": "caldero",
+          "title": "El Caldero de las Pociones Silábicas",
+          "prompt": "Escucha la mezcla de sonidos y elige la sílaba correcta.",
+          "speak": "Si mezclamos el sonido M con la vocal U... ¿qué sílaba obtenemos?",
+          "type": "caldero",
+          "question": "¿Qué sílaba obtenemos al mezclar /m/ con /u/?",
+          "options": [
+            "MA",
+            "ME",
+            "MI",
+            "MU"
+          ],
+          "answer": "MU",
+          "success": "¡Correcto! M y U hacen MU. ¡El caldero brilló con la sílaba MU!",
+          "hint": "Escucha: M + U = MU. Busca esa sílaba entre las pociones."
+        },
+        {
+          "id": "carruaje",
+          "title": "El Carruaje de la Princesa",
+          "prompt": "Escucha la palabra y coloca las sílabas en el orden correcto en los vagones.",
+          "speak": "PE - LO - TA. Coloca las sílabas en el orden correcto en el carruaje.",
+          "type": "carruaje",
+          "question": "Ordena las sílabas para formar la palabra.",
+          "word": "PELOTA",
+          "syllables": [
+            "PE",
+            "LO",
+            "TA"
+          ],
+          "answer": [
+            "PE",
+            "LO",
+            "TA"
+          ],
+          "success": "¡Excelente! PE - LO - TA forma la palabra PELOTA. El carruaje partió.",
+          "hint": "La palabra tiene tres sílabas. Escúchala de nuevo: PE, LO, TA."
         }
       ]
     },
@@ -210,34 +248,7 @@
         "Refuerzo visual de la sílaba correcta.",
         "Corrección del orden de sílabas."
       ],
-      "reward": "Hoja del Vocabulario",
-      "subActivities": [
-        {
-          "id": "caldero",
-          "title": "El Caldero de las Pociones Silábicas",
-          "prompt": "Escucha la mezcla de sonidos y elige la sílaba correcta.",
-          "speak": "Si mezclamos el sonido M con la vocal U... ¿qué sílaba obtenemos?",
-          "type": "caldero",
-          "question": "¿Qué sílaba obtenemos al mezclar /m/ con /u/?",
-          "options": ["MA", "ME", "MI", "MU"],
-          "answer": "MU",
-          "success": "¡Correcto! M y U hacen MU. ¡El caldero brilló con la sílaba MU!",
-          "hint": "Escucha: M + U = MU. Busca esa sílaba entre las pociones."
-        },
-        {
-          "id": "carruaje",
-          "title": "El Carruaje de la Princesa",
-          "prompt": "Escucha la palabra y coloca las sílabas en el orden correcto en los vagones.",
-          "speak": "PE - LO - TA. Coloca las sílabas en el orden correcto en el carruaje.",
-          "type": "carruaje",
-          "question": "Ordena las sílabas para formar la palabra.",
-          "word": "PELOTA",
-          "syllables": ["PE", "LO", "TA"],
-          "answer": ["PE", "LO", "TA"],
-          "success": "¡Excelente! PE - LO - TA forma la palabra PELOTA. El carruaje partió.",
-          "hint": "La palabra tiene tres sílabas. Escúchala de nuevo: PE, LO, TA."
-        }
-      ]
+      "reward": "Hoja del Vocabulario"
     },
     {
       "id": "montanas",
@@ -329,4 +340,3 @@
     }
   ]
 }
-

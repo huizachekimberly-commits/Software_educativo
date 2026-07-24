@@ -16,6 +16,7 @@ const state = {
   confettiLock: false,
   checkingLock: false,
   sound: localStorage.getItem("reino.sound") !== "off",
+  music: localStorage.getItem("reino.music") !== "off",
   authMode: "login",
   inCastleMap: false,
   cofreDropped: null
@@ -50,6 +51,7 @@ const showSignupButton = $("#showSignup");
 let threeRuntimePromise = null;
 let avatarViewer = null;
 let firebaseRuntimePromise = null;
+let backgroundMusic = null;
 
 async function getFirebaseRuntime() {
   if (!firebaseEnabled) return null;
@@ -128,6 +130,7 @@ async function persistCurrentUser() {
   state.user.avatar = state.avatar;
   state.user.completed = [...state.completed];
   state.user.sound = state.sound ? "on" : "off";
+  state.user.music = state.music ? "on" : "off";
   cacheUserLocally(state.user);
   await saveCloudUser(state.user);
 }
@@ -145,6 +148,7 @@ function applyUserSession(user) {
   state.avatar = user.avatar || "mago";
   state.completed = [...(user.completed || [])];
   state.sound = user.sound !== "off";
+  state.music = user.music !== "off";
   cacheUserLocally(user);
   renderAvatars();
   renderUnits();
@@ -357,6 +361,35 @@ async function restoreSession() {
   applyUserSession(stored);
   setAuthFeedback(`Hola otra vez, ${stored.name}. Tu progreso quedo guardado.`, "success");
 }
+/* =============================================
+   BACKGROUND MUSIC
+   ============================================= */
+function initBackgroundMusic() {
+  if (backgroundMusic) return; // Already initialized
+
+  backgroundMusic = new Audio("assets/music.mpeg");
+  backgroundMusic.loop = true;
+  backgroundMusic.volume = 0.13; // 13% volume 
+
+  // Start playing if sound and music are enabled
+  if (state.sound && state.music) {
+    backgroundMusic.play().catch(() => {
+      // Autoplay may be blocked by browser, user interaction will start it
+    });
+  }
+
+  // Resume music when user interacts with the page (for autoplay policy)
+  const resumeMusic = () => {
+    if (state.sound && state.music && backgroundMusic.paused) {
+      backgroundMusic.play().catch(() => {});
+    }
+    document.removeEventListener("click", resumeMusic);
+    document.removeEventListener("touchstart", resumeMusic);
+  };
+  document.addEventListener("click", resumeMusic);
+  document.addEventListener("touchstart", resumeMusic);
+}
+
 async function init() {
   const response = await fetch("data/units.json");
   state.data = await response.json();
@@ -369,6 +402,7 @@ async function init() {
   bindGlobalEvents();
   bindAuthEvents();
   renderAuthNav();
+  initBackgroundMusic();
   await restoreSession();
 }
 
@@ -428,6 +462,13 @@ function bindGlobalEvents() {
   soundToggle.addEventListener("click", () => {
     state.sound = !state.sound;
     localStorage.setItem("reino.sound", state.sound ? "on" : "off");
+    if (!state.sound) {
+      // If turning off sound, also pause music
+      if (backgroundMusic) backgroundMusic.pause();
+    } else {
+      // If turning on sound, resume music
+      if (backgroundMusic) backgroundMusic.play().catch(() => {});
+    }
     syncSoundButton();
     persistCurrentUser();
   });
@@ -437,7 +478,15 @@ function bindGlobalEvents() {
 
 function syncSoundButton() {
   soundToggle.classList.toggle("muted", !state.sound);
-  soundToggle.querySelector("span").textContent = state.sound ? "\u266a" : "\u00d7";
+  soundToggle.querySelector("span").textContent = state.sound ? "♪" : "×";
+  // Sync background music with sound toggle
+  if (backgroundMusic) {
+    if (state.sound && state.music) {
+      backgroundMusic.play().catch(() => {});
+    } else {
+      backgroundMusic.pause();
+    }
+  }
 }
 
 function renderAvatars() {
@@ -745,22 +794,21 @@ function renderMap() {
 }
 
 function renderProgress() {
-  // Calculate progress: count fully completed units
-  // For units with subActivities, count as complete only if all sub-activities done
-  const total = state.data.units.length;
-  let done = 0;
+  // Calculate progress based on individual sub-activity completions
+  let totalActivities = 0;
+  let doneActivities = 0;
 
   state.data.units.forEach((unit) => {
     if (unit.subActivities && unit.subActivities.length > 0) {
-      if (allSubActivitiesCompleted(unit)) {
-        done++;
-      }
+      totalActivities += unit.subActivities.length;
+      doneActivities += countCompletedSubs(unit.id, unit.subActivities.length);
     } else if (state.completed.includes(unit.id)) {
-      done++;
+      totalActivities++;
+      doneActivities++;
     }
   });
 
-  const percent = Math.round((done / total) * 100);
+  const percent = totalActivities > 0 ? Math.round((doneActivities / totalActivities) * 100) : 0;
   progressPercent.textContent = `${percent}%`;
   progressRing.style.setProperty("--value", `${percent * 3.6}deg`);
 
@@ -938,7 +986,17 @@ function playUnitSound(unitId, subIndex) {
   // Find the unit number from data
   const unit = state.data?.units?.find((u) => u.id === unitId);
   const unitNumber = unit?.number || unitId.replace("unit", "");
-  const audioPath = `assets/unit_${unitNumber}_sounds/activity_${activityNumber}.mp3`;
+  // Unit 1 (Castillo) has two themes: theme1 (activities 1-5), theme2 (activities 6-7)
+  let audioPath;
+  if (unitId === "castillo") {
+    if (subIndex <= 4) {
+      audioPath = `assets/unit_${unitNumber}_sounds/theme1/activity_${activityNumber}.mp3`;
+    } else {
+      audioPath = `assets/unit_${unitNumber}_sounds/theme2/activity_${activityNumber}.mp3`;
+    }
+  } else {
+    audioPath = `assets/unit_${unitNumber}_sounds/activity_${activityNumber}.mp3`;
+  }
   const audio = new Audio(audioPath);
   safePlayAudio(audio);
 }
@@ -960,7 +1018,17 @@ function playCorrectThenFeedback(unitId, subIndex, onComplete) {
   const unit = state.data?.units?.find((u) => u.id === unitId);
   const unitNumber = unit?.number || 1;
   const activityNumber = subIndex + 1;
-  const feedbackPath = `assets/unit_${unitNumber}_sounds/feedback${activityNumber}.mp3`;
+  // Unit 1 (Castillo) has two themes: theme1 (activities 1-5), theme2 (activities 6-7)
+  let feedbackPath;
+  if (unitId === "castillo") {
+    if (subIndex <= 4) {
+      feedbackPath = `assets/unit_${unitNumber}_sounds/theme1/feedback${activityNumber}.mp3`;
+    } else {
+      feedbackPath = `assets/unit_${unitNumber}_sounds/theme2/feedback${activityNumber}.mp3`;
+    }
+  } else {
+    feedbackPath = `assets/unit_${unitNumber}_sounds/feedback${activityNumber}.mp3`;
+  }
 
   // Play correct sound first
   safePlayAudio(correctSound, () => {
@@ -1679,7 +1747,7 @@ function checkAnswer() {
       celebrateConfetti();
 
       // For units with subActivities: play correct sound → feedback → return to map
-      if (state.activeUnit.id === "castillo" || state.activeUnit.id === "bosque") {
+      if (state.activeUnit.id === "castillo") {
         playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
           openActivity(state.activeUnit.id);
         });
