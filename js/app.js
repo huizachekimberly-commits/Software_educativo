@@ -129,7 +129,7 @@ async function persistCurrentUser() {
   if (!state.user) return;
   state.user.avatar = state.avatar;
   state.user.completed = [...state.completed];
-  state.user.sound = state.sound ? "on" : "off";
+  state.user.sound = "on";
   state.user.music = state.music ? "on" : "off";
   cacheUserLocally(state.user);
   await saveCloudUser(state.user);
@@ -147,7 +147,7 @@ function applyUserSession(user) {
   state.user = user;
   state.avatar = user.avatar || "mago";
   state.completed = [...(user.completed || [])];
-  state.sound = user.sound !== "off";
+  state.sound = true;
   state.music = user.music !== "off";
   cacheUserLocally(user);
   renderAvatars();
@@ -317,7 +317,7 @@ function logoutUser() {
   state.user = null;
   state.completed = [];
   state.avatar = localStorage.getItem("reino.avatar") || "mago";
-  state.sound = localStorage.getItem("reino.sound") !== "off";
+  state.sound = true;
   localStorage.removeItem("reino.sessionUser");
   showAuthScreen();
   setAuthMode("login");
@@ -372,7 +372,7 @@ function initBackgroundMusic() {
   backgroundMusic.volume = 0.13; // 13% volume 
 
   // Start playing if sound and music are enabled
-  if (state.sound && state.music) {
+  if (state.music) {
     backgroundMusic.play().catch(() => {
       // Autoplay may be blocked by browser, user interaction will start it
     });
@@ -380,7 +380,7 @@ function initBackgroundMusic() {
 
   // Resume music when user interacts with the page (for autoplay policy)
   const resumeMusic = () => {
-    if (state.sound && state.music && backgroundMusic.paused) {
+    if (state.music && backgroundMusic.paused) {
       backgroundMusic.play().catch(() => {});
     }
     document.removeEventListener("click", resumeMusic);
@@ -460,13 +460,13 @@ function bindGlobalEvents() {
   $("#pronunciationBtn").addEventListener("click", practicePronunciation);
 
   soundToggle.addEventListener("click", () => {
-    state.sound = !state.sound;
-    localStorage.setItem("reino.sound", state.sound ? "on" : "off");
-    if (!state.sound) {
-      // If turning off sound, also pause music
+    state.music = !state.music;
+    localStorage.setItem("reino.music", state.music ? "on" : "off");
+    if (!state.music) {
+      // Pause background music
       if (backgroundMusic) backgroundMusic.pause();
     } else {
-      // If turning on sound, resume music
+      // Resume background music
       if (backgroundMusic) backgroundMusic.play().catch(() => {});
     }
     syncSoundButton();
@@ -477,11 +477,12 @@ function bindGlobalEvents() {
 }
 
 function syncSoundButton() {
-  soundToggle.classList.toggle("muted", !state.sound);
-  soundToggle.querySelector("span").textContent = state.sound ? "♪" : "×";
-  // Sync background music with sound toggle
+  soundToggle.classList.toggle("muted", !state.music);
+  soundToggle.querySelector("span").textContent = state.music ? "♪" : "×";
+  soundToggle.title = state.music ? "Desactivar música" : "Activar música";
+  // Only control background music — sounds, instructions, feedback, effects always play
   if (backgroundMusic) {
-    if (state.sound && state.music) {
+    if (state.music) {
       backgroundMusic.play().catch(() => {});
     } else {
       backgroundMusic.pause();
@@ -1197,6 +1198,12 @@ function openSubActivity(unitId, index) {
     case "carruaje":
       renderCarruajeActivity(sub);
       break;
+    case "bingo":
+      renderBingoActivity(sub);
+      break;
+    case "escalera":
+      renderEscaleraActivity(sub);
+      break;
     default:
       feedback.textContent = "Actividad no disponible.";
   }
@@ -1601,7 +1608,10 @@ function renderCalderoActivity(sub) {
         cal.classList.add("bubbling");
         setTimeout(() => cal.classList.remove("bubbling"), 600);
       }
-      speak(`Seleccionaste la sílaba ${option}`);
+      // Play the phoneme sound from assets/phonemes/ (e.g. ma.mp3, me.mp3, mi.mp3, mu.mp3)
+      const phonemePath = `assets/phonemes/${option.toLowerCase()}.mp3`;
+      const audio = new Audio(phonemePath);
+      safePlayAudio(audio);
       playTone("tap");
     });
     optionsRow.appendChild(btn);
@@ -1650,11 +1660,18 @@ function renderCarruajeActivity(sub) {
   hint.textContent = "Haz clic en las sílabas en el orden correcto.";
   container.appendChild(hint);
 
-  // Syllable blocks (shuffled)
+  // Syllable blocks (shuffled — NEVER in the correct answer order)
   const blocks = document.createElement("div");
   blocks.className = "carruaje-blocks";
 
-  const shuffled = [...sub.syllables].sort(() => Math.random() - 0.5);
+  // Store block references for undoing
+  const blockMap = {};
+
+  // Shuffle until the order is different from the answer
+  let shuffled;
+  do {
+    shuffled = [...sub.syllables].sort(() => Math.random() - 0.5);
+  } while (shuffled.every((s, i) => s === sub.answer[i]));
 
   shuffled.forEach((syllable) => {
     const block = document.createElement("button");
@@ -1662,9 +1679,10 @@ function renderCarruajeActivity(sub) {
     block.className = "carruaje-block";
     block.textContent = syllable;
     block.dataset.syllable = syllable;
+    blockMap[syllable] = block;
 
     block.addEventListener("click", () => {
-      // Already used
+      // If block is already used — ignore (undo is done by clicking the wagon)
       if (block.classList.contains("used")) return;
 
       const nextIndex = state.sequenceAnswer.length;
@@ -1678,6 +1696,8 @@ function renderCarruajeActivity(sub) {
       if (wagon) {
         wagon.textContent = syllable;
         wagon.classList.add("filled");
+        // Store which syllable is in this wagon for undo
+        wagon.dataset.syllable = syllable;
       }
 
       block.classList.add("used");
@@ -1692,7 +1712,274 @@ function renderCarruajeActivity(sub) {
     blocks.appendChild(block);
   });
 
+  // Wagons ARE clickable — clicking a filled wagon returns the syllable to its block
+  sub.answer.forEach((_, i) => {
+    const wagon = container.querySelector(`#carruajeWagon${i}`);
+    if (!wagon) return;
+    // Make sure we don't double-add event listeners (in case function is called twice)
+    wagon._listenerAttached = wagon._listenerAttached || false;
+    if (wagon._listenerAttached) return;
+    wagon._listenerAttached = true;
+
+    wagon.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const lastIndex = state.sequenceAnswer.length - 1;
+      if (lastIndex < 0) return;
+      // Only the last filled wagon can be undone
+      const dataIdx = parseInt(wagon.dataset.index);
+      if (dataIdx !== lastIndex) return;
+      // Must have content
+      if (!wagon.classList.contains("filled")) return;
+
+      const syllable = wagon.textContent.trim();
+      // Clear wagon
+      wagon.textContent = "";
+      wagon.classList.remove("filled");
+      delete wagon.dataset.syllable;
+
+      // Restore block
+      const block = blockMap[syllable];
+      if (block) {
+        block.classList.remove("used");
+      }
+
+      state.sequenceAnswer.pop();
+
+      wordDisplay.textContent = state.sequenceAnswer.length > 0
+        ? state.sequenceAnswer.join(" - ")
+        : "";
+
+      playTone("tap");
+    });
+  });
+
   container.appendChild(blocks);
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   BINGO ACTIVITY — Medieval Bingo grid
+   ============================================= */
+function renderBingoActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "bingo-container";
+
+  // Title
+  const title = document.createElement("h3");
+  title.className = "bingo-title";
+  title.textContent = "🎯 Cartón de Bingo";
+  container.appendChild(title);
+
+  // Bingo grid (2 rows x 3 cols)
+  const grid = document.createElement("div");
+  grid.className = "bingo-grid";
+
+  // Track marked cells
+  state.bingoMarked = [];
+  state.bingoPlaying = false;
+  state.bingoRound = 0;
+
+  // Shuffle syllables for the grid so each time the card is different
+  const shuffledGrid = [...sub.syllables].sort(() => Math.random() - 0.5);
+
+  shuffledGrid.forEach((syllable) => {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "bingo-cell";
+    cell.textContent = syllable;
+    cell.dataset.syllable = syllable;
+
+    cell.addEventListener("click", () => {
+      // Only respond if currently playing a round
+      if (!state.bingoPlaying) return;
+      // If already marked, ignore
+      if (cell.classList.contains("bingo-marked")) return;
+      // If this syllable == current target
+      if (syllable !== state.bingoCurrentTarget) {
+        // Wrong cell — flash red
+        cell.classList.add("bingo-wrong");
+        setTimeout(() => cell.classList.remove("bingo-wrong"), 400);
+        playTone("error");
+        return;
+      }
+      // Correct!
+      cell.classList.add("bingo-marked");
+      state.bingoMarked.push(syllable);
+      playTone("success");
+
+      // Check if all 6 marked → BINGO!
+      if (state.bingoMarked.length >= sub.syllables.length) {
+        state.bingoPlaying = false;
+        state.selectedAnswer = true; // signal complete
+        feedback.className = "feedback ok";
+        feedback.textContent = sub.success;
+        // Auto-check as complete
+        setTimeout(() => {
+          checkAnswer();
+        }, 500);
+        return;
+      }
+
+      // Schedule next syllable after a short pause
+      setTimeout(() => {
+        playNextBingoSyllable(sub);
+      }, 1200);
+    });
+
+    grid.appendChild(cell);
+  });
+
+  container.appendChild(grid);
+
+  // Progress indicator
+  const progress = document.createElement("div");
+  progress.className = "bingo-progress";
+  progress.id = "bingoProgress";
+  progress.textContent = "🏁 Presiona \"¡Jugar!\" para comenzar";
+  container.appendChild(progress);
+
+  // Hint / current target display
+  const targetDisplay = document.createElement("div");
+  targetDisplay.className = "bingo-target";
+  targetDisplay.id = "bingoTarget";
+  targetDisplay.textContent = "Escucha la sílaba...";
+  container.appendChild(targetDisplay);
+
+  // Start button
+  const startBtn = document.createElement("button");
+  startBtn.className = "primary-btn bingo-start-btn";
+  startBtn.id = "bingoStartBtn";
+  startBtn.textContent = "¡Jugar!";
+  startBtn.addEventListener("click", () => {
+    startBtn.hidden = true;
+    state.bingoMarked = [];
+    state.bingoRound = 0;
+    state.bingoPlaying = true;
+    feedback.className = "feedback";
+    feedback.textContent = "¡Escucha y marca las sílabas en tu cartón!";
+    setTimeout(() => {
+      playNextBingoSyllable(sub);
+    }, 500);
+  });
+  container.appendChild(startBtn);
+
+  activityWorkspace.appendChild(container);
+}
+
+function playNextBingoSyllable(sub) {
+  if (!state.bingoPlaying) return;
+  const remaining = sub.syllables.filter((s) => !state.bingoMarked.includes(s));
+  if (remaining.length === 0) return;
+
+  // Pick random remaining syllable
+  const pick = remaining[Math.floor(Math.random() * remaining.length)];
+  state.bingoCurrentTarget = pick;
+
+  const targetDisplay = $("#bingoTarget");
+  if (targetDisplay) targetDisplay.textContent = `Busca...`;
+
+  const progress = $("#bingoProgress");
+  if (progress) progress.textContent = `Marcadas: ${state.bingoMarked.length}/${sub.syllables.length}`;
+
+  // Try to play MP3; fallback to speech synth
+  const phonemePath = `assets/phonemes/${pick.toLowerCase()}.mp3`;
+  const audio = new Audio(phonemePath);
+  audio.onerror = () => {
+    // Fallback to robotic voice
+    speak(`Encuentra la sílaba ${pick}`);
+  };
+  // Check if file exists by trying to load it
+  fetch(phonemePath, { method: "HEAD" })
+    .then((res) => {
+      if (res.ok) {
+        safePlayAudio(audio);
+      } else {
+        speak(`Encuentra la sílaba ${pick}`);
+      }
+    })
+    .catch(() => {
+      speak(`Encuentra la sílaba ${pick}`);
+    });
+}
+
+/* =============================================
+   ESCALERA ACTIVITY — Series completion staircase
+   ============================================= */
+function renderEscaleraActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "escalera-container";
+
+  // Reset selected answer
+  state.selectedAnswer = null;
+
+  // Series display — show the sequence with a blank
+  const seriesDisplay = document.createElement("div");
+  seriesDisplay.className = "escalera-series";
+
+  sub.series.forEach((item, i) => {
+    const step = document.createElement("span");
+    step.className = "escalera-step";
+    if (item === "__") {
+      step.classList.add("escalera-step-blank");
+      step.id = "escaleraBlankStep";
+      step.textContent = "?";
+    } else {
+      step.textContent = item;
+    }
+    seriesDisplay.appendChild(step);
+
+    // Add arrow between steps
+    if (i < sub.series.length - 1) {
+      const arrow = document.createElement("span");
+      arrow.className = "escalera-arrow";
+      arrow.textContent = "→";
+      seriesDisplay.appendChild(arrow);
+    }
+  });
+
+  container.appendChild(seriesDisplay);
+
+  // Instruction text
+  const prompt = document.createElement("p");
+  prompt.className = "escalera-prompt";
+  prompt.textContent = sub.prompt || "¿Qué sílaba falta en la serie?";
+  container.appendChild(prompt);
+
+  // Options (multiple choice)
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "escalera-options";
+
+  sub.options.forEach((option) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "escalera-option";
+    btn.textContent = option;
+
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".escalera-option").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      state.selectedAnswer = option;
+
+      // Show the selected option in the blank step
+      const blank = document.getElementById("escaleraBlankStep");
+      if (blank) {
+        blank.textContent = option;
+        blank.classList.add("escalera-step-filled");
+      }
+
+      // Play phoneme sound for the selected syllable
+      const phonemePath = `assets/phonemes/${option.toLowerCase()}.mp3`;
+      const audio = new Audio(phonemePath);
+      safePlayAudio(audio);
+
+      playTone("tap");
+    });
+
+    optionsRow.appendChild(btn);
+  });
+
+  container.appendChild(optionsRow);
+
   activityWorkspace.appendChild(container);
 }
 
@@ -1732,8 +2019,14 @@ function checkAnswer() {
       case "caldero":
         isCorrect = state.selectedAnswer === sub.answer;
         break;
-      case "carruaje":
+case "carruaje":
         isCorrect = sub.answer.every((item, idx) => state.sequenceAnswer[idx] === item);
+        break;
+case "bingo":
+        isCorrect = state.selectedAnswer === true;
+        break;
+      case "escalera":
+        isCorrect = state.selectedAnswer === sub.answer;
         break;
       default:
         isCorrect = false;
