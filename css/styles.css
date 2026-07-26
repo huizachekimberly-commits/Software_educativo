@@ -2151,6 +2151,137 @@ a {
 }
 
 /* =============================================
+   MENSAJE ACTIVITY — True/False word matching
+   ============================================= */
+.mensaje-container {
+  min-height: min(520px, 50vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.mensaje-card {
+  background: linear-gradient(145deg, #fdf6e3, #f5e6c8);
+  border: 4px solid #c9a84c;
+  border-radius: var(--radius-lg);
+  padding: 36px 56px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.15), inset 0 0 30px rgba(201,168,76,0.1);
+  transition: transform 0.3s var(--bounce);
+}
+
+.mensaje-card:hover {
+  transform: scale(1.03);
+}
+
+.mensaje-card-word {
+  font-size: 3.8rem;
+  font-weight: 900;
+  letter-spacing: 10px;
+  color: #2c1810;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.mensaje-listen-btn {
+  font-size: 1.3rem;
+  padding: 16px 40px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s var(--bounce);
+  box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+  font-weight: 800;
+}
+
+.mensaje-listen-btn:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 8px 28px rgba(102,126,234,0.6);
+}
+
+.mensaje-listen-btn:active {
+  transform: scale(0.95);
+}
+
+.mensaje-buttons {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.mensaje-btn {
+  font-size: 1.4rem;
+  padding: 20px 44px;
+  border-radius: var(--radius);
+  border: 4px solid transparent;
+  cursor: pointer;
+  transition: all 0.25s var(--bounce);
+  font-weight: 800;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.mensaje-true {
+  background: linear-gradient(135deg, #a8e6cf 0%, #6bc49a 100%);
+  color: #1a4a2e;
+  border-color: #4a9e72;
+  box-shadow: 0 6px 20px rgba(74,158,114,0.3);
+}
+
+.mensaje-true:hover {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 10px 28px rgba(74,158,114,0.5);
+}
+
+.mensaje-true.selected-mensaje {
+  background: linear-gradient(135deg, #4a9e72 0%, #2d6b4a 100%);
+  border-color: #1a4a2e;
+  box-shadow: 0 0 0 6px rgba(45,107,74,0.3), 0 8px 24px rgba(45,107,74,0.4);
+  transform: scale(1.06);
+  color: #fff;
+}
+
+.mensaje-false {
+  background: linear-gradient(135deg, #f5a7a7 0%, #e07373 100%);
+  color: #5c1a1a;
+  border-color: #c94d4d;
+  box-shadow: 0 6px 20px rgba(201,77,77,0.3);
+}
+
+.mensaje-false:hover {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 10px 28px rgba(201,77,77,0.5);
+}
+
+.mensaje-false.selected-mensaje {
+  background: linear-gradient(135deg, #c94d4d 0%, #8b2e2e 100%);
+  border-color: #5c1a1a;
+  box-shadow: 0 0 0 6px rgba(139,46,46,0.3), 0 8px 24px rgba(139,46,46,0.4);
+  transform: scale(1.06);
+  color: #fff;
+}
+
+.mensaje-msg {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+/* =============================================
    PERGAMINO ACTIVITY — Scroll parchment writing
    ============================================= */
 .pergamino-container {

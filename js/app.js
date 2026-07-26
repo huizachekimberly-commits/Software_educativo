@@ -1193,7 +1193,7 @@ function openSubActivity(unitId, index) {
     feedback.className = "feedback ok";
     feedback.textContent = `¡Completaste "${sub.title}"! Usa el botón "Escuchar" para repasar las instrucciones.`;
   } else {
-    $("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete"; // Auto-checked by keypress or number click
+    $("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete" || sub.type === "mensaje"; // Auto-checked by keypress or number click
     $("#listenPrompt").hidden = false;
     $("#pronunciationBtn").hidden = true;
   }
@@ -1234,6 +1234,9 @@ function openSubActivity(unitId, index) {
       break;
     case "pergamino":
       renderPergaminoActivity(sub, alreadyCompleted);
+      break;
+    case "mensaje":
+      renderMensajeActivity(sub, alreadyCompleted);
       break;
     default:
       feedback.textContent = "Actividad no disponible.";
@@ -2427,6 +2430,116 @@ function checkBanqueteAnswer() {
 }
 
 /* =============================================
+   MENSAJE ACTIVITY — True/False word matching
+   ============================================= */
+function renderMensajeActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "mensaje-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "mensaje-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Initialize game state
+  state.mensaje = {
+    phase: "playing", // playing → answering
+    writtenWord: sub.writtenWord,
+    audioFile: sub.audioFile,
+    correctAnswer: sub.answer
+  };
+
+  // Card with written word
+  const card = document.createElement("div");
+  card.className = "mensaje-card";
+  card.id = "mensajeCard";
+  card.innerHTML = `<span class="mensaje-card-word">${sub.writtenWord}</span>`;
+  container.appendChild(card);
+
+  // Listen button
+  const listenBtn = document.createElement("button");
+  listenBtn.className = "primary-btn mensaje-listen-btn";
+  listenBtn.id = "mensajeListenBtn";
+  listenBtn.textContent = "🔊 Escuchar";
+  listenBtn.addEventListener("click", () => {
+    const audio = new Audio(sub.audioFile);
+    safePlayAudio(audio);
+  });
+  container.appendChild(listenBtn);
+
+  // True / False buttons
+  const buttonsRow = document.createElement("div");
+  buttonsRow.className = "mensaje-buttons";
+
+  const trueBtn = document.createElement("button");
+  trueBtn.className = "mensaje-btn mensaje-true";
+  trueBtn.id = "mensajeTrue";
+  trueBtn.textContent = "✓ Coincide";
+  trueBtn.dataset.value = "si";
+  trueBtn.addEventListener("click", () => {
+    if (state.mensaje.phase !== "playing") return;
+    state.mensaje.phase = "answering";
+    document.querySelectorAll(".mensaje-btn").forEach((b) => b.classList.remove("selected-mensaje"));
+    trueBtn.classList.add("selected-mensaje");
+    state.selectedAnswer = "si";
+    checkMensajeAnswer();
+  });
+
+  const falseBtn = document.createElement("button");
+  falseBtn.className = "mensaje-btn mensaje-false";
+  falseBtn.id = "mensajeFalse";
+  falseBtn.textContent = "✗ No coincide";
+  falseBtn.dataset.value = "no";
+  falseBtn.addEventListener("click", () => {
+    if (state.mensaje.phase !== "playing") return;
+    state.mensaje.phase = "answering";
+    document.querySelectorAll(".mensaje-btn").forEach((b) => b.classList.remove("selected-mensaje"));
+    falseBtn.classList.add("selected-mensaje");
+    state.selectedAnswer = "no";
+    checkMensajeAnswer();
+  });
+
+  buttonsRow.appendChild(trueBtn);
+  buttonsRow.appendChild(falseBtn);
+  container.appendChild(buttonsRow);
+
+  activityWorkspace.appendChild(container);
+}
+
+function checkMensajeAnswer() {
+  if (!state.mensaje || state.mensaje.phase !== "answering" || !state.selectedAnswer) return;
+
+  const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
+  const isCorrect = state.selectedAnswer === sub.answer;
+
+  if (isCorrect) {
+    state.mensaje.phase = "done";
+    feedback.className = "feedback ok";
+    feedback.textContent = sub.success + " ¡Has completado esta actividad!";
+    completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+    playTone("success");
+    celebrateConfetti();
+
+    // Play correct sound + feedback, then return to map
+    playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+      openActivity(state.activeUnit.id);
+    });
+  } else {
+    // Wrong — let them try again
+    playTone("error");
+    feedback.className = "feedback try";
+    feedback.textContent = sub.hint || "Intenta de nuevo. Escucha otra vez la palabra.";
+    state.mensaje.phase = "playing";
+    state.selectedAnswer = null;
+    document.querySelectorAll(".mensaje-btn").forEach((b) => b.classList.remove("selected-mensaje"));
+  }
+}
+
+/* =============================================
    PERGAMINO ACTIVITY — Keyboard writing practice
    ============================================= */
 function renderPergaminoActivity(sub, reviewMode = false) {
@@ -2787,7 +2900,7 @@ function popButton(element) {
 
 // Apply pop effect to all primary and secondary buttons
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar, .banquete-label, .banquete-start-btn, .pergamino-send-btn");
+  const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar, .banquete-label, .banquete-start-btn, .pergamino-send-btn, .mensaje-btn, .mensaje-listen-btn");
   if (btn) {
     popButton(btn);
   }

@@ -344,6 +344,19 @@
           "answer": "sol",
           "success": "¡Excelente! Escribiste SOL correctamente. ¡El pergamino brilló con tu escritura!",
           "hint": "Escucha atentamente los sonidos de la palabra. Escribe cada letra en el pergamino."
+        },
+        {
+          "id": "mensaje",
+          "title": "El Mensaje del Cuervo Real",
+          "prompt": "Escucha la palabra del cuervo y decide si coincide con la palabra escrita.",
+          "speak": "Escucha con atencion. La palabra que dice el cuervo es igual a la que esta escrita?",
+          "type": "mensaje",
+          "question": "Coincide la palabra escrita con la que escuchaste?",
+          "writtenWord": "LUNA",
+          "audioFile": "assets/unit_1_sounds/theme3/lupa.mp3",
+          "answer": "no",
+          "success": "Muy bien! La palabra escrita es LUNA, pero el cuervo dijo LUPA. No coinciden.",
+          "hint": "Escucha de nuevo al cuervo. Dice exactamente lo mismo que esta escrito?"
         }
       ]
     },
