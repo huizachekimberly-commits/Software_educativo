@@ -7,14 +7,17 @@
 - [x] 4. Fix renderProgress() to count individual activities instead of whole units (per-activity increment)
 - [x] 5. Add background music support (music.mpeg) with syncSoundButton() integration
 - [x] 6. Rename feedback MP3 files (remove underscores) to match code path pattern
+- [x] 7. **FIX: Restore data/units.json** — The file was accidentally overwritten with only 2 sub-activities (escalera, redoble) instead of the full structure with avatars, library, and units. Restored the complete JSON from backup.
 
 ## Summary of Changes
 - **Audio**: theme2/ files renamed to activity_6, activity_7, feedback6, feedback7
 - **Audio**: theme1/ feedback files renamed feedback1..5.mp3 (no underscores)
 - **data/units.json**: caldero & carruaje moved from bosque to castillo as subActivity items 6 & 7
 - **data/units.json**: bosque subActivities removed
+- **data/units.json**: RESTORED full structure (avatars, library, units) — was missing top-level object properties
 - **js/app.js**: `playUnitSound()` uses theme1/ for castillo subIndex 0-4, theme2/ for 5-6
 - **js/app.js**: `playCorrectThenFeedback()` same theme-aware logic for feedback paths
 - **js/app.js**: `renderProgress()` now counts individual activity completions, not whole units
 - **js/app.js**: `syncSoundButton()` syncs background music state with sound toggle
 - **js/app.js**: background music plays `assets/music.mpeg` at 35% volume with auto-play
+

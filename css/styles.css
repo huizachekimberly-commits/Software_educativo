@@ -2225,6 +2225,141 @@ a {
 }
 
 /* =============================================
+   REDOBLE ACTIVITY — Syllable drum-roll counting
+   ============================================= */
+.redoble-container {
+  min-height: min(520px, 50vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.redoble-round {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--purple);
+  background: linear-gradient(135deg, #f4eeff, #ecf9ff);
+  padding: 12px 28px;
+  border-radius: var(--radius-xl);
+  border: 3px solid rgba(155, 126, 255, 0.2);
+  text-align: center;
+  min-width: 180px;
+}
+
+.redoble-word {
+  font-size: 4rem;
+  font-weight: 900;
+  color: var(--ink);
+  text-align: center;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fff4cf, #ffe8b8);
+  border: 4px dashed var(--gold);
+  border-radius: var(--radius-lg);
+  padding: 16px 32px;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: 0 8px 24px rgba(255, 184, 77, 0.15);
+  transition: all 0.3s var(--bounce);
+  animation: popIn 0.4s var(--bounce) both;
+}
+
+.redoble-status {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+.redoble-comenzar {
+  min-width: 240px;
+  min-height: 64px;
+  padding: 0 40px;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 77, 158, 0.3);
+  transition: all 0.25s var(--bounce);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  animation: popIn 0.5s var(--bounce);
+}
+
+.redoble-comenzar:hover {
+  transform: translateY(-4px) scale(1.04);
+  box-shadow: 0 12px 32px rgba(255, 77, 158, 0.4);
+}
+
+.redoble-comenzar:active {
+  transform: scale(0.96);
+}
+
+.redoble-comenzar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.redoble-numbers {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  align-items: center;
+}
+
+.redoble-number {
+  width: 110px;
+  height: 110px;
+  border: 4px solid var(--line);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffffff, #f0f7ff);
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 3rem;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s var(--bounce);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  user-select: none;
+}
+
+.redoble-number:hover {
+  transform: translateY(-6px) scale(1.08);
+  border-color: var(--gold);
+  box-shadow: 0 12px 32px rgba(255, 184, 77, 0.25);
+}
+
+.redoble-number.selected {
+  border-color: var(--teal);
+  background: linear-gradient(135deg, #d0f0ec, #c0e8e0);
+  box-shadow: 0 0 0 8px rgba(0, 184, 148, 0.2), 0 8px 24px rgba(0, 184, 148, 0.15);
+  transform: scale(1.1);
+}
+
+.redoble-number:active {
+  transform: scale(0.92);
+}
+
+/* =============================================
    ANIMATIONS — Bouncy, fun, playful
    ============================================= */
 @keyframes wiggle {

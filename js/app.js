@@ -19,7 +19,8 @@ const state = {
   music: localStorage.getItem("reino.music") !== "off",
   authMode: "login",
   inCastleMap: false,
-  cofreDropped: null
+  cofreDropped: null,
+  redoble: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -391,8 +392,24 @@ function initBackgroundMusic() {
 }
 
 async function init() {
-  const response = await fetch("data/units.json");
-  state.data = await response.json();
+  try {
+    const response = await fetch("data/units.json");
+    if (!response.ok) {
+      throw new Error(`HTTP Error: ${response.status}`);
+    }
+    state.data = await response.json();
+  } catch (error) {
+    console.error("Error loading units.json:", error);
+    document.body.innerHTML = `
+      <div style="padding: 20px; text-align: center; font-family: Arial; color: #333;">
+        <h1>❌ No se pudo cargar la app</h1>
+        <p>Abre este proyecto con <strong>Live Server</strong> para permitir la lectura del archivo JSON.</p>
+        <p style="color: #666; margin-top: 20px;">Error: ${error.message}</p>
+        <p style="color: #999; margin-top: 10px; font-size: 12px;">Si usas VS Code, instala la extensión "Live Server" y haz clic derecho en el archivo index.html → "Open with Live Server"</p>
+      </div>
+    `;
+    return;
+  }
 
   renderAvatars();
   renderUnits();
@@ -1151,6 +1168,7 @@ function openSubActivity(unitId, index) {
   state.escudoExpired = false;
   state.escudoStarted = false;
   state.cofreDropped = null;
+  state.redoble = null;
 
   activityScene.hidden = true;
   activityZone.classList.add("unit-fullscreen");
@@ -1171,7 +1189,7 @@ function openSubActivity(unitId, index) {
     feedback.className = "feedback ok";
     feedback.textContent = `¡Completaste "${sub.title}"! Usa el botón "Escuchar" para repasar las instrucciones.`;
   } else {
-    $("#checkAnswer").hidden = sub.type === "escudo"; // Escudo is auto-checked by keypress
+    $("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble"; // Auto-checked by keypress or number click
     $("#listenPrompt").hidden = false;
     $("#pronunciationBtn").hidden = true;
   }
@@ -1203,6 +1221,9 @@ function openSubActivity(unitId, index) {
       break;
     case "escalera":
       renderEscaleraActivity(sub);
+      break;
+    case "redoble":
+      renderRedobleActivity(sub, alreadyCompleted);
       break;
     default:
       feedback.textContent = "Actividad no disponible.";
@@ -1983,6 +2004,214 @@ function renderEscaleraActivity(sub) {
   activityWorkspace.appendChild(container);
 }
 
+/* =============================================
+   REDOBLE ACTIVITY — Syllable drum-roll counting
+   ============================================= */
+function renderRedobleActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "redoble-container";
+
+  // Initialize game state
+  state.redoble = {
+    round: 0,
+    words: sub.words.map((w) => ({ ...w, used: false })),
+    currentWord: null,
+    phase: "idle", // idle → playing → answering → done
+    correctCount: 0,
+    totalRounds: 3
+  };
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "redoble-status";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Round indicator
+  const roundDisplay = document.createElement("div");
+  roundDisplay.className = "redoble-round";
+  roundDisplay.id = "redobleRound";
+  roundDisplay.textContent = "Ronda 1 / 3";
+  container.appendChild(roundDisplay);
+
+  // Word display (shows word/emoji while playing)
+  const wordDisplay = document.createElement("div");
+  wordDisplay.className = "redoble-word";
+  wordDisplay.id = "redobleWord";
+  wordDisplay.textContent = "🎵";
+  container.appendChild(wordDisplay);
+
+  // Status message
+  const statusMsg = document.createElement("p");
+  statusMsg.className = "redoble-status";
+  statusMsg.id = "redobleStatus";
+  statusMsg.textContent = "Presiona \"Comenzar\" para escuchar una palabra.";
+  container.appendChild(statusMsg);
+
+  // Comenzar button
+  const startBtn = document.createElement("button");
+  startBtn.className = "redoble-comenzar";
+  startBtn.id = "redobleComenzar";
+  startBtn.textContent = "🥁 ¡Comenzar!";
+  startBtn.addEventListener("click", () => {
+    playRedobleRound();
+  });
+  container.appendChild(startBtn);
+
+  // Number buttons (1, 2, 3)
+  const numbersRow = document.createElement("div");
+  numbersRow.className = "redoble-numbers";
+
+  sub.options.forEach((num) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "redoble-number";
+    btn.dataset.number = num;
+    btn.textContent = num;
+    btn.addEventListener("click", () => {
+      if (!state.redoble || state.redoble.phase !== "answering") return;
+      // Select this number
+      document.querySelectorAll(".redoble-number").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      state.selectedAnswer = num;
+      // Auto-check
+      checkRedobleAnswer();
+    });
+    numbersRow.appendChild(btn);
+  });
+
+  container.appendChild(numbersRow);
+
+  activityWorkspace.appendChild(container);
+}
+
+function playRedobleRound() {
+  if (!state.redoble) return;
+
+  const redoble = state.redoble;
+  if (redoble.phase === "done") return;
+
+  // Find unused words
+  const unused = redoble.words.filter((w) => !w.used);
+  if (unused.length === 0) {
+    // All words used — shouldn't happen but handle gracefully
+    redoble.phase = "done";
+    return;
+  }
+
+  // Pick a random unused word
+  const pick = unused[Math.floor(Math.random() * unused.length)];
+  pick.used = true;
+  redoble.currentWord = pick;
+  redoble.phase = "playing";
+
+  // Update UI
+  const roundDisplay = document.getElementById("redobleRound");
+  if (roundDisplay) roundDisplay.textContent = `Ronda ${redoble.round + 1} / ${redoble.totalRounds}`;
+
+  const wordDisplay = document.getElementById("redobleWord");
+  if (wordDisplay) wordDisplay.textContent = pick.word;
+
+  const startBtn = document.getElementById("redobleComenzar");
+  if (startBtn) startBtn.disabled = true;
+
+  const statusMsg = document.getElementById("redobleStatus");
+  if (statusMsg) statusMsg.textContent = "Escuchando...";
+
+  // Reset selected answer
+  state.selectedAnswer = null;
+  document.querySelectorAll(".redoble-number").forEach((b) => b.classList.remove("selected"));
+
+  // Play the word audio
+  const audio = new Audio(pick.audio);
+  safePlayAudio(audio, () => {
+    // Audio ended — switch to answering phase
+    redoble.phase = "answering";
+    const statusMsg = document.getElementById("redobleStatus");
+    if (statusMsg) statusMsg.textContent = "¿Cuántas sílabas escuchaste?";
+    const startBtn = document.getElementById("redobleComenzar");
+    if (startBtn) startBtn.disabled = false;
+    const wordDisplay = document.getElementById("redobleWord");
+    if (wordDisplay) wordDisplay.textContent = "❓";
+  });
+}
+
+function checkRedobleAnswer() {
+  if (!state.redoble || state.redoble.phase !== "answering" || state.selectedAnswer === null) return;
+
+  const redoble = state.redoble;
+  const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
+  const isCorrect = state.selectedAnswer === redoble.currentWord.syllables;
+
+  if (isCorrect) {
+    redoble.correctCount++;
+    redoble.round++;
+    playTone("success");
+
+    // Check if all rounds completed
+    if (redoble.round >= redoble.totalRounds) {
+      // All 3 rounds done!
+      redoble.phase = "done";
+      feedback.className = "feedback ok";
+      feedback.textContent = sub.success + " ¡Has completado esta actividad!";
+      completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+      celebrateConfetti();
+
+      const statusMsg = document.getElementById("redobleStatus");
+      if (statusMsg) statusMsg.textContent = "🥁 ¡Redoble completado!";
+
+      // Play correct sound + feedback, then return to map
+      playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+        openActivity(state.activeUnit.id);
+      });
+      return;
+    }
+
+    // Move to next round
+    feedback.className = "feedback ok";
+    feedback.textContent = `¡Correcto! "${redoble.currentWord.word}" tiene ${redoble.currentWord.syllables} sílaba(s).`;
+
+    const wordDisplay = document.getElementById("redobleWord");
+    if (wordDisplay) wordDisplay.textContent = redoble.currentWord.word;
+
+    const statusMsg = document.getElementById("redobleStatus");
+    if (statusMsg) statusMsg.textContent = `¡Bien! Prepárate para la siguiente ronda.`;
+
+    // Reset for next round (user clicks Comenzar again)
+    state.selectedAnswer = null;
+    document.querySelectorAll(".redoble-number").forEach((b) => b.classList.remove("selected"));
+
+    const roundDisplay = document.getElementById("redobleRound");
+    if (roundDisplay) roundDisplay.textContent = `Ronda ${redoble.round + 1} / ${redoble.totalRounds}`;
+  } else {
+    // Wrong — replay audio automatically
+    playTone("error");
+    feedback.className = "feedback try";
+    feedback.textContent = `¡Oops! "${redoble.currentWord.word}" no tiene ${state.selectedAnswer} sílaba(s). Escúchala de nuevo.`;
+
+    // Reset selection
+    state.selectedAnswer = null;
+    document.querySelectorAll(".redoble-number").forEach((b) => b.classList.remove("selected"));
+
+    // Re-enter playing phase and replay audio
+    redoble.phase = "playing";
+    const statusMsg = document.getElementById("redobleStatus");
+    if (statusMsg) statusMsg.textContent = "Escuchando de nuevo...";
+
+    const audio = new Audio(redoble.currentWord.audio);
+    safePlayAudio(audio, () => {
+      redoble.phase = "answering";
+      const statusMsg = document.getElementById("redobleStatus");
+      if (statusMsg) statusMsg.textContent = "¿Cuántas sílabas escuchaste?";
+      const wordDisplay = document.getElementById("redobleWord");
+      if (wordDisplay) wordDisplay.textContent = "❓";
+    });
+  }
+}
+
 function checkAnswer() {
   if (!state.activeUnit) return;
   // Prevent rapid double-clicks from repeating audio/confetti or cutting audio
@@ -2259,7 +2488,7 @@ function popButton(element) {
 
 // Apply pop effect to all primary and secondary buttons
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start");
+  const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar");
   if (btn) {
     popButton(btn);
   }
