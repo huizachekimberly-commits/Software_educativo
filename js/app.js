@@ -1004,13 +1004,15 @@ function playUnitSound(unitId, subIndex) {
   // Find the unit number from data
   const unit = state.data?.units?.find((u) => u.id === unitId);
   const unitNumber = unit?.number || unitId.replace("unit", "");
-  // Unit 1 (Castillo) has two themes: theme1 (activities 1-5), theme2 (activities 6-7)
+  // Unit 1 (Castillo) has three themes: theme1 (activities 1-5, indices 0-4), theme2 (activities 6-10, indices 5-9), theme3 (activity 11, index 10+)
   let audioPath;
   if (unitId === "castillo") {
     if (subIndex <= 4) {
       audioPath = `assets/unit_${unitNumber}_sounds/theme1/activity_${activityNumber}.mp3`;
-    } else {
+    } else if (subIndex <= 9) {
       audioPath = `assets/unit_${unitNumber}_sounds/theme2/activity_${activityNumber}.mp3`;
+    } else {
+      audioPath = `assets/unit_${unitNumber}_sounds/theme3/activity_${activityNumber}.mp3`;
     }
   } else {
     audioPath = `assets/unit_${unitNumber}_sounds/activity_${activityNumber}.mp3`;
@@ -1036,13 +1038,15 @@ function playCorrectThenFeedback(unitId, subIndex, onComplete) {
   const unit = state.data?.units?.find((u) => u.id === unitId);
   const unitNumber = unit?.number || 1;
   const activityNumber = subIndex + 1;
-  // Unit 1 (Castillo) has two themes: theme1 (activities 1-5), theme2 (activities 6-7)
+  // Unit 1 (Castillo) has three themes: theme1 (activities 1-5, indices 0-4), theme2 (activities 6-10, indices 5-9), theme3 (activity 11, index 10+)
   let feedbackPath;
   if (unitId === "castillo") {
     if (subIndex <= 4) {
       feedbackPath = `assets/unit_${unitNumber}_sounds/theme1/feedback${activityNumber}.mp3`;
-    } else {
+    } else if (subIndex <= 9) {
       feedbackPath = `assets/unit_${unitNumber}_sounds/theme2/feedback${activityNumber}.mp3`;
+    } else {
+      feedbackPath = `assets/unit_${unitNumber}_sounds/theme3/feedback${activityNumber}.mp3`;
     }
   } else {
     feedbackPath = `assets/unit_${unitNumber}_sounds/feedback${activityNumber}.mp3`;
@@ -1189,7 +1193,7 @@ function openSubActivity(unitId, index) {
     feedback.className = "feedback ok";
     feedback.textContent = `¡Completaste "${sub.title}"! Usa el botón "Escuchar" para repasar las instrucciones.`;
   } else {
-    $("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble"; // Auto-checked by keypress or number click
+    $("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete"; // Auto-checked by keypress or number click
     $("#listenPrompt").hidden = false;
     $("#pronunciationBtn").hidden = true;
   }
@@ -1224,6 +1228,12 @@ function openSubActivity(unitId, index) {
       break;
     case "redoble":
       renderRedobleActivity(sub, alreadyCompleted);
+      break;
+    case "banquete":
+      renderBanqueteActivity(sub, alreadyCompleted);
+      break;
+    case "pergamino":
+      renderPergaminoActivity(sub, alreadyCompleted);
       break;
     default:
       feedback.textContent = "Actividad no disponible.";
@@ -2212,6 +2222,292 @@ function checkRedobleAnswer() {
   }
 }
 
+/* =============================================
+   BANQUETE ACTIVITY — Conveyor belt cashier game
+   ============================================= */
+function renderBanqueteActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "banquete-container";
+
+  // Initialize game state
+  state.banquete = {
+    round: 0,
+    totalRounds: sub.rounds,
+    words: [...sub.words],
+    currentWord: null,
+    phase: "idle", // idle → playing → answering → done
+    correctCount: 0,
+    selectedLabel: null
+  };
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "banquete-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Conveyor belt
+  const beltContainer = document.createElement("div");
+  beltContainer.className = "banquete-belt-container";
+
+  const belt = document.createElement("div");
+  belt.className = "banquete-belt";
+  belt.id = "banqueteBelt";
+
+  // Create product labels
+  sub.words.forEach((word, i) => {
+    const label = document.createElement("button");
+    label.type = "button";
+    label.className = "banquete-label";
+    label.dataset.label = word.label;
+    label.textContent = word.label;
+    label.style.animationDelay = `${i * 0.3}s`;
+
+    label.addEventListener("click", () => {
+      if (state.banquete.phase !== "answering") return;
+      // Deselect others
+      document.querySelectorAll(".banquete-label").forEach((l) => l.classList.remove("selected-banquete"));
+      label.classList.add("selected-banquete");
+      state.banquete.selectedLabel = word.label;
+      state.selectedAnswer = word.label;
+      // Auto-check
+      checkBanqueteAnswer();
+    });
+
+    belt.appendChild(label);
+  });
+
+  beltContainer.appendChild(belt);
+  container.appendChild(beltContainer);
+
+  // Status display
+  const statusMsg = document.createElement("p");
+  statusMsg.className = "banquete-status";
+  statusMsg.id = "banqueteStatus";
+  statusMsg.textContent = 'Presiona "Comenzar" para iniciar';
+  container.appendChild(statusMsg);
+
+  // Round display
+  const roundDisplay = document.createElement("div");
+  roundDisplay.className = "banquete-round";
+  roundDisplay.id = "banqueteRound";
+  roundDisplay.textContent = `Producto: --`;
+  container.appendChild(roundDisplay);
+
+  // Speaker icon (order display)
+  const orderDisplay = document.createElement("div");
+  orderDisplay.className = "banquete-order";
+  orderDisplay.id = "banqueteOrder";
+  orderDisplay.textContent = "Escucha la orden...";
+  container.appendChild(orderDisplay);
+
+  // Start button
+  const startBtn = document.createElement("button");
+  startBtn.className = "primary-btn banquete-start-btn";
+  startBtn.id = "banqueteStartBtn";
+  startBtn.textContent = "¡Comenzar!";
+  startBtn.addEventListener("click", () => {
+    startBanqueteRound(sub);
+    startBtn.hidden = true;
+  });
+  container.appendChild(startBtn);
+
+  activityWorkspace.appendChild(container);
+}
+
+function startBanqueteRound(sub) {
+  const banquete = state.banquete;
+  if (!banquete || banquete.phase === "done") return;
+
+  // Pick a random word for this round
+  const pick = banquete.words[Math.floor(Math.random() * banquete.words.length)];
+  banquete.currentWord = pick;
+  banquete.phase = "playing";
+
+  // Update UI
+  const statusMsg = document.getElementById("banqueteStatus");
+  if (statusMsg) statusMsg.textContent = "Escuchando...";
+
+  const roundDisplay = document.getElementById("banqueteRound");
+  if (roundDisplay) roundDisplay.textContent = `Producto: ???`;
+
+  const orderDisplay = document.getElementById("banqueteOrder");
+  if (orderDisplay) orderDisplay.textContent = "¡Escucha atentamente!";
+
+  // Reset labels
+  document.querySelectorAll(".banquete-label").forEach((l) => l.classList.remove("selected-banquete"));
+  state.banquete.selectedLabel = null;
+  state.selectedAnswer = null;
+
+  // Play the word audio
+  const audio = new Audio(pick.audio);
+  safePlayAudio(audio, () => {
+    // Audio ended — switch to answering phase
+    banquete.phase = "answering";
+    const statusMsg = document.getElementById("banqueteStatus");
+    if (statusMsg) statusMsg.textContent = "¿Qué producto pidió el cliente? ¡Haz clic en la etiqueta correcta!";
+
+    const orderDisplay = document.getElementById("banqueteOrder");
+    if (orderDisplay) orderDisplay.textContent = `"${pick.label}"`;
+
+    const roundDisplay = document.getElementById("banqueteRound");
+    if (roundDisplay) roundDisplay.textContent = `Producto: ${pick.label}`;
+
+    // Start belt animation
+    document.querySelectorAll(".banquete-label").forEach((l) => {
+      l.style.animation = "slideLabels 2s linear infinite";
+    });
+  });
+}
+
+function checkBanqueteAnswer() {
+  const banquete = state.banquete;
+  if (!banquete || banquete.phase !== "answering" || banquete.selectedLabel === null) return;
+
+  const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
+  const isCorrect = banquete.selectedLabel === banquete.currentWord.label;
+
+  if (isCorrect) {
+    banquete.correctCount++;
+    banquete.round++;
+    playTone("success");
+
+    // Stop belt animation
+    document.querySelectorAll(".banquete-label").forEach((l) => {
+      l.style.animation = "";
+    });
+
+    // Check if all rounds completed
+    if (banquete.round >= banquete.totalRounds) {
+      banquete.phase = "done";
+      feedback.className = "feedback ok";
+      feedback.textContent = sub.success + " ¡Has completado esta actividad!";
+      completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+      celebrateConfetti();
+
+      const statusMsg = document.getElementById("banqueteStatus");
+      if (statusMsg) statusMsg.textContent = "¡Banquete servido! Todos los productos cobrados.";
+
+      // Play correct sound + feedback, then return to map
+      playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+        openActivity(state.activeUnit.id);
+      });
+      return;
+    }
+
+    // Move to next round
+    feedback.className = "feedback ok";
+    feedback.textContent = `¡Correcto! Cobraste "${banquete.currentWord.label}". Prepárate para el siguiente.`;
+
+    const statusMsg = document.getElementById("banqueteStatus");
+    if (statusMsg) statusMsg.textContent = `¡Bien! Siguiente producto...`;
+
+    const orderDisplay = document.getElementById("banqueteOrder");
+    if (orderDisplay) orderDisplay.textContent = " Nueva orden...";
+
+    // Auto-start next round after a short delay
+    setTimeout(() => {
+      startBanqueteRound(sub);
+    }, 2000);
+
+  } else {
+    // Wrong answer
+    playTone("error");
+    feedback.className = "feedback try";
+    feedback.textContent = `¡Ese no es! Pedían "${banquete.currentWord.label}". Busca la etiqueta correcta en la cinta.`;
+
+    // Reset selection
+    state.banquete.selectedLabel = null;
+    state.selectedAnswer = null;
+    document.querySelectorAll(".banquete-label").forEach((l) => l.classList.remove("selected-banquete"));
+  }
+}
+
+/* =============================================
+   PERGAMINO ACTIVITY — Keyboard writing practice
+   ============================================= */
+function renderPergaminoActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "pergamino-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "pergamino-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Support image (e.g. sol.png)
+  const imageWrapper = document.createElement("div");
+  imageWrapper.className = "pergamino-image-wrapper";
+  const img = document.createElement("img");
+  img.className = "pergamino-image";
+  img.src = sub.image;
+  img.alt = sub.word;
+  img.draggable = false;
+  imageWrapper.appendChild(img);
+  container.appendChild(imageWrapper);
+
+  // Scroll / parchment paper input area
+  const scroll = document.createElement("div");
+  scroll.className = "pergamino-scroll";
+
+  const scrollLabel = document.createElement("p");
+  scrollLabel.className = "pergamino-label";
+  scrollLabel.textContent = "Escribe la palabra aquí:";
+  scroll.appendChild(scrollLabel);
+
+  const inputRow = document.createElement("div");
+  inputRow.className = "pergamino-input-row";
+
+  const input = document.createElement("input");
+  input.className = "pergamino-input";
+  input.id = "pergaminoInput";
+  input.type = "text";
+  input.placeholder = "Escribe...";
+  input.autocomplete = "off";
+  input.autofocus = true;
+  input.maxLength = 10;
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      state.selectedAnswer = input.value.trim();
+      checkAnswer();
+    }
+  });
+  inputRow.appendChild(input);
+
+  const sendBtn = document.createElement("button");
+  sendBtn.className = "primary-btn pergamino-send-btn";
+  sendBtn.type = "button";
+  sendBtn.textContent = "Enviar";
+  sendBtn.addEventListener("click", () => {
+    state.selectedAnswer = input.value.trim();
+    checkAnswer();
+  });
+  inputRow.appendChild(sendBtn);
+
+  scroll.appendChild(inputRow);
+
+  // Letter count hint
+  const letterHint = document.createElement("p");
+  letterHint.className = "pergamino-letter-hint";
+  letterHint.textContent = `La palabra tiene ${sub.word.length} letras.`;
+  scroll.appendChild(letterHint);
+
+  container.appendChild(scroll);
+
+  activityWorkspace.appendChild(container);
+
+  // Focus the input after rendering
+  setTimeout(() => input.focus(), 300);
+}
+
 function checkAnswer() {
   if (!state.activeUnit) return;
   // Prevent rapid double-clicks from repeating audio/confetti or cutting audio
@@ -2256,6 +2552,9 @@ case "bingo":
         break;
       case "escalera":
         isCorrect = state.selectedAnswer === sub.answer;
+        break;
+      case "pergamino":
+        isCorrect = state.selectedAnswer && normalize(state.selectedAnswer) === normalize(sub.answer);
         break;
       default:
         isCorrect = false;
@@ -2488,7 +2787,7 @@ function popButton(element) {
 
 // Apply pop effect to all primary and secondary buttons
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar");
+  const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar, .banquete-label, .banquete-start-btn, .pergamino-send-btn");
   if (btn) {
     popButton(btn);
   }

@@ -1977,6 +1977,331 @@ a {
 }
 
 /* =============================================
+   BANQUETE ACTIVITY — Conveyor belt cashier
+   ============================================= */
+.banquete-container {
+  min-height: min(560px, 55vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.banquete-belt-container {
+  width: 100%;
+  max-width: 700px;
+  overflow: hidden;
+  position: relative;
+  border: 4px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #e8e0d0, #d4c8b0);
+  padding: 20px 12px;
+  box-shadow: inset 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.banquete-belt-container::before {
+  content: "⬅️";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.6rem;
+  opacity: 0.5;
+  z-index: 2;
+}
+
+.banquete-belt-container::after {
+  content: "🛒";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  z-index: 2;
+}
+
+.banquete-belt {
+  display: flex;
+  gap: 16px;
+  padding: 8px 0;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.banquete-belt::-webkit-scrollbar {
+  display: none;
+}
+
+.banquete-label {
+  flex: 0 0 auto;
+  min-width: 200px;
+  min-height: 140px;
+  padding: 24px 32px;
+  border: 5px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #ffffff, #fff9f0);
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 2.4rem;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s var(--bounce);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+  user-select: none;
+  position: relative;
+  animation: slideLabels 6s linear infinite;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+}
+
+.banquete-label:hover:not(.selected-banquete) {
+  transform: translateY(-6px) scale(1.06);
+  border-color: var(--gold);
+  box-shadow: 0 10px 28px rgba(255, 184, 77, 0.25);
+}
+
+.banquete-label.selected-banquete {
+  border-color: var(--teal);
+  background: linear-gradient(135deg, #d0f0ec, #c0e8e0);
+  transform: translateY(-6px) scale(1.08);
+  box-shadow: 0 0 0 6px rgba(0, 184, 148, 0.25), 0 10px 28px rgba(0, 184, 148, 0.15);
+}
+
+.banquete-label.correct-banquete {
+  border-color: #5c9f52;
+  background: linear-gradient(135deg, #d4f0d4, #c4e8c4);
+  box-shadow: 0 0 0 6px rgba(92,159,82,0.3);
+}
+
+.banquete-label.incorrect-banquete {
+  border-color: #ff6b6b;
+  background: #ffe0de;
+  box-shadow: 0 0 0 6px rgba(255,107,107,0.2);
+  animation: shake 0.4s ease;
+}
+
+.banquete-status {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+.banquete-round {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--purple);
+  background: linear-gradient(135deg, #f4eeff, #ecf9ff);
+  padding: 12px 28px;
+  border-radius: var(--radius-xl);
+  border: 3px solid rgba(155, 126, 255, 0.2);
+  text-align: center;
+  min-width: 200px;
+}
+
+.banquete-order {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--ink);
+  text-align: center;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fff4cf, #ffe8b8);
+  border: 4px dashed var(--gold);
+  border-radius: var(--radius-lg);
+  padding: 16px 28px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 8px 24px rgba(255, 184, 77, 0.15);
+  transition: all 0.3s var(--bounce);
+  animation: popIn 0.4s var(--bounce) both;
+}
+
+.banquete-msg {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+.banquete-start-btn {
+  min-width: 240px;
+  min-height: 64px;
+  padding: 0 40px;
+  font-size: 1.5rem;
+  animation: popIn 0.5s var(--bounce);
+}
+
+/* =============================================
+   PERGAMINO ACTIVITY — Scroll parchment writing
+   ============================================= */
+.pergamino-container {
+  min-height: min(560px, 55vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.pergamino-image-wrapper {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pergamino-image {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  border: 4px solid rgba(255, 255, 255, 0.8);
+  object-fit: contain;
+  animation: popIn 0.5s var(--bounce);
+}
+
+.pergamino-scroll {
+  width: 100%;
+  max-width: 480px;
+  background: linear-gradient(180deg, #fdf5e6, #f5e6c8);
+  border: 4px solid #d4a853;
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), inset 0 4px 12px rgba(255, 255, 255, 0.6);
+  position: relative;
+}
+
+.pergamino-scroll::before,
+.pergamino-scroll::after {
+  content: "📜";
+  position: absolute;
+  font-size: 2rem;
+  opacity: 0.15;
+}
+
+.pergamino-scroll::before {
+  top: 8px;
+  left: 12px;
+  transform: rotate(-20deg);
+}
+
+.pergamino-scroll::after {
+  bottom: 8px;
+  right: 12px;
+  transform: rotate(160deg);
+}
+
+.pergamino-label {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #5a3e1b;
+  text-align: center;
+  margin: 0 0 16px;
+}
+
+.pergamino-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.pergamino-input {
+  flex: 1;
+  min-height: 60px;
+  padding: 0 20px;
+  border: 4px solid #c9a96e;
+  border-radius: var(--radius);
+  background: #fffdf5;
+  font-family: "Fredoka", "Balsamiq Sans", sans-serif;
+  font-weight: 700;
+  font-size: 1.8rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 10px;
+  color: var(--ink);
+  transition: border-color 0.2s ease;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.pergamino-input:focus {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.06), 0 0 0 5px rgba(0, 184, 148, 0.15);
+}
+
+.pergamino-input::placeholder {
+  color: #c9a96e;
+  letter-spacing: 4px;
+  font-size: 1.2rem;
+  text-transform: none;
+}
+
+.pergamino-send-btn {
+  min-height: 60px;
+  min-width: 100px;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.pergamino-letter-hint {
+  color: #8a7a5a;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 14px 0 0;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 8px 16px;
+  border-radius: var(--radius-xl);
+  display: inline-block;
+}
+
+.pergamino-msg {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+@keyframes slideLabels {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-250px);
+  }
+}
+
+/* =============================================
    CONFETTI CELEBRATION
    ============================================= */
 @keyframes confettiFall {
