@@ -1193,7 +1193,7 @@ function openSubActivity(unitId, index) {
     feedback.className = "feedback ok";
     feedback.textContent = `¡Completaste "${sub.title}"! Usa el botón "Escuchar" para repasar las instrucciones.`;
   } else {
-    $("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete" || sub.type === "mensaje"; // Auto-checked by keypress or number click
+    $("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete" || sub.type === "mensaje" || sub.type === "palabra-oculta"; // Auto-checked by keypress or number click
     $("#listenPrompt").hidden = false;
     $("#pronunciationBtn").hidden = true;
   }
@@ -1240,6 +1240,9 @@ function openSubActivity(unitId, index) {
       break;
     case "pasaje":
       renderPasajeActivity(sub, alreadyCompleted);
+      break;
+    case "palabra-oculta":
+      renderPalabraOcultaActivity(sub, alreadyCompleted);
       break;
     default:
       feedback.textContent = "Actividad no disponible.";
@@ -2707,6 +2710,171 @@ function renderPasajeActivity(sub, reviewMode = false) {
 }
 
 /* =============================================
+   PALABRA OCULTA ACTIVITY — Typewriter hidden word (Ahorcado simplificado por teclado)
+   ============================================= */
+function renderPalabraOcultaActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "palabra-oculta-container";
+
+  // Initialize or reset state
+  state.palabraOculta = {
+    typedLetters: [],
+    phase: "playing"
+  };
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "palabra-oculta-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Riddle / hint display
+  const riddle = document.createElement("p");
+  riddle.className = "palabra-oculta-riddle";
+  riddle.textContent = sub.prompt;
+  container.appendChild(riddle);
+
+  // Word display: slots for each letter
+  const wordDisplay = document.createElement("div");
+  wordDisplay.className = "palabra-oculta-word";
+  wordDisplay.id = "palabraOcultaWord";
+
+  sub.letters.forEach((letter, i) => {
+    const slot = document.createElement("span");
+    slot.className = "palabra-oculta-slot";
+    slot.id = `palabraOcultaSlot${i}`;
+    slot.dataset.index = i;
+    slot.dataset.letter = letter;
+    slot.textContent = "_";
+    wordDisplay.appendChild(slot);
+  });
+
+  container.appendChild(wordDisplay);
+
+  // Hint
+  const hint = document.createElement("p");
+  hint.className = "palabra-oculta-hint";
+  hint.id = "palabraOcultaHint";
+  hint.textContent = "Escribe la palabra con tu teclado. Presiona G, A, T, O para formar la palabra.";
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+
+  // Auto-focus a hidden input so keyboard works on mobile too
+  const hiddenInput = document.createElement("input");
+  hiddenInput.type = "text";
+  hiddenInput.className = "palabra-oculta-hidden-input";
+  hiddenInput.id = "palabraOcultaInput";
+  hiddenInput.autocomplete = "off";
+  hiddenInput.autocorrect = "off";
+  hiddenInput.spellcheck = false;
+  hiddenInput.setAttribute("inputmode", "none");
+  container.appendChild(hiddenInput);
+
+  // Listen for keyboard presses — always on the hidden input or document
+  function onKeyDown(e) {
+    if (state.palabraOculta.phase !== "playing") return;
+
+    // Handle Backspace
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      const arr = state.palabraOculta.typedLetters;
+      if (arr.length === 0) return;
+
+      // Remove last typed letter
+      const removedIndex = arr.length - 1;
+      arr.pop();
+
+      // Clear the slot
+      const slot = document.getElementById(`palabraOcultaSlot${removedIndex}`);
+      if (slot) {
+        slot.textContent = "_";
+        slot.classList.remove("revealed");
+      }
+
+      // Update hint
+      if (hint) {
+        const remaining = sub.letters.length - arr.length;
+        hint.textContent = `Borraste la última letra. Te faltan ${remaining} letra(s).`;
+      }
+
+      playTone("tap");
+      return;
+    }
+
+    // Only accept letters that are in the word
+    const key = e.key.toUpperCase();
+    if (!sub.letters.includes(key)) return;
+
+    e.preventDefault();
+
+    // Check if we still have space
+    const maxLength = sub.letters.length;
+    if (state.palabraOculta.typedLetters.length >= maxLength) return;
+
+    const nextIndex = state.palabraOculta.typedLetters.length;
+
+    // Reveal the slot with the pressed letter
+    const slot = document.getElementById(`palabraOcultaSlot${nextIndex}`);
+    if (slot) {
+      slot.textContent = key;
+      slot.classList.add("revealed");
+    }
+
+    state.palabraOculta.typedLetters.push(key);
+
+    playTone("tap");
+
+    // Check if all slots are filled
+    const currentText = state.palabraOculta.typedLetters.join("");
+    if (currentText.length >= sub.letters.length) {
+      // Compare with the answer
+      if (currentText === sub.answer) {
+        // Correct! Auto-complete
+        state.palabraOculta.phase = "done";
+        state.selectedAnswer = sub.answer;
+        if (hint) hint.textContent = "¡Palabra completa!";
+
+        feedback.className = "feedback ok";
+        feedback.textContent = `${sub.success} ¡Has completado esta actividad!`;
+        completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+        playTone("success");
+        celebrateConfetti();
+
+        // Play correct sound + feedback, then return to map
+        playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+          openActivity(state.activeUnit.id);
+        });
+      } else {
+        // Wrong word — allow backspace to fix
+        if (hint) hint.textContent = "Revisa bien. Puedes borrar con Backspace e intentar de nuevo.";
+      }
+    } else {
+      const remaining = sub.letters.length - state.palabraOculta.typedLetters.length;
+      if (hint) hint.textContent = `¡Bien! Llevas ${state.palabraOculta.typedLetters.length} letra(s). Te faltan ${remaining}.`;
+    }
+  }
+
+  document.addEventListener("keydown", onKeyDown);
+
+  // Focus the hidden input so keyboard works
+  setTimeout(() => hiddenInput.focus(), 200);
+
+  // Also refocus if user clicks anywhere in the container
+  container.addEventListener("click", () => {
+    hiddenInput.focus();
+  });
+
+  // Store cleanup
+  state.palabraOcultaCleanup = () => {
+    document.removeEventListener("keydown", onKeyDown);
+  };
+}
+
+/* =============================================
    PERGAMINO ACTIVITY — Keyboard writing practice
    ============================================= */
 function renderPergaminoActivity(sub, reviewMode = false) {
@@ -2927,6 +3095,11 @@ function closeActivity() {
     clearInterval(state.escudoTimer);
     state.escudoTimer = null;
   }
+  // Cleanup palabra-oculta keydown listener
+  if (state.palabraOcultaCleanup) {
+    state.palabraOcultaCleanup();
+    state.palabraOcultaCleanup = null;
+  }
 
   activityZone.hidden = true;
   activityZone.classList.remove("unit-fullscreen");
@@ -3070,7 +3243,7 @@ function popButton(element) {
 
 // Apply pop effect to all primary and secondary buttons
 document.addEventListener("click", (e) => {
-const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar, .banquete-label, .banquete-start-btn, .pergamino-send-btn, .mensaje-btn, .mensaje-listen-btn, .pasaje-card, .pasaje-slot, .pasaje-listen-btn");
+const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar, .banquete-label, .banquete-start-btn, .pergamino-send-btn, .mensaje-btn, .mensaje-listen-btn, .pasaje-card, .pasaje-slot, .pasaje-listen-btn, .palabra-oculta-slot");
   if (btn) {
     popButton(btn);
   }

@@ -19,3 +19,14 @@
 - [x] 6. Añadir `.pasaje-card`, `.pasaje-slot`, `.pasaje-listen-btn` al popButton handler
 - [x] 7. Probar la actividad
 
+# TODO - Actividad 15: La Palabra Oculta
+
+- [x] 1. Definir plan y obtener aprobación
+- [x] 2. Editar `data/units.json` - Añadir sub-actividad tipo "palabra-oculta" en unidad 4
+- [x] 3. Editar `js/app.js` - Añadir `case "palabra-oculta"` en `openSubActivity()` + `renderPalabraOcultaActivity()` 
+- [x] 4. Editar `js/app.js` - Añadir lógica de selección de teclas y verificación en `checkPalabraOcultaAnswer()`
+- [x] 5. Editar `js/app.js` - Añadir `case "palabra-oculta"` en `checkAnswer()` para validar palabra completa
+- [x] 6. Editar `css/styles.css` - Reemplazar estilos existentes de palabra-oculta con diseño mejorado (teclas cuadradas, slots compactos, hint con acertijo)
+- [x] 7. Añadir `.palabra-oculta-key`, `.palabra-oculta-slot`, `.palabra-oculta-hint` al popButton handler
+- [x] 8. Probar la actividad
+

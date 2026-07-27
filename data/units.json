@@ -384,6 +384,24 @@
           },
           "success": "¡Excelente! Ordenaste las palabras correctamente: EL PERRO CORRE. ¡Has descubierto el pasaje oculto!",
           "hint": "Escucha la oración completa y presta atención al orden de las palabras."
+        },
+        {
+          "id": "palabra-oculta",
+          "title": "La Palabra Oculta",
+          "prompt": "Es un animal que dice 'miau' y toma leche. Empieza con G.",
+          "speak": "Es un animal que dice miau y toma leche. Empieza con G. Presiona las teclas G, A, T, O para revelar la palabra.",
+          "type": "palabra-oculta",
+          "question": "Revela la palabra oculta presionando las teclas correctas",
+          "word": "GATO",
+          "letters": [
+            "G",
+            "A",
+            "T",
+            "O"
+          ],
+          "answer": "GATO",
+          "success": "¡Excelente! Completaste la palabra GATO. ¡El gato salió del castillo!",
+          "hint": "Escucha la pista: es un animal que dice miau, toma leche y empieza con G. Presiona G, A, T, O en tu teclado."
         }
       ]
     },
