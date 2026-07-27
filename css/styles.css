@@ -1321,6 +1321,62 @@ a {
   display: none;
 }
 
+/* When sub-activity background image is set, make the card see-through */
+.activity-zone.has-castle-bg {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.activity-zone.has-castle-bg .activity-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 4px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+
+.activity-zone.has-castle-bg .activity-workspace {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius);
+  padding: 16px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.activity-zone.has-castle-bg .feedback {
+  background: rgba(240, 244, 248, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.activity-zone.has-castle-bg .feedback.ok {
+  background: rgba(208, 240, 236, 0.85);
+}
+
+.activity-zone.has-castle-bg .feedback.try {
+  background: rgba(255, 244, 207, 0.85);
+}
+
+/* Sub-activity background layer */
+.sub-activity-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: var(--radius-lg);
+  display: none;
+}
+
+.unit-fullscreen .activity-content {
+  position: relative;
+}
+
+.unit-fullscreen .activity-content > *:not(.sub-activity-bg) {
+  position: relative;
+  z-index: 1;
+}
+
 /* =============================================
    GLOBO ACTIVITY — Bouncy balloons
    ============================================= */

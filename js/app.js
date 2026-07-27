@@ -869,6 +869,11 @@ function openActivity(unitId) {
   state.audioLock = false; // release any stuck audio lock when opening a new activity
   state.checkingLock = false; // re-enable checkAnswer for new activity
 
+  // Reset any background image leftover from a sub-activity
+  const existingBg = document.getElementById("subActivityBg");
+  if (existingBg) existingBg.style.display = "none";
+  activityZone.classList.remove("has-castle-bg");
+
   // If unit has subActivities (castle map), show the map
   if (unit.subActivities && unit.subActivities.length > 0) {
     state.inCastleMap = true;
@@ -1159,6 +1164,26 @@ function renderCastleMap(unit) {
 /* =============================================
    SUB-ACTIVITY LAUNCHER
    ============================================= */
+
+// Background images for each sub-activity (b1 through b15)
+const SUB_ACTIVITY_BACKGROUNDS = [
+  "assets/castle_images/b1.jpeg",
+  "assets/castle_images/b2.jpeg",
+  "assets/castle_images/b3.jpeg",
+  "assets/castle_images/b4.png",
+  "assets/castle_images/b5.png",
+  "assets/castle_images/b6.jpeg",
+  "assets/castle_images/b7.png",
+  "assets/castle_images/b8.jpeg",
+  "assets/castle_images/b9.png",
+  "assets/castle_images/b10.jpeg",
+  "assets/castle_images/b11.png",
+  "assets/castle_images/b12.jpeg",
+  "assets/castle_images/b13.png",
+  "assets/castle_images/b14.png",
+  "assets/castle_images/b15.jpeg"
+];
+
 function openSubActivity(unitId, index) {
   const unit = state.data.units.find((u) => u.id === unitId);
   if (!unit) return;
@@ -1176,6 +1201,24 @@ function openSubActivity(unitId, index) {
 
   activityScene.hidden = true;
   activityZone.classList.add("unit-fullscreen");
+
+  // Set background image inside the activity card (b1 for index 0, b2 for index 1, etc.)
+  if (index >= 0 && index < SUB_ACTIVITY_BACKGROUNDS.length) {
+    let bgLayer = document.getElementById("subActivityBg");
+    if (!bgLayer) {
+      bgLayer = document.createElement("div");
+      bgLayer.id = "subActivityBg";
+      bgLayer.className = "sub-activity-bg";
+      const content = activityZone.querySelector(".activity-content");
+      if (content) {
+        content.insertBefore(bgLayer, content.firstChild);
+      }
+    }
+    bgLayer.style.backgroundImage = `url("${SUB_ACTIVITY_BACKGROUNDS[index]}")`;
+    bgLayer.style.display = "block";
+    activityZone.classList.add("has-castle-bg");
+  }
+
   activityUnit.textContent = `Unidad ${unit.number}: ${unit.title}`;
   activityTitle.textContent = sub.title;
   activityPrompt.textContent = sub.prompt;
@@ -3100,6 +3143,11 @@ function closeActivity() {
     state.palabraOcultaCleanup();
     state.palabraOcultaCleanup = null;
   }
+
+  // Reset background image
+  const existingBg = document.getElementById("subActivityBg");
+  if (existingBg) existingBg.style.display = "none";
+  activityZone.classList.remove("has-castle-bg");
 
   activityZone.hidden = true;
   activityZone.classList.remove("unit-fullscreen");

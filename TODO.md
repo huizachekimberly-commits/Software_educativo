@@ -1,32 +1,21 @@
-# TODO - Actividad 13: El Mensaje del Cuervo Real
+# TODO: Add castle background images to sub-activities
 
-- [x] 1. Definir plan y obtener aprobación
-- [x] 2. Renombrar `activitiy_13.mp3` → `activity_13.mp3` (corregir typo)
-- [x] 3. Editar `data/units.json` - Añadir sub-actividad tipo "mensaje" (V/F binario)
-- [x] 4. Editar `js/app.js` - Añadir `case "mensaje"` en `openSubActivity()` + `renderMensajeActivity()` + `checkMensajeAnswer()`
-- [x] 5. Editar `js/app.js` - Ocultar botón "Revisar" para tipo "mensaje" (auto-check)
-- [x] 6. Editar `css/styles.css` - Añadir estilos para mensaje (tarjeta, botón escuchar, V/F verde/rojo)
-- [x] 7. Añadir `.mensaje-btn` y `.mensaje-listen-btn` al popButton handler
-- [x] 8. Probar la actividad
+## Steps
 
-# TODO - Actividad 14: El Pasaje Secreto
+1. [x] Add `SUB_ACTIVITY_BACKGROUNDS` array in `js/app.js` with 15 image paths (b1-b15)
+2. [x] Set background image in `openSubActivity()` function using the array and add `has-castle-bg` class
+3. [x] Reset background in `closeActivity()` function
+4. [x] Add CSS styles for `.has-castle-bg` (card transparency, backdrop blur) and `.sub-activity-bg` layer in `css/styles.css`
+5. [x] Test the implementation
 
-- [x] 1. Definir plan y obtener aprobación
-- [x] 2. Editar `data/units.json` - Añadir sub-actividad tipo "pasaje"
-- [x] 3. Editar `js/app.js` - Añadir `case "pasaje"` en `openSubActivity()` + `renderPasajeActivity()`
-- [x] 4. Editar `js/app.js` - Añadir `case "pasaje"` en `checkAnswer()` switch para validar secuencia
-- [x] 5. Editar `css/styles.css` - Añadir estilos para pasaje (slots, cards, strip, listen button)
-- [x] 6. Añadir `.pasaje-card`, `.pasaje-slot`, `.pasaje-listen-btn` al popButton handler
-- [x] 7. Probar la actividad
+## Changes Made
 
-# TODO - Actividad 15: La Palabra Oculta
+### `js/app.js`
+- Added `SUB_ACTIVITY_BACKGROUNDS` constant array with paths to `assets/castle_images/b1.jpeg` through `b15.jpeg`
+- In `openSubActivity()`: set `activityZone.style.backgroundImage` using the array and added `has-castle-bg` class
+- In `closeActivity()`: reset `backgroundImage`, `backgroundSize`, `backgroundPosition`, `backgroundRepeat` and remove `has-castle-bg` class
 
-- [x] 1. Definir plan y obtener aprobación
-- [x] 2. Editar `data/units.json` - Añadir sub-actividad tipo "palabra-oculta" en unidad 4
-- [x] 3. Editar `js/app.js` - Añadir `case "palabra-oculta"` en `openSubActivity()` + `renderPalabraOcultaActivity()` 
-- [x] 4. Editar `js/app.js` - Añadir lógica de selección de teclas y verificación en `checkPalabraOcultaAnswer()`
-- [x] 5. Editar `js/app.js` - Añadir `case "palabra-oculta"` en `checkAnswer()` para validar palabra completa
-- [x] 6. Editar `css/styles.css` - Reemplazar estilos existentes de palabra-oculta con diseño mejorado (teclas cuadradas, slots compactos, hint con acertijo)
-- [x] 7. Añadir `.palabra-oculta-key`, `.palabra-oculta-slot`, `.palabra-oculta-hint` al popButton handler
-- [x] 8. Probar la actividad
+### `css/styles.css`
+- Added styles for `.activity-zone.has-castle-bg` (glassmorphism card, backdrop blur on workspace/feedback)
+- Added `.sub-activity-bg` layer with proper z-index stacking inside `.unit-fullscreen .activity-content`
 
