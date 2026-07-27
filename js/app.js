@@ -1238,6 +1238,9 @@ function openSubActivity(unitId, index) {
     case "mensaje":
       renderMensajeActivity(sub, alreadyCompleted);
       break;
+    case "pasaje":
+      renderPasajeActivity(sub, alreadyCompleted);
+      break;
     default:
       feedback.textContent = "Actividad no disponible.";
   }
@@ -2540,6 +2543,170 @@ function checkMensajeAnswer() {
 }
 
 /* =============================================
+   PASAJE ACTIVITY — Hidden passage sentence reordering
+   ============================================= */
+function renderPasajeActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "pasaje-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "pasaje-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset sequence for this activity
+  state.sequenceAnswer = [];
+
+  // Listen button for the full sentence
+  const listenBtn = document.createElement("button");
+  listenBtn.className = "primary-btn pasaje-listen-btn";
+  listenBtn.id = "pasajeListenBtn";
+  listenBtn.textContent = "🔊 Escuchar oración";
+  listenBtn.addEventListener("click", () => {
+    const audio = new Audio(sub.sentenceAudio);
+    safePlayAudio(audio);
+  });
+  container.appendChild(listenBtn);
+
+  // Sentence strip: slots to place words left-to-right
+  const strip = document.createElement("div");
+  strip.className = "pasaje-strip";
+  strip.id = "pasajeStrip";
+
+  sub.answer.forEach((_, i) => {
+    const slot = document.createElement("div");
+    slot.className = "pasaje-slot";
+    slot.id = `pasajeSlot${i}`;
+    slot.dataset.index = i;
+    slot.textContent = "___";
+    strip.appendChild(slot);
+  });
+
+  container.appendChild(strip);
+
+  // Hint
+  const hint = document.createElement("p");
+  hint.className = "pasaje-hint";
+  hint.id = "pasajeHint";
+  hint.textContent = "Presiona el botón Escuchar, luego haz clic en las palabras en el orden en que las escuchaste.";
+  container.appendChild(hint);
+
+  // Word cards (shuffled — NEVER in the correct order)
+  const cardsRow = document.createElement("div");
+  cardsRow.className = "pasaje-cards";
+
+  // Store card references for undo
+  const cardMap = {};
+
+  // Shuffle until the order is different from the answer
+  let shuffled;
+  do {
+    shuffled = [...sub.words].sort(() => Math.random() - 0.5);
+  } while (shuffled.every((w, i) => w === sub.answer[i]));
+
+  shuffled.forEach((word) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "pasaje-card";
+    card.textContent = word;
+    card.dataset.word = word;
+    cardMap[word] = card;
+
+    card.addEventListener("click", () => {
+      // If card already placed — ignore
+      if (card.classList.contains("used")) return;
+
+      const nextIndex = state.sequenceAnswer.length;
+      const total = sub.answer.length;
+
+      // All slots filled?
+      if (nextIndex >= total) return;
+
+      // Play the word sound
+      const soundPath = sub.wordSounds?.[word];
+      if (soundPath) {
+        const audio = new Audio(soundPath);
+        safePlayAudio(audio);
+      }
+
+      // Place in slot
+      const slot = document.getElementById(`pasajeSlot${nextIndex}`);
+      if (slot) {
+        slot.textContent = word;
+        slot.classList.add("filled");
+        slot.dataset.word = word;
+      }
+
+      card.classList.add("used");
+      state.sequenceAnswer.push(word);
+
+      // Update hint
+      const hint = document.getElementById("pasajeHint");
+      if (hint) {
+        if (state.sequenceAnswer.length < total) {
+          hint.textContent = `Colocaste "${word}". Sigue con la siguiente palabra.`;
+        } else {
+          hint.textContent = "¡Todas las palabras colocadas! Presiona Revisar.";
+        }
+      }
+
+      playTone("tap");
+    });
+
+    cardsRow.appendChild(card);
+  });
+
+  container.appendChild(cardsRow);
+
+  // Slots ARE clickable — clicking a filled slot returns the word to its card
+  sub.answer.forEach((_, i) => {
+    const slot = container.querySelector(`#pasajeSlot${i}`);
+    if (!slot) return;
+    slot._listenerAttached = slot._listenerAttached || false;
+    if (slot._listenerAttached) return;
+    slot._listenerAttached = true;
+
+    slot.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const lastIndex = state.sequenceAnswer.length - 1;
+      if (lastIndex < 0) return;
+      // Only the last filled slot can be undone
+      const dataIdx = parseInt(slot.dataset.index);
+      if (dataIdx !== lastIndex) return;
+      // Must have content
+      if (!slot.classList.contains("filled")) return;
+
+      const word = slot.textContent.trim();
+      // Clear slot
+      slot.textContent = "___";
+      slot.classList.remove("filled");
+      delete slot.dataset.word;
+
+      // Restore card
+      const card = cardMap[word];
+      if (card) {
+        card.classList.remove("used");
+      }
+
+      state.sequenceAnswer.pop();
+
+      const hint = container.querySelector("#pasajeHint");
+      if (hint) {
+        hint.textContent = `Quitaste "${word}". Puedes volver a elegir otra palabra.`;
+      }
+
+      playTone("tap");
+    });
+  });
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
    PERGAMINO ACTIVITY — Keyboard writing practice
    ============================================= */
 function renderPergaminoActivity(sub, reviewMode = false) {
@@ -2668,6 +2835,9 @@ case "bingo":
         break;
       case "pergamino":
         isCorrect = state.selectedAnswer && normalize(state.selectedAnswer) === normalize(sub.answer);
+        break;
+      case "pasaje":
+        isCorrect = sub.answer.every((item, idx) => state.sequenceAnswer[idx] === item);
         break;
       default:
         isCorrect = false;
@@ -2900,7 +3070,7 @@ function popButton(element) {
 
 // Apply pop effect to all primary and secondary buttons
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar, .banquete-label, .banquete-start-btn, .pergamino-send-btn, .mensaje-btn, .mensaje-listen-btn");
+const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar, .banquete-label, .banquete-start-btn, .pergamino-send-btn, .mensaje-btn, .mensaje-listen-btn, .pasaje-card, .pasaje-slot, .pasaje-listen-btn");
   if (btn) {
     popButton(btn);
   }

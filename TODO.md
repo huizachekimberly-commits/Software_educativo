@@ -9,3 +9,13 @@
 - [x] 7. Añadir `.mensaje-btn` y `.mensaje-listen-btn` al popButton handler
 - [x] 8. Probar la actividad
 
+# TODO - Actividad 14: El Pasaje Secreto
+
+- [x] 1. Definir plan y obtener aprobación
+- [x] 2. Editar `data/units.json` - Añadir sub-actividad tipo "pasaje"
+- [x] 3. Editar `js/app.js` - Añadir `case "pasaje"` en `openSubActivity()` + `renderPasajeActivity()`
+- [x] 4. Editar `js/app.js` - Añadir `case "pasaje"` en `checkAnswer()` switch para validar secuencia
+- [x] 5. Editar `css/styles.css` - Añadir estilos para pasaje (slots, cards, strip, listen button)
+- [x] 6. Añadir `.pasaje-card`, `.pasaje-slot`, `.pasaje-listen-btn` al popButton handler
+- [x] 7. Probar la actividad
+
