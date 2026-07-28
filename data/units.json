@@ -59,7 +59,7 @@
       "id": "castillo",
       "number": 1,
       "title": "Castillo de las Letras",
-      "icon": "­ƒÅ░",
+      "icon": "­",
       "theme": "theme-castle",
       "castleMapImage": "assets/castle_images/castle_map.jpeg",
       "description": "Reconoce letras y sonidos, forma silabas y lee palabras simples.",
@@ -86,10 +86,10 @@
         {
           "id": "globo",
           "title": "Los Globos del Hechizo Real",
-          "prompt": "┬íAtrapemos el sonido /s/!",
+          "prompt": "¡Atrapemos el sonido S!",
           "speak": "Atrapemos el sonido S. Busca el globo con la letra S.",
           "type": "globo",
-          "question": "┬┐Cu├íl globo tiene la letra que suena /s/?",
+          "question": "¡Cuál globo tiene la letra que suena S?",
           "letters": [
             "M",
             "S",
@@ -97,8 +97,8 @@
             "L"
           ],
           "answer": "S",
-          "success": "┬íMuy bien! El globo con la letra S tiene el sonido /s/.",
-          "hint": "Escucha el sonido /s/... busca la letra que representa ese sonido.",
+          "success": "¡Muy bien! El globo con la letra S tiene el sonido S.",
+          "hint": "Escucha el sonido... busca la letra que representa ese sonido.",
           "letterSounds": {
             "M": "assets/phonemes/m.mp3",
             "S": "assets/phonemes/s.mp3",
@@ -109,8 +109,8 @@
         {
           "id": "balcon",
           "title": "Los Tres Balcones del Rey",
-          "prompt": "La palabra es GATO. ┬┐En cu├íl casilla suena la vocal /a/?",
-          "speak": "Gato. La palabra gato tiene la vocal A. ┬┐Suena al inicio, en el medio o al final?",
+          "prompt": "La palabra es GATO. ¿En cuál casilla suena la vocal A?",
+          "speak": "Gato. La palabra gato tiene la vocal A. ¿Suena al inicio, en el medio o al final?",
           "type": "balcon",
           "question": "GATO",
           "word": "GATO",
@@ -121,35 +121,35 @@
             "Fin"
           ],
           "answer": "Medio",
-          "success": "┬íCorrecto! En GATO, la letra A suena en el Medio de la palabra.",
-          "hint": "Pronuncia GATO despacio: G - A - TO. ┬┐D├│nde escuchas la A?"
+          "success": "¡Correcto! En GATO, la letra A suena en el Medio de la palabra.",
+          "hint": "Pronuncia GATO despacio: GA - TO. ¿Dónde escuchas la A?"
         },
         {
           "id": "intruso",
           "title": "El Intruso Sonoro",
-          "prompt": "Escucha: Oso... Olla... Ola... ├ürbol. ┬┐Cu├íl empez├│ con un sonido diferente?",
+          "prompt": "Escucha: Oso... Olla... Ola... Árbol. ¿Cuál empieza con un sonido diferente?",
           "speak": "Oso, Olla, Ola, Arbol. Tres empiezan parecido y una es diferente.",
           "type": "intruso",
-          "question": "┬┐Cu├íl palabra empez├│ con un sonido diferente?",
+          "question": "Cuál palabra empieza con un sonido diferente?",
           "options": [
             "Oso",
             "Olla",
             "Ola",
-            "├ürbol"
+            "Árbol"
           ],
           "icons": [
-            "­ƒÉ╗",
-            "­ƒì▓",
-            "­ƒîè",
-            "­ƒî│"
+            "assets/images/unit_1/oso.png",
+            "assets/images/unit_1/olla.png",
+            "assets/images/unit_1/ola.png",
+            "assets/images/unit_1/arbol.png"
           ],
-          "answer": "├ürbol",
-          "success": "┬íMuy bien! Oso, Olla y Ola empiezan con sonido /o/, pero ├ürbol empieza con /a/.",
-          "hint": "Escucha el sonido inicial: Oso, Olla y Ola empiezan con /o/. ┬┐Cu├íl empieza con /a/?"
+          "answer": "Árbol",
+          "success": "Muy bien! Oso, Olla y Ola empiezan con sonido O, pero árbol empieza con A.",
+          "hint": "Escucha el sonido inicial: Oso, Olla y Ola empiezan con O. ¿Cuál no empieza con esa letra?"
         },
         {
           "id": "escudo",
-          "title": "El Escudo M├ígico",
+          "title": "El Escudo Mágico",
           "prompt": "Presiona la tecla de la letra que corresponde al sonido que escuchaste.",
           "speak": "Escucha el sonido y presiona la tecla correcta antes de que el tiempo se acabe.",
           "type": "escudo",
@@ -157,9 +157,9 @@
           "phoneme": "s",
           "phonemeFile": "assets/phonemes/s.mp3",
           "answer": "s",
-          "timeLimit": 10,
-          "success": "┬íEscudo activado! Presionaste la tecla correcta a tiempo.",
-          "hint": "Conc├®ntrate en el sonido. ┬┐Qu├® letra produce ese sonido?"
+          "timeLimit": 5,
+          "success": "¡Escudo activado! Presionaste la tecla correcta a tiempo.",
+          "hint": "Concéntrate en el sonido. ¿Qué letra produce ese sonido?"
         },
         {
           "id": "cofre",
@@ -172,24 +172,24 @@
           "boxes": [
             {
               "letter": "A",
-              "label": "Letra A"
+              "label": ""
             },
             {
               "letter": "E",
-              "label": "Letra E"
+              "label": ""
             }
           ],
           "answer": "E",
-          "success": "┬íCorrecto! Elefante empieza con la letra E, como en el cofre de la letra E.",
-          "hint": "Di la palabra en voz alta: E - le - fan - te. ┬┐Con qu├® letra empieza?"
+          "success": "¡Correcto! Elefante empieza con la letra E, como en el cofre de la letra E.",
+          "hint": "Di la palabra en voz alta: E - le - fan - te. ¿Con qué letra empieza?"
         },
         {
           "id": "caldero",
-          "title": "El Caldero de las Pociones Sil├íbicas",
-          "prompt": "Escucha la mezcla de sonidos y elige la s├¡laba correcta.",
-          "speak": "Si mezclamos el sonido M con la vocal U... ┬┐qu├® s├¡laba obtenemos?",
+          "title": "El Caldero de las Pociones Silábicas",
+          "prompt": "Escucha la mezcla de sonidos y elige la sílaba correcta.",
+          "speak": "Si mezclamos el sonido M con la vocal U... ¿qué sílaba obtenemos?",
           "type": "caldero",
-          "question": "┬┐Qu├® s├¡laba obtenemos al mezclar /m/ con /u/?",
+          "question": "¿Qué sílaba obtenemos al mezclar /m/ con /u/?",
           "options": [
             "MA",
             "ME",
@@ -197,16 +197,16 @@
             "MU"
           ],
           "answer": "MU",
-          "success": "┬íCorrecto! M y U hacen MU. ┬íEl caldero brill├│ con la s├¡laba MU!",
-          "hint": "Escucha: M + U = MU. Busca esa s├¡laba entre las pociones."
+          "success": "¡Correcto! M y U hacen MU. ¡El caldero brilló con la sílaba MU!",
+          "hint": "Escucha: M + U. Busca esa sílaba entre las pociones."
         },
         {
           "id": "carruaje",
           "title": "El Carruaje de la Princesa",
-          "prompt": "Escucha la palabra y coloca las s├¡labas en el orden correcto en los vagones.",
-          "speak": "PE - LO - TA. Coloca las s├¡labas en el orden correcto en el carruaje.",
+          "prompt": "Escucha la palabra y coloca las sílaba en el orden correcto en los vagones.",
+          "speak": "PE - LO - TA. Coloca las sílaba en el orden correcto en el carruaje.",
           "type": "carruaje",
-          "question": "Ordena las s├¡labas para formar la palabra.",
+          "question": "Ordena las sílaba para formar la palabra.",
           "word": "PELOTA",
           "syllables": [
             "PE",
@@ -218,16 +218,16 @@
             "LO",
             "TA"
           ],
-          "success": "┬íExcelente! PE - LO - TA forma la palabra PELOTA. El carruaje parti├│.",
-          "hint": "La palabra tiene tres s├¡labas. Esc├║chala de nuevo: PE, LO, TA."
+          "success": "¡Excelente! PE - LO - TA forma la palabra PELOTA. El carruaje partió.",
+          "hint": "La palabra tiene tres sílaba. Escúchala de nuevo: PE, LO, TA."
         },
         {
           "id": "bingo",
           "title": "El Torneo del Gran BINGO Medieval",
-          "prompt": "Escucha la s├¡laba y m├írcala en tu cart├│n. ┬íCompleta todo el cart├│n para ganar!",
-          "speak": "Escucha cada s├¡laba y haz clic en la casilla correcta de tu cart├│n de bingo.",
+          "prompt": "Escucha la sílaba y márcala en tu cartón. ¡Completa todo el cartón para ganar!",
+          "speak": "Escucha cada sílaba y haz clic en la casilla correcta de tu cartón de bingo.",
           "type": "bingo",
-          "question": "Marca la s├¡laba que escuchaste",
+          "question": "Marca la sílaba que escuchaste",
           "syllables": [
             "PA",
             "LE",
@@ -244,16 +244,16 @@
             "MI",
             "RO"
           ],
-          "success": "┬íBINGO! ┬íCompletaste todo el cart├│n medieval!",
-          "hint": "Escucha atentamente la s├¡laba que suena y b├║scala en tu cart├│n."
+          "success": "¡BINGO! ¡Completaste todo el cartón medieval!",
+          "hint": "Escucha atentamente la sílaba que suena y marca en tu cartón."
         },
         {
           "id": "escalera",
           "title": "La Escalera de la Torre Alta",
-          "prompt": "Escucha la serie y completa el pelda├▒o vac├¡o de la escalera.",
-          "speak": "da, de, di, do, du. ┬┐Qu├® s├¡laba falta en la escalera?",
+          "prompt": "Escucha la serie y completa el peldaño vacío de la escalera.",
+          "speak": "da, de, di, do, du. ¿Qué sílaba falta en la escalera?",
           "type": "escalera",
-          "question": "┬┐Qu├® s├¡laba falta en esta serie?",
+          "question": "¿Qué sílaba falta en esta serie?",
           "series": [
             "DA",
             "DE",
@@ -267,16 +267,16 @@
             "DI"
           ],
           "answer": "DI",
-          "success": "┬íCorrecto! DA - DE - DI - DO - DU. ┬íSubiste la escalera de la torre alta!",
-          "hint": "Escucha la serie completa: da, de, di, do, du. ┬┐Cu├íl es la ├║nica s├¡laba de la lista que no est├í en los pelda├▒os?"
+          "success": "¡Correcto! DA - DE - DI - DO - DU. ¡Subiste la escalera de la torre alta!",
+          "hint": "Escucha la serie completa: da, de, di, do, du. ¿Cuál es la única sílaba de la lista que no está en los peldaños?"
         },
         {
           "id": "redoble",
           "title": "El Redoble de Tambores Reales",
-          "prompt": "Escucha la palabra y los aplausos. ┬┐Cu├íntas s├¡labas tiene?",
-          "speak": "Escucha cu├íntas s├¡labas tiene la palabra.",
+          "prompt": "Escucha la palabra y los aplausos. ¿Cuántas sílabas tiene?",
+          "speak": "Escucha cuántas sílabas tiene la palabra.",
           "type": "redoble",
-          "question": "┬┐Cu├íntas s├¡labas tiene la palabra?",
+          "question": "¿Cuántas sílabas tiene la palabra?",
           "words": [
             {
               "word": "sol",
@@ -304,8 +304,8 @@
             2,
             3
           ],
-          "success": "┬íRedoble correcto! Has acertado el n├║mero de s├¡labas.",
-          "hint": "Escucha cu├íntos golpes de voz o aplausos tiene la palabra."
+          "success": "¡Redoble correcto! Has acertado el número de sílabas.",
+          "hint": "Escucha cuántos golpes de voz o aplausos tiene la palabra."
         },
         {
           "id": "banquete",
@@ -401,7 +401,7 @@
           ],
           "answer": "GATO",
           "success": "¡Excelente! Completaste la palabra GATO. ¡El gato salió del castillo!",
-          "hint": "Escucha la pista: es un animal que dice miau, toma leche y empieza con G. Presiona G, A, T, O en tu teclado."
+          "hint": "Escucha la pista: es un animal que dice miau, toma leche y empieza con G."
         }
       ]
     },

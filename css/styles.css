@@ -752,13 +752,14 @@ a {
   padding: 72px 0 34px;
 }
 
-.section-heading h2,
+section-heading h2,
 .progress-panel h2,
 .activity-content h2 {
-  margin: 0;
-  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
-  line-height: 1.05;
+  color: #2A2A2A;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  text-shadow: 3px 3px 9px rgba(246, 242, 242, 0.89);
 }
+
 
 /* =============================================
    UNIT CARDS — Treasure chest / playing cards
@@ -969,9 +970,10 @@ a {
 }
 
 .activity-content p {
-  color: #4a5870;
-  line-height: 1.6;
-  font-size: 1.05rem;
+  color: #3F4A5A;
+  line-height: 1.5;
+  font-size: 1.5rem;
+  text-shadow: 1.5px 1.5px 3px rgba(243, 242, 243, 0.25);
 }
 
 .activity-workspace {
@@ -1386,55 +1388,66 @@ a {
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 24px;
+  gap: -2px;
   padding: 20px 0;
 }
 
 .globo {
-  width: 120px;
-  height: 150px;
-  border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+  width: 200px;
+  height: 240px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: 2.8rem;
+  justify-content: flex-start;
+  padding-top: 45px;
+  font-size: 3.6rem;
   font-weight: 900;
   color: #fff;
   cursor: pointer;
   transition: all 0.25s var(--bounce);
   animation: globoFloat 3s ease-in-out infinite;
   position: relative;
-  box-shadow: 0 10px 28px rgba(0,0,0,0.18);
   user-select: none;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  text-shadow: 0 3px 10px rgba(0,0,0,0.6);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
 }
 
 .globo::after {
-  content: "";
-  position: absolute;
-  bottom: -22px;
-  width: 2px;
-  height: 24px;
-  background: #999;
+  display: none;
 }
 
-.globo:nth-child(1) { background: linear-gradient(135deg, #ff6b6b, #ffb84d); animation-delay: 0s; }
-.globo:nth-child(2) { background: linear-gradient(135deg, #79b9df, #9b7eff); animation-delay: 0.4s; }
-.globo:nth-child(3) { background: linear-gradient(135deg, #5c9f52, #00d4aa); animation-delay: 0.8s; }
-.globo:nth-child(4) { background: linear-gradient(135deg, #ffb84d, #ff6b6b); animation-delay: 1.2s; }
+.globo:nth-child(1) { animation-delay: 0s; }
+.globo:nth-child(2) { animation-delay: 0.4s; }
+.globo:nth-child(3) { animation-delay: 0.8s; }
+.globo:nth-child(4) { animation-delay: 1.2s; }
 
 .globo:hover {
-  transform: scale(1.12) rotate(-3deg);
+  transform: scale(1.08) rotate(-3deg);
+  filter: brightness(1.1);
 }
 
 .globo.selected-globo {
-  transform: scale(1.18);
-  box-shadow: 0 0 0 8px rgba(255,255,255,0.9), 0 10px 28px rgba(0,0,0,0.2);
+  transform: scale(1.12);
+  filter: brightness(1.15) drop-shadow(0 0 16px rgba(255,255,255,0.8));
 }
 
 .globo.incorrect {
   animation: shake 0.5s ease;
+}
+
+/* Image styling for balcon and intruso */
+.balcon-image,
+.intruso-image {
+  width: 94px;
+  height: 94px;
+  object-fit: contain;
+  border-radius: 12px;
 }
 
 /* =============================================
@@ -1491,7 +1504,7 @@ a {
 }
 
 .balcon-box .box-icon {
-  font-size: 2.2rem;
+  font-size: 0.01rem;
 }
 
 .balcon-box:hover:not(.selected-balcon) {
@@ -1540,7 +1553,7 @@ a {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 1px;
   padding: 16px;
   background: #fff;
   cursor: pointer;
@@ -1555,7 +1568,7 @@ a {
 }
 
 .intruso-card .card-label {
-  font-size: 1.1rem;
+  font-size: 1.8rem;
   color: var(--ink);
 }
 
@@ -1602,8 +1615,6 @@ a {
 .escudo-shield {
   width: 180px;
   height: 200px;
-  background: linear-gradient(135deg, #79b9df, #9b7eff);
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1611,22 +1622,23 @@ a {
   color: #fff;
   font-size: 1.4rem;
   font-weight: 900;
-  box-shadow: 0 12px 32px rgba(155, 126, 255, 0.35);
   animation: floaty 3s ease-in-out infinite;
   margin: 0 auto;
+  position: relative;
+  top: 100px;
+  left: 90px;
 }
 
-.escudo-shield .shield-icon {
-  font-size: 3.6rem;
-  margin-bottom: 8px;
+.escudo-shield .shield-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  top: 0;
+  left: 0;
+  z-index: 0;
 }
 
-.escudo-shield .shield-letter {
-  font-size: 2.8rem;
-  background: rgba(255,255,255,0.2);
-  padding: 6px 20px;
-  border-radius: 14px;
-}
 
 .escudo-middle-row {
   display: flex;
@@ -1727,6 +1739,10 @@ a {
   justify-content: center;
   gap: 8px;
   background: #f0f7ff;
+  background-image: url('../assets/images/unit_1/cofre.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   transition: all 0.25s var(--bounce);
 }
 
@@ -1734,6 +1750,9 @@ a {
   font-size: 2.8rem;
   font-weight: 900;
   color: var(--teal);
+  position: relative;
+  top: 10px;
+  left: 2px;
 }
 
 .cofre-box .cofre-label {

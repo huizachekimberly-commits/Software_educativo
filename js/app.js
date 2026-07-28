@@ -1299,11 +1299,27 @@ function renderGloboActivity(sub) {
   const container = document.createElement("div");
   container.className = "globo-container";
 
+  // Map letters to balloon image files
+  const balloonImages = {
+    "M": "assets/images/unit_1/green_ballon.png",
+    "S": "assets/images/unit_1/blue_ballon.png",
+    "P": "assets/images/unit_1/yellow_ballon.png",
+    "L": "assets/images/unit_1/red_ballon.png"
+  };
+
   sub.letters.forEach((letter) => {
     const balloon = document.createElement("button");
     balloon.type = "button";
     balloon.className = "globo";
     balloon.textContent = letter;
+    // Set balloon image as background
+    const imgPath = balloonImages[letter] || "";
+    if (imgPath) {
+      balloon.style.backgroundImage = `url("${imgPath}")`;
+      balloon.style.backgroundSize = "contain";
+      balloon.style.backgroundRepeat = "no-repeat";
+      balloon.style.backgroundPosition = "center";
+    }
     balloon.addEventListener("click", () => {
       document.querySelectorAll(".globo").forEach((g) => g.classList.remove("selected-globo"));
       balloon.classList.add("selected-globo");
@@ -1332,14 +1348,18 @@ function renderBalconActivity(sub) {
   const boxes = document.createElement("div");
   boxes.className = "balcon-boxes";
 
-  const icons = ["\ud83d\udd24", "\ud83c\udfaf", "\ud83d\udd1a"];
+  const icons = [
+    "assets/images/unit_1/cat1.png",
+    "assets/images/unit_1/cat2.png",
+    "assets/images/unit_1/cat3.png"
+  ];
 
   sub.positions.forEach((pos, i) => {
     const box = document.createElement("button");
     box.type = "button";
     box.className = "balcon-box";
     box.dataset.position = pos;
-    box.innerHTML = `<span class="box-icon">${icons[i] || "\u2b1c"}</span><span class="box-label">${pos}</span>`;
+    box.innerHTML = `<span class="box-icon"><img src="${icons[i] || "assets/images/unit_1/cat1.png"}" alt="${pos}" class="balcon-image" /></span><span class="box-label">${pos}</span>`;
     box.addEventListener("click", () => {
       document.querySelectorAll(".balcon-box").forEach((b) => b.classList.remove("selected-balcon"));
       box.classList.add("selected-balcon");
@@ -1364,7 +1384,8 @@ function renderIntrusoActivity(sub) {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "intruso-card";
-    card.innerHTML = `<span class="card-icon">${sub.icons[i]}</span><span class="card-label">${option}</span>`;
+    const iconPath = sub.icons[i] || "";
+    card.innerHTML = `<span class="card-icon"><img src="${iconPath}" alt="${option}" class="intruso-image" /></span><span class="card-label">${option}</span>`;
     card.addEventListener("click", () => {
       document.querySelectorAll(".intruso-card").forEach((c) => c.classList.remove("selected-intruso"));
       card.classList.add("selected-intruso");
@@ -1391,7 +1412,7 @@ function renderEscudoActivity(sub, reviewMode = false) {
   // Shield display
   const shield = document.createElement("div");
   shield.className = "escudo-shield";
-  shield.innerHTML = `<span class="shield-icon">\ud83d\udee1\ufe0f</span><span class="shield-letter">?</span>`;
+  shield.innerHTML = `<img src="assets/images/unit_1/escudo.png" alt="Escudo" class="shield-img" /><span class="shield-letter">?</span>`;
   topRow.appendChild(shield);
   container.appendChild(topRow);
 

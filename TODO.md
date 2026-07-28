@@ -1,21 +1,24 @@
-# TODO: Add castle background images to sub-activities
+# Plan de implementacion - Reemplazo de imagenes ✅ COMPLETADO
 
-## Steps
+## Actividad 1 - Globo (renderGloboActivity)
+- [x] Mapear letras a imagenes de globos: M→green, S→blue, P→yellow, L→red
+- [x] Asignar background-image inline a cada boton globo
+- [x] Actualizar CSS para quitar gradients y usar imagenes con size contain
 
-1. [x] Add `SUB_ACTIVITY_BACKGROUNDS` array in `js/app.js` with 15 image paths (b1-b15)
-2. [x] Set background image in `openSubActivity()` function using the array and add `has-castle-bg` class
-3. [x] Reset background in `closeActivity()` function
-4. [x] Add CSS styles for `.has-castle-bg` (card transparency, backdrop blur) and `.sub-activity-bg` layer in `css/styles.css`
-5. [x] Test the implementation
+## Actividad 2 - Balcon (renderBalconActivity)
+- [x] Reemplazar emojis por imagenes cat1, cat2, cat3
+- [x] Inicio → cat1.png, Medio → cat2.png, Fin → cat3.png
 
-## Changes Made
+## Actividad 3 - Intruso (renderIntrusoActivity)
+- [x] Mapear opciones a imagenes: Oso→oso.png, Olla→olla.png, Ola→ola.png, Arbol→arbol.png
+- [x] Reemplazar emoji icons por <img> tags
+- [x] Actualizar icons array en units.json
 
-### `js/app.js`
-- Added `SUB_ACTIVITY_BACKGROUNDS` constant array with paths to `assets/castle_images/b1.jpeg` through `b15.jpeg`
-- In `openSubActivity()`: set `activityZone.style.backgroundImage` using the array and added `has-castle-bg` class
-- In `closeActivity()`: reset `backgroundImage`, `backgroundSize`, `backgroundPosition`, `backgroundRepeat` and remove `has-castle-bg` class
+## Actividad 4 - Escudo (renderEscudoActivity)
+- [x] Reemplazar emoji/escudo generado con escudo.png
+- [x] Centrar el escudo arriba del timer (esteticamente) con position absolute
+- [x] Actualizar CSS de .escudo-shield (quitar clip-path, usar img absolute)
 
-### `css/styles.css`
-- Added styles for `.activity-zone.has-castle-bg` (glassmorphism card, backdrop blur on workspace/feedback)
-- Added `.sub-activity-bg` layer with proper z-index stacking inside `.unit-fullscreen .activity-content`
+## Actividad 5 - Cofre (renderCofreActivity)
+- [x] Agregar imagen cofre.png como background en cada cofre-box
 
