@@ -1681,8 +1681,14 @@ function renderCalderoActivity(sub) {
   const cauldron = document.createElement("div");
   cauldron.className = "caldero-cauldron";
   cauldron.id = "calderoCauldron";
-  cauldron.textContent = "?";
   cauldron.title = "Caldero mágico";
+
+  const cauldronText = document.createElement("span");
+  cauldronText.className = "cauldron-text";
+  cauldronText.id = "calderoText";
+  cauldronText.textContent = "?";
+  cauldron.appendChild(cauldronText);
+
   container.appendChild(cauldron);
 
   // Hint text
@@ -1707,8 +1713,11 @@ function renderCalderoActivity(sub) {
       state.selectedAnswer = option;
       // Show the selected syllable in the cauldron
       const cal = $("#calderoCauldron");
+      const calText = $("#calderoText");
+      if (calText) {
+        calText.textContent = option;
+      }
       if (cal) {
-        cal.textContent = option;
         cal.classList.add("bubbling");
         setTimeout(() => cal.classList.remove("bubbling"), 600);
       }
@@ -1871,7 +1880,7 @@ function renderBingoActivity(sub) {
   // Title
   const title = document.createElement("h3");
   title.className = "bingo-title";
-  title.textContent = "🎯 Cartón de Bingo";
+  title.textContent = "Cartón de Bingo";
   container.appendChild(title);
 
   // Bingo grid (2 rows x 3 cols)
@@ -1939,7 +1948,7 @@ function renderBingoActivity(sub) {
   const progress = document.createElement("div");
   progress.className = "bingo-progress";
   progress.id = "bingoProgress";
-  progress.textContent = "🏁 Presiona \"¡Jugar!\" para comenzar";
+  progress.textContent = "Presiona \"¡Jugar!\" para comenzar";
   container.appendChild(progress);
 
   // Hint / current target display
@@ -2124,7 +2133,7 @@ function renderRedobleActivity(sub, reviewMode = false) {
   const wordDisplay = document.createElement("div");
   wordDisplay.className = "redoble-word";
   wordDisplay.id = "redobleWord";
-  wordDisplay.textContent = "🎵";
+  wordDisplay.textContent = "";
   container.appendChild(wordDisplay);
 
   // Status message
@@ -2138,7 +2147,7 @@ function renderRedobleActivity(sub, reviewMode = false) {
   const startBtn = document.createElement("button");
   startBtn.className = "redoble-comenzar";
   startBtn.id = "redobleComenzar";
-  startBtn.textContent = "🥁 ¡Comenzar!";
+  startBtn.textContent = "¡Comenzar!";
   startBtn.addEventListener("click", () => {
     playRedobleRound();
   });
@@ -2244,7 +2253,7 @@ function checkRedobleAnswer() {
       celebrateConfetti();
 
       const statusMsg = document.getElementById("redobleStatus");
-      if (statusMsg) statusMsg.textContent = "🥁 ¡Redoble completado!";
+      if (statusMsg) statusMsg.textContent = "¡Redoble completado!";
 
       // Play correct sound + feedback, then return to map
       playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {

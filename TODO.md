@@ -1,24 +1,10 @@
-# Plan de implementacion - Reemplazo de imagenes ✅ COMPLETADO
+# TODO - Replace circles with tambor image in Activity 10
 
-## Actividad 1 - Globo (renderGloboActivity)
-- [x] Mapear letras a imagenes de globos: M→green, S→blue, P→yellow, L→red
-- [x] Asignar background-image inline a cada boton globo
-- [x] Actualizar CSS para quitar gradients y usar imagenes con size contain
+## Steps
 
-## Actividad 2 - Balcon (renderBalconActivity)
-- [x] Reemplazar emojis por imagenes cat1, cat2, cat3
-- [x] Inicio → cat1.png, Medio → cat2.png, Fin → cat3.png
-
-## Actividad 3 - Intruso (renderIntrusoActivity)
-- [x] Mapear opciones a imagenes: Oso→oso.png, Olla→olla.png, Ola→ola.png, Arbol→arbol.png
-- [x] Reemplazar emoji icons por <img> tags
-- [x] Actualizar icons array en units.json
-
-## Actividad 4 - Escudo (renderEscudoActivity)
-- [x] Reemplazar emoji/escudo generado con escudo.png
-- [x] Centrar el escudo arriba del timer (esteticamente) con position absolute
-- [x] Actualizar CSS de .escudo-shield (quitar clip-path, usar img absolute)
-
-## Actividad 5 - Cofre (renderCofreActivity)
-- [x] Agregar imagen cofre.png como background en cada cofre-box
+- [x] 1. Analyze the codebase (activity 10 = redoble activity)
+- [x] 2. Confirm plan with user
+- [x] 3. Edit `css/styles.css` — Update `.redoble-number` to use tambor.png as background
+- [x] 4. Verify `js/app.js` — No JS changes needed; the `renderRedobleActivity()` already creates `.redoble-number` buttons with the number text. The drum image is applied via CSS.
+- [ ] 5. Test by opening activity 10 (open index.html with Live Server)
 
