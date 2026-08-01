@@ -1921,7 +1921,7 @@ function renderBingoActivity(sub) {
       playTone("success");
 
       // Check if all 6 marked → BINGO!
-      if (state.bingoMarked.length >= sub.syllables.length) {
+      if (state.bingoMarked.length >= sub.answer.length) {
         state.bingoPlaying = false;
         state.selectedAnswer = true; // signal complete
         feedback.className = "feedback ok";
@@ -1981,7 +1981,9 @@ function renderBingoActivity(sub) {
 
 function playNextBingoSyllable(sub) {
   if (!state.bingoPlaying) return;
-  const remaining = sub.syllables.filter((s) => !state.bingoMarked.includes(s));
+  // Only the syllables in sub.answer (PA, LE, SO, TU, MI, RO) are ever spoken.
+  // The distractors (Ti, Mo, Si) remain visible on the card but are never a target.
+  const remaining = sub.answer.filter((s) => !state.bingoMarked.includes(s));
   if (remaining.length === 0) return;
 
   // Pick random remaining syllable
@@ -1992,7 +1994,7 @@ function playNextBingoSyllable(sub) {
   if (targetDisplay) targetDisplay.textContent = `Busca...`;
 
   const progress = $("#bingoProgress");
-  if (progress) progress.textContent = `Marcadas: ${state.bingoMarked.length}/${sub.syllables.length}`;
+  if (progress) progress.textContent = `Marcadas: ${state.bingoMarked.length}/${sub.answer.length}`;
 
   // Try to play MP3; fallback to speech synth
   const phonemePath = `assets/phonemes/${pick.toLowerCase()}.mp3`;
@@ -2305,7 +2307,9 @@ function checkRedobleAnswer() {
 }
 
 /* =============================================
-   BANQUETE ACTIVITY — Conveyor belt cashier game
+   BANQUETE ACTIVITY — Infinite conveyor belt
+   Products move as individual instances LECHE → PAN → SOPA → LECHE → ...
+   Each product disappears when crossing the checkout line (left side).
    ============================================= */
 function renderBanqueteActivity(sub, reviewMode = false) {
   const container = document.createElement("div");
@@ -2319,7 +2323,13 @@ function renderBanqueteActivity(sub, reviewMode = false) {
     currentWord: null,
     phase: "idle", // idle → playing → answering → done
     correctCount: 0,
-    selectedLabel: null
+    selectedLabel: null,
+    beltInterval: null,
+    beltRAF: null,
+    products: [],
+    productIndex: 0,
+    spawnTimeout: null,
+    cleanup: null
   };
 
   if (reviewMode) {
@@ -2335,33 +2345,14 @@ function renderBanqueteActivity(sub, reviewMode = false) {
   const beltContainer = document.createElement("div");
   beltContainer.className = "banquete-belt-container";
 
+  // Checkout line indicator
+  const checkoutLine = document.createElement("div");
+  checkoutLine.className = "banquete-checkout-line";
+  beltContainer.appendChild(checkoutLine);
+
   const belt = document.createElement("div");
   belt.className = "banquete-belt";
   belt.id = "banqueteBelt";
-
-  // Create product labels
-  sub.words.forEach((word, i) => {
-    const label = document.createElement("button");
-    label.type = "button";
-    label.className = "banquete-label";
-    label.dataset.label = word.label;
-    label.textContent = word.label;
-    label.style.animationDelay = `${i * 0.3}s`;
-
-    label.addEventListener("click", () => {
-      if (state.banquete.phase !== "answering") return;
-      // Deselect others
-      document.querySelectorAll(".banquete-label").forEach((l) => l.classList.remove("selected-banquete"));
-      label.classList.add("selected-banquete");
-      state.banquete.selectedLabel = word.label;
-      state.selectedAnswer = word.label;
-      // Auto-check
-      checkBanqueteAnswer();
-    });
-
-    belt.appendChild(label);
-  });
-
   beltContainer.appendChild(belt);
   container.appendChild(beltContainer);
 
@@ -2397,12 +2388,38 @@ function renderBanqueteActivity(sub, reviewMode = false) {
   });
   container.appendChild(startBtn);
 
+  // Store cleanup reference
+  state.banquete.cleanup = () => {
+    if (state.banquete.beltInterval) {
+      clearInterval(state.banquete.beltInterval);
+      state.banquete.beltInterval = null;
+    }
+    if (state.banquete.beltRAF) {
+      cancelAnimationFrame(state.banquete.beltRAF);
+      state.banquete.beltRAF = null;
+    }
+    if (state.banquete.spawnTimeout) {
+      clearTimeout(state.banquete.spawnTimeout);
+      state.banquete.spawnTimeout = null;
+    }
+    // Remove all product elements
+    document.querySelectorAll(".banquete-label").forEach((el) => el.remove());
+    state.banquete.products = [];
+    state.banquete.productIndex = 0;
+  };
+
   activityWorkspace.appendChild(container);
 }
 
+/**
+ * Start the infinite belt and the first round
+ */
 function startBanqueteRound(sub) {
   const banquete = state.banquete;
   if (!banquete || banquete.phase === "done") return;
+
+  // Clean up any existing belt from previous round FIRST
+  if (banquete.cleanup) banquete.cleanup();
 
   // Pick a random word for this round
   const pick = banquete.words[Math.floor(Math.random() * banquete.words.length)];
@@ -2419,10 +2436,12 @@ function startBanqueteRound(sub) {
   const orderDisplay = document.getElementById("banqueteOrder");
   if (orderDisplay) orderDisplay.textContent = "¡Escucha atentamente!";
 
-  // Reset labels
-  document.querySelectorAll(".banquete-label").forEach((l) => l.classList.remove("selected-banquete"));
+  // Reset selection
   state.banquete.selectedLabel = null;
   state.selectedAnswer = null;
+
+  // Start the infinite belt spawning products
+  startBanqueteBelt(sub);
 
   // Play the word audio
   const audio = new Audio(pick.audio);
@@ -2433,18 +2452,167 @@ function startBanqueteRound(sub) {
     if (statusMsg) statusMsg.textContent = "¿Qué producto pidió el cliente? ¡Haz clic en la etiqueta correcta!";
 
     const orderDisplay = document.getElementById("banqueteOrder");
-    if (orderDisplay) orderDisplay.textContent = `"${pick.label}"`;
+    if (orderDisplay) {
+      orderDisplay.innerHTML = "";
+      if (pick.image) {
+        const orderImg = document.createElement("img");
+        orderImg.className = "banquete-order-image";
+        orderImg.src = pick.image;
+        orderImg.alt = pick.label;
+        orderImg.draggable = false;
+        orderDisplay.appendChild(orderImg);
+      } else {
+        orderDisplay.textContent = `"${pick.label}"`;
+      }
+    }
 
     const roundDisplay = document.getElementById("banqueteRound");
     if (roundDisplay) roundDisplay.textContent = `Producto: ${pick.label}`;
-
-    // Start belt animation
-    document.querySelectorAll(".banquete-label").forEach((l) => {
-      l.style.animation = "slideLabels 2s linear infinite";
-    });
   });
 }
 
+/**
+ * Spawn products infinitely: LECHE → PAN → SOPA → LECHE → ...
+ * Products move from right to left and disappear at the checkout line.
+ */
+function startBanqueteBelt(sub) {
+  const banquete = state.banquete;
+  if (!banquete) return;
+
+  const belt = document.getElementById("banqueteBelt");
+  if (!belt) return;
+
+const BELT_WIDTH = belt.parentElement.clientWidth || 700;
+  const PRODUCT_WIDTH = 180;
+  const SPAWN_INTERVAL = 3500; // ms between spawns — ensures ~250px gap between products
+  const SPEED = 1.5; // pixels per frame (~90px/s at 60fps)
+  const CHECKOUT_X = 80; // checkout line position (left)
+
+  // Cleanup any existing belt loop
+  if (banquete.beltInterval) {
+    clearInterval(banquete.beltInterval);
+  }
+  if (banquete.beltRAF) {
+    cancelAnimationFrame(banquete.beltRAF);
+  }
+  banquete.products = [];
+  banquete.productIndex = 0;
+
+  // Product label order: LECHE (index 0), PAN (index 1), SOPA (index 2) — repeat
+  const productLabels = sub.words.map((w) => w.label);
+  let nextProductIdx = 0;
+
+  /**
+   * Create a new product element and add it to the belt
+   */
+  function spawnProduct() {
+    if (banquete.phase === "done") return;
+
+    const label = productLabels[nextProductIdx % productLabels.length];
+    nextProductIdx++;
+
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "banquete-label";
+    el.dataset.label = label;
+    el.style.left = `${BELT_WIDTH}px`;
+
+    // Use the product image (pan.png, sopa.png, leche.png) instead of text
+    const word = sub.words.find((w) => w.label === label);
+    const imgPath = word?.image;
+    if (imgPath) {
+      el.classList.add("has-image");
+      const img = document.createElement("img");
+      img.className = "banquete-label-image";
+      img.src = imgPath;
+      img.alt = label;
+      img.draggable = false;
+      el.appendChild(img);
+    } else {
+      el.textContent = label;
+    }
+
+    // Click handler for answering
+    el.addEventListener("click", (e) => {
+      if (banquete.phase !== "answering") return;
+      // Deselect others
+      document.querySelectorAll(".banquete-label").forEach((l) => l.classList.remove("selected-banquete"));
+      el.classList.add("selected-banquete");
+      banquete.selectedLabel = label;
+      state.selectedAnswer = label;
+      // Auto-check
+      checkBanqueteAnswer();
+    });
+
+    belt.appendChild(el);
+
+    const product = {
+      el: el,
+      x: BELT_WIDTH,
+      label: label,
+      alive: true
+    };
+
+    banquete.products.push(product);
+  }
+
+// Spawn first product immediately; let the interval handle the rest evenly spaced
+  spawnProduct();
+
+  // Spawn new products periodically
+  banquete.beltInterval = setInterval(() => {
+    if (banquete.phase === "done") return;
+    spawnProduct();
+  }, SPAWN_INTERVAL);
+
+  /**
+   * Animation loop — move all products left
+   */
+  function animateBelt() {
+    if (banquete.phase === "done") {
+      // Clean all products
+      banquete.products.forEach((p) => {
+        if (p.el && p.el.parentNode) p.el.remove();
+      });
+      banquete.products = [];
+      return;
+    }
+
+    banquete.beltRAF = requestAnimationFrame(animateBelt);
+
+    for (let i = banquete.products.length - 1; i >= 0; i--) {
+      const p = banquete.products[i];
+      if (!p.alive) continue;
+
+      p.x -= SPEED;
+
+      // Check if product has crossed the checkout line (disappear)
+      if (p.x + PRODUCT_WIDTH < CHECKOUT_X) {
+        p.alive = false;
+        if (p.el && p.el.parentNode) {
+          p.el.classList.add("tagged-out");
+          setTimeout(() => {
+            if (p.el && p.el.parentNode) p.el.remove();
+          }, 400);
+        }
+        banquete.products.splice(i, 1);
+        continue;
+      }
+
+      // Update position
+      if (p.el) {
+        p.el.style.left = `${p.x}px`;
+      }
+    }
+  }
+
+  // Start animation loop
+  banquete.beltRAF = requestAnimationFrame(animateBelt);
+}
+
+/**
+ * Check the user's answer in the banquete activity
+ */
 function checkBanqueteAnswer() {
   const banquete = state.banquete;
   if (!banquete || banquete.phase !== "answering" || banquete.selectedLabel === null) return;
@@ -2457,11 +2625,6 @@ function checkBanqueteAnswer() {
     banquete.round++;
     playTone("success");
 
-    // Stop belt animation
-    document.querySelectorAll(".banquete-label").forEach((l) => {
-      l.style.animation = "";
-    });
-
     // Check if all rounds completed
     if (banquete.round >= banquete.totalRounds) {
       banquete.phase = "done";
@@ -2472,6 +2635,9 @@ function checkBanqueteAnswer() {
 
       const statusMsg = document.getElementById("banqueteStatus");
       if (statusMsg) statusMsg.textContent = "¡Banquete servido! Todos los productos cobrados.";
+
+      // Cleanup belt
+      if (banquete.cleanup) banquete.cleanup();
 
       // Play correct sound + feedback, then return to map
       playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
@@ -2491,6 +2657,7 @@ function checkBanqueteAnswer() {
     if (orderDisplay) orderDisplay.textContent = " Nueva orden...";
 
     // Auto-start next round after a short delay
+    // Belt keeps running continuously — just pick a new word
     setTimeout(() => {
       startBanqueteRound(sub);
     }, 2000);
@@ -2543,7 +2710,7 @@ function renderMensajeActivity(sub, reviewMode = false) {
   const listenBtn = document.createElement("button");
   listenBtn.className = "primary-btn mensaje-listen-btn";
   listenBtn.id = "mensajeListenBtn";
-  listenBtn.textContent = "🔊 Escuchar";
+  listenBtn.textContent = "Escuchar";
   listenBtn.addEventListener("click", () => {
     const audio = new Audio(sub.audioFile);
     safePlayAudio(audio);
@@ -2641,7 +2808,7 @@ function renderPasajeActivity(sub, reviewMode = false) {
   const listenBtn = document.createElement("button");
   listenBtn.className = "primary-btn pasaje-listen-btn";
   listenBtn.id = "pasajeListenBtn";
-  listenBtn.textContent = "🔊 Escuchar oración";
+  listenBtn.textContent = "Escuchar oración";
   listenBtn.addEventListener("click", () => {
     const audio = new Audio(sub.sentenceAudio);
     safePlayAudio(audio);
@@ -3172,6 +3339,11 @@ function closeActivity() {
   if (state.palabraOcultaCleanup) {
     state.palabraOcultaCleanup();
     state.palabraOcultaCleanup = null;
+  }
+  // Cleanup banquete belt if active
+  if (state.banquete && state.banquete.cleanup) {
+    state.banquete.cleanup();
+    state.banquete = null;
   }
 
   // Reset background image
