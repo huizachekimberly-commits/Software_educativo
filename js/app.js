@@ -734,6 +734,16 @@ function allSubActivitiesCompleted(unit) {
   return unit.subActivities.every((_, i) => isSubActivityCompleted(unit.id, i));
 }
 
+function isUnitLocked(unit) {
+  if (!unit.requires) return false;
+  const requiredUnit = state.data?.units?.find((u) => u.id === unit.requires);
+  if (!requiredUnit) return false;
+  if (requiredUnit.subActivities && requiredUnit.subActivities.length > 0) {
+    return !allSubActivitiesCompleted(requiredUnit);
+  }
+  return !state.completed.includes(requiredUnit.id);
+}
+
 function completeSubActivity(unitId, index) {
   const key = getSubKey(unitId, index);
   if (!state.completed.includes(key)) {
@@ -761,7 +771,9 @@ function renderUnits() {
     const isUnitCompleted = unit.subActivities
       ? allSubActivitiesCompleted(unit)
       : state.completed.includes(unit.id);
+    const isLocked = isUnitLocked(unit);
     card.classList.toggle("completed", isUnitCompleted);
+    card.classList.toggle("locked", isLocked);
     card.querySelector(".unit-art").classList.add(unit.theme);
     card.querySelector(".unit-art").dataset.icon = unit.icon;
     card.querySelector(".unit-kicker").textContent = `Unidad ${unit.number}`;
@@ -771,7 +783,14 @@ function renderUnits() {
       .slice(0, 3)
       .map((activity) => `<span><strong>\u2022</strong>${activity}</span>`)
       .join("");
-    card.querySelector(".unit-start").addEventListener("click", () => openActivity(unit.id));
+    const startButton = card.querySelector(".unit-start");
+    startButton.addEventListener("click", () => openActivity(unit.id));
+    if (isLocked) {
+      const requiredUnit = state.data.units.find((u) => u.id === unit.requires);
+      const requiredName = requiredUnit ? `la ${requiredUnit.title}` : "la unidad anterior";
+      startButton.textContent = "🔒 Completa " + requiredName;
+      startButton.classList.add("locked-btn");
+    }
     unitGrid.appendChild(card);
   });
 }
@@ -803,9 +822,11 @@ function renderMap() {
     const stop = document.createElement("button");
     stop.type = "button";
     stop.className = "map-stop";
+    const locked = isUnitLocked(unit);
+    if (locked) stop.classList.add("map-stop-locked");
     stop.style.left = positions[index].left;
     stop.style.top = positions[index].top;
-    stop.innerHTML = `${unit.icon} Unidad ${unit.number}<small>${unit.title}</small>`;
+    stop.innerHTML = `${locked ? "🔒" : unit.icon} Unidad ${unit.number}<small>${unit.title}</small>`;
     stop.addEventListener("click", () => openActivity(unit.id));
     mapBoard.appendChild(stop);
   });
@@ -857,8 +878,27 @@ function renderProgress() {
     : `<span class="badge">Comienza una unidad para ganar recompensas</span>`;
 }
 
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "reino-toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add("show"), 10);
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 2600);
+}
+
 function openActivity(unitId) {
   const unit = state.data.units.find((item) => item.id === unitId);
+  if (!unit) return;
+  if (isUnitLocked(unit)) {
+    const requiredUnit = state.data.units.find((u) => u.id === unit.requires);
+    showToast(`Completa ${requiredUnit ? requiredUnit.title : "la unidad anterior"} para desbloquear esta unidad.`);
+    playTone("error");
+    return;
+  }
   state.activeUnit = unit;
   state.selectedAnswer = null;
   state.sequenceAnswer = [];
@@ -1022,8 +1062,24 @@ function playUnitSound(unitId, subIndex) {
   } else {
     audioPath = `assets/unit_${unitNumber}_sounds/activity_${activityNumber}.mp3`;
   }
-  const audio = new Audio(audioPath);
-  safePlayAudio(audio);
+
+  // Narración por voz si no existe el MP3 (Unidad 2 aún no tiene carpeta de sonidos)
+  const sub = unit?.subActivities?.[subIndex];
+  fetch(audioPath, { method: "HEAD" })
+    .then((res) => {
+      if (res.ok) {
+        const audio = new Audio(audioPath);
+        safePlayAudio(audio);
+      } else if (sub?.speak) {
+        speak(sub.speak);
+      } else {
+        speak(sub?.prompt || "Escucha con atención la instrucción.");
+      }
+    })
+    .catch(() => {
+      if (sub?.speak) speak(sub.speak);
+      else speak(sub?.prompt || "Escucha con atención la instrucción.");
+    });
 }
 
 /* =============================================
@@ -1074,7 +1130,10 @@ function renderCastleMap(unit) {
   activityScene.hidden = true;
   activityZone.classList.add("unit-fullscreen");
   activityUnit.textContent = `Unidad ${unit.number}: ${unit.title}`;
-  activityTitle.textContent = "Mapa del Castillo \u2014 Elige una actividad";
+  const isForest = unit.id === "bosque";
+  activityTitle.textContent = isForest
+    ? "Mapa del Bosque \u2014 Elige una actividad"
+    : "Mapa del Castillo \u2014 Elige una actividad";
   activityPrompt.textContent = "Completa cada actividad para desbloquear la siguiente.";
   feedback.className = "feedback";
   feedback.textContent = `Progreso: ${countCompletedSubs(unit.id, unit.subActivities.length)}/${unit.subActivities.length} actividades completadas.`;
@@ -1088,7 +1147,7 @@ function renderCastleMap(unit) {
   const allDone = done === total;
 
   const container = document.createElement("div");
-  container.className = "castle-map-container";
+  container.className = unit.id === "bosque" ? "castle-map-container forest-map" : "castle-map-container";
   if (unit.castleMapImage) {
     container.style.backgroundImage = `url("${unit.castleMapImage}")`;
   }
@@ -1198,12 +1257,20 @@ function openSubActivity(unitId, index) {
   state.escudoStarted = false;
   state.cofreDropped = null;
   state.redoble = null;
+  state.frasePlaced = null;
 
   activityScene.hidden = true;
   activityZone.classList.add("unit-fullscreen");
 
+  // Bosque unit uses a themed CSS gradient background instead of castle images
+  if (unit.id === "bosque") {
+    activityZone.classList.add("has-forest-bg");
+  } else {
+    activityZone.classList.remove("has-forest-bg");
+  }
+
   // Set background image inside the activity card (b1 for index 0, b2 for index 1, etc.)
-  if (index >= 0 && index < SUB_ACTIVITY_BACKGROUNDS.length) {
+  if (unit.id !== "bosque" && index >= 0 && index < SUB_ACTIVITY_BACKGROUNDS.length) {
     let bgLayer = document.getElementById("subActivityBg");
     if (!bgLayer) {
       bgLayer = document.createElement("div");
@@ -1286,6 +1353,21 @@ function openSubActivity(unitId, index) {
       break;
     case "palabra-oculta":
       renderPalabraOcultaActivity(sub, alreadyCompleted);
+      break;
+    case "oracion":
+      renderOracionActivity(sub);
+      break;
+    case "puente":
+      renderPuenteActivity(sub);
+      break;
+    case "frase":
+      renderFraseActivity(sub);
+      break;
+    case "detective":
+      renderDetectiveActivity(sub);
+      break;
+    case "accion":
+      renderAccionActivity(sub);
       break;
     default:
       feedback.textContent = "Actividad no disponible.";
@@ -3196,6 +3278,405 @@ function renderPergaminoActivity(sub, reviewMode = false) {
   setTimeout(() => input.focus(), 300);
 }
 
+/* =============================================
+   ORACION ACTIVITY (Unidad 2) — "El gato toma de la ___"
+   ============================================= */
+function renderOracionActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "oracion-container";
+
+  // Scene: cat + bowl
+  const scene = document.createElement("div");
+  scene.className = "oracion-scene";
+  scene.id = "oracionScene";
+
+  const cat = document.createElement("div");
+  cat.className = "oracion-cat";
+  cat.id = "oracionCat";
+  cat.innerHTML = `<img src="${sub.catImage || "assets/images/unit_1/cat1.png"}" alt="Gato" class="oracion-cat-img" />`;
+
+  const bowl = document.createElement("div");
+  bowl.className = "oracion-bowl";
+  bowl.id = "oracionBowl";
+  bowl.innerHTML = `<img src="${sub.bowlImage || "assets/images/unit_1/sopa.png"}" alt="Plato" class="oracion-bowl-img" />`;
+
+  scene.append(cat, bowl);
+  container.appendChild(scene);
+
+  // Sentence display: prefix + blank
+  const sentence = document.createElement("div");
+  sentence.className = "oracion-sentence";
+  sentence.innerHTML = `<span>${sub.prefix}</span> <span class="oracion-blank" id="oracionBlank">___</span>`;
+  container.appendChild(sentence);
+
+  // Options
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "oracion-options";
+
+  sub.options.forEach((option) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "oracion-option";
+    btn.dataset.label = option.label;
+    const isImage = String(option.icon || "").includes(".");
+    btn.innerHTML = isImage
+      ? `<span class="oracion-option-icon"><img src="${option.icon}" alt="${option.label}" class="oracion-option-img" /></span><span class="oracion-option-label">${option.label}</span>`
+      : `<span class="oracion-option-emoji">${option.icon}</span><span class="oracion-option-label">${option.label}</span>`;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".oracion-option").forEach((b) => b.classList.remove("selected-oracion"));
+      btn.classList.add("selected-oracion");
+      state.selectedAnswer = option.label;
+      const blank = document.getElementById("oracionBlank");
+      if (blank) {
+        blank.textContent = option.label;
+        blank.classList.add("filled-oracion");
+      }
+      playTone("tap");
+    });
+    optionsRow.appendChild(btn);
+  });
+
+  container.appendChild(optionsRow);
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   PUENTE ACTIVITY (Unidad 2) — "El mono come una ___"
+   ============================================= */
+function renderPuenteActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "puente-container";
+
+  // River scene with monkey
+  const scene = document.createElement("div");
+  scene.className = "puente-scene";
+  scene.id = "puenteScene";
+
+  const monkey = document.createElement("div");
+  monkey.className = "puente-monkey";
+  monkey.id = "puenteMonkey";
+  monkey.textContent = sub.monkeyEmoji || "🐵";
+
+  const plankRow = document.createElement("div");
+  plankRow.className = "puente-planks";
+  plankRow.id = "puentePlanks";
+
+  const farSide = document.createElement("div");
+  farSide.className = "puente-far-side";
+  farSide.textContent = "🌴";
+
+  scene.append(monkey, plankRow, farSide);
+  container.appendChild(scene);
+
+  // Sentence display
+  const sentence = document.createElement("div");
+  sentence.className = "puente-sentence";
+  sentence.innerHTML = `<span>${sub.prefix}</span> <span class="puente-blank" id="puenteBlank">___</span>`;
+  container.appendChild(sentence);
+
+  // Options
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "puente-options";
+
+  sub.options.forEach((option) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "puente-option";
+    btn.dataset.label = option.label;
+    const isImage = String(option.icon || "").includes(".");
+    btn.innerHTML = isImage
+      ? `<span class="puente-option-icon"><img src="${option.icon}" alt="${option.label}" class="puente-option-img" /></span><span class="puente-option-label">${option.label}</span>`
+      : `<span class="puente-option-emoji">${option.icon}</span><span class="puente-option-label">${option.label}</span>`;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".puente-option").forEach((b) => b.classList.remove("selected-puente"));
+      btn.classList.add("selected-puente");
+      state.selectedAnswer = option.label;
+      const blank = document.getElementById("puenteBlank");
+      if (blank) {
+        blank.textContent = option.label;
+        blank.classList.add("filled-puente");
+      }
+      playTone("tap");
+    });
+    optionsRow.appendChild(btn);
+  });
+
+  container.appendChild(optionsRow);
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   FRASE ACTIVITY (Unidad 2) — Drag the completing sentence
+   ============================================= */
+function renderFraseActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "frase-container";
+
+  // Story paragraph
+  const paragraph = document.createElement("div");
+  paragraph.className = "frase-paragraph";
+  paragraph.id = "fraseParagraph";
+  paragraph.textContent = sub.story;
+  container.appendChild(paragraph);
+
+  // Drop zone (blank)
+  const dropZone = document.createElement("div");
+  dropZone.className = "frase-dropzone";
+  dropZone.id = "fraseDropZone";
+  dropZone.textContent = "Arrastra aquí la frase que completa la idea…";
+  container.appendChild(dropZone);
+
+  // Options: one of them is a draggable box
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "frase-options";
+
+  sub.options.forEach((option) => {
+    const box = document.createElement("div");
+    box.className = "frase-option";
+    box.dataset.frase = option;
+    box.textContent = option;
+    box.draggable = true;
+    box.tabIndex = 0;
+
+    box.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", option);
+      box.classList.add("dragging-frase");
+    });
+    box.addEventListener("dragend", () => box.classList.remove("dragging-frase"));
+    box.addEventListener("click", () => {
+      // Fallback for touch: click = place into drop zone
+      placeFrase(sub, option, box);
+    });
+    optionsRow.appendChild(box);
+  });
+
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("drag-over-frase");
+  });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over-frase"));
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over-frase");
+    const frase = e.dataTransfer.getData("text/plain");
+    const box = [...optionsRow.querySelectorAll(".frase-option")].find((b) => b.dataset.frase === frase);
+    placeFrase(sub, frase, box);
+  });
+
+  container.appendChild(optionsRow);
+  activityWorkspace.appendChild(container);
+}
+
+function placeFrase(sub, frase, box) {
+  const dropZone = document.getElementById("fraseDropZone");
+  const paragraph = document.getElementById("fraseParagraph");
+  if (!dropZone || !paragraph) return;
+  if (dropZone.dataset.placed) return; // already placed
+
+  dropZone.dataset.placed = "true";
+  dropZone.textContent = frase;
+  dropZone.classList.add("placed-frase");
+
+  // Mark the chosen box and disable the others
+  document.querySelectorAll(".frase-option").forEach((b) => {
+    b.draggable = false;
+    b.style.pointerEvents = "none";
+    b.classList.add("used-frase");
+  });
+  if (box) box.classList.add("chosen-frase");
+
+  // Update paragraph with completed sentence
+  paragraph.textContent = sub.story + " " + frase;
+
+  state.selectedAnswer = frase;
+  playTone("tap");
+}
+
+/* =============================================
+   DETECTIVE ACTIVITY (Unidad 2) — Visual clues
+   ============================================= */
+function renderDetectiveActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "detective-container";
+
+  // Scene with visual clues
+  const scene = document.createElement("div");
+  scene.className = "detective-scene";
+  scene.id = "detectiveScene";
+
+  const cluesRow = document.createElement("div");
+  cluesRow.className = "detective-clues";
+  sub.clues.forEach((clue, i) => {
+    const clueCard = document.createElement("div");
+    clueCard.className = "detective-clue";
+    const icons = ["🛏️", "🛌"];
+    clueCard.innerHTML = `<span class="detective-clue-icon">${icons[i] || "🔍"}</span><span class="detective-clue-label">${clue}</span>`;
+    cluesRow.appendChild(clueCard);
+  });
+
+  const detective = document.createElement("div");
+  detective.className = "detective-magnifier";
+  detective.textContent = "🔍";
+
+  scene.append(detective, cluesRow);
+  container.appendChild(scene);
+
+  // Question
+  const question = document.createElement("p");
+  question.className = "detective-question";
+  question.textContent = sub.question;
+  container.appendChild(question);
+
+  // Options
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "detective-options";
+
+  sub.options.forEach((option) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "detective-option";
+    btn.dataset.label = option.label;
+    const isImage = String(option.icon || "").includes(".");
+    btn.innerHTML = isImage
+      ? `<span class="detective-option-icon"><img src="${option.icon}" alt="${option.label}" class="detective-option-img" /></span><span class="detective-option-label">${option.label}</span>`
+      : `<span class="detective-option-emoji">${option.icon}</span><span class="detective-option-label">${option.label}</span>`;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".detective-option").forEach((b) => b.classList.remove("selected-detective"));
+      btn.classList.add("selected-detective");
+      state.selectedAnswer = option.label;
+      playTone("tap");
+    });
+    optionsRow.appendChild(btn);
+  });
+
+  container.appendChild(optionsRow);
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   ACCION ACTIVITY (Unidad 2) — "El niño está ___"
+   ============================================= */
+function renderAccionActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "accion-container";
+
+  // Animation scene: running kid
+  const scene = document.createElement("div");
+  scene.className = "accion-scene";
+  scene.id = "accionScene";
+
+  const runner = document.createElement("div");
+  runner.className = "accion-runner";
+  runner.id = "accionRunner";
+  runner.textContent = "🏃";
+
+  const trail = document.createElement("div");
+  trail.className = "accion-trail";
+  trail.id = "accionTrail";
+
+  scene.append(trail, runner);
+  container.appendChild(scene);
+
+  // Sentence display
+  const sentence = document.createElement("div");
+  sentence.className = "accion-sentence";
+  sentence.innerHTML = `<span>${sub.prefix}</span> <span class="accion-blank" id="accionBlank">___</span>`;
+  container.appendChild(sentence);
+
+  // Options
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "accion-options";
+
+  sub.options.forEach((option) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "accion-option";
+    btn.dataset.label = option.label;
+    const isImage = String(option.icon || "").includes(".");
+    btn.innerHTML = isImage
+      ? `<span class="accion-option-icon"><img src="${option.icon}" alt="${option.label}" class="accion-option-img" /></span><span class="accion-option-label">${option.label}</span>`
+      : `<span class="accion-option-emoji">${option.icon}</span><span class="accion-option-label">${option.label}</span>`;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".accion-option").forEach((b) => b.classList.remove("selected-accion"));
+      btn.classList.add("selected-accion");
+      state.selectedAnswer = option.label;
+      const blank = document.getElementById("accionBlank");
+      if (blank) {
+        blank.textContent = option.label;
+        blank.classList.add("filled-accion");
+      }
+      playTone("tap");
+    });
+    optionsRow.appendChild(btn);
+  });
+
+  container.appendChild(optionsRow);
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   ANIMATE SUCCESS — per-scene celebration for Unidad 2
+   ============================================= */
+function animateActivitySuccess(sub) {
+  const workspace = activityWorkspace;
+  if (!workspace) return;
+
+  // Mark container as success (enables success animations)
+  workspace.classList.add("activity-success");
+  workspace.classList.add(`success-${sub.type}`);
+
+  switch (sub.type) {
+    case "oracion": {
+      // Cat walks to the bowl and eats
+      const cat = document.getElementById("oracionCat");
+      const bowl = document.getElementById("oracionBowl");
+      if (cat) cat.classList.add("cat-walks-to-bowl");
+      if (bowl) bowl.classList.add("bowl-steam");
+      break;
+    }
+    case "puente": {
+      // Planks drop in sequence, then monkey crosses
+      const planks = document.getElementById("puentePlanks");
+      const monkey = document.getElementById("puenteMonkey");
+      if (planks) {
+        for (let i = 0; i < 3; i++) {
+          const plank = document.createElement("div");
+          plank.className = "puente-plank";
+          plank.style.animationDelay = `${i * 0.35}s`;
+          planks.appendChild(plank);
+        }
+        planks.classList.add("planks-drop");
+      }
+      setTimeout(() => {
+        if (monkey) monkey.classList.add("monkey-crosses");
+      }, 1100);
+      break;
+    }
+    case "frase": {
+      // Paragraph illuminates
+      const paragraph = document.getElementById("fraseParagraph");
+      if (paragraph) paragraph.classList.add("paragraph-lit");
+      break;
+    }
+    case "detective": {
+      // Clues glow, detective finds answer
+      const scene = document.getElementById("detectiveScene");
+      if (scene) scene.classList.add("detective-solved");
+      break;
+    }
+    case "accion": {
+      // Runner speeds up + victory
+      const runner = document.getElementById("accionRunner");
+      const trail = document.getElementById("accionTrail");
+      if (runner) runner.classList.add("runner-victory");
+      if (trail) trail.classList.add("trail-sprint");
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 function checkAnswer() {
   if (!state.activeUnit) return;
   // Prevent rapid double-clicks from repeating audio/confetti or cutting audio
@@ -3247,6 +3728,13 @@ case "bingo":
       case "pasaje":
         isCorrect = sub.answer.every((item, idx) => state.sequenceAnswer[idx] === item);
         break;
+      case "oracion":
+      case "puente":
+      case "frase":
+      case "detective":
+      case "accion":
+        isCorrect = state.selectedAnswer === sub.answer;
+        break;
       default:
         isCorrect = false;
     }
@@ -3257,6 +3745,9 @@ case "bingo":
       completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
       playTone("success");
       celebrateConfetti();
+
+      // Run per-scene success animations (cat eats, monkey crosses, etc.)
+      animateActivitySuccess(sub);
 
       // For units with subActivities: play correct sound → feedback → return to map
       if (state.activeUnit.id === "castillo") {

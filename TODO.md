@@ -1,49 +1,45 @@
-# TODO: Actividad 8 - Bingo solo sílabas PA, LE, SO, TU, MI, RO
+# TODO: Unidad 2 — Bosque de las Palabras (5 actividades)
 
-## Objetivo
-En la actividad "El Torneo del Gran BINGO Medieval" (sub-activity 8, index 7), solo deben pronunciarse las sílabas **PA, LE, SO, TU, MI, RO**. Las sílabas distractoras **Ti, Mo, Si** quedan visibles en el cartón como distracción visual, pero **NUNCA** serán dichas por la voz robótica ni seleccionadas como objetivo.
+## ✅ Estado: COMPLETADO
 
-## Pasos
+## Objetivo ✅
+Implementar las primeras 5 actividades de la Unidad 2 (Bosque de las Palabras), accesible solo cuando la Unidad 1 (Castillo de las Letras) esté completada al 100%. La dinámica es la misma que la Unidad 1: se abre la unidad, se abre el mapa y aparecen las actividades.
 
-### 1. Modificar `js/app.js`
-- [x] `playNextBingoSyllable()`: cambiar fuente de selección de `sub.syllables` → `sub.answer` (solo PA, LE, SO, TU, MI, RO)
-- [x] Handler de clic correcto del BINGO: finalizar al marcar las 6 correctas (`sub.answer.length`) en vez de 9 (`sub.syllables.length`)
-- [x] Contador `Marcadas: X/Y` mostrar `/6` en vez de `/9`
+## Actividades implementadas ✅
+1. **El Letrero del Bosque** (`oracion`) — Completar "El gato toma de la ___" con el pictograma "sopa"; el gato se acerca a comer.
+2. **El Puente del Mono** (`puente`) — Completar "El mono come una ___" con "banana"; se construye el puente y el mono cruza.
+3. **El Cuento Incompleto** (`frase`) — Arrastrar el recuadro de texto externo que cierra la idea; el párrafo se ilumina.
+4. **El Detective de la Recámara** (`detective`) — Deducir con pistas visuales (cama, almohada) que la palabra es "cama".
+5. **El Gran Deportista** (`accion`) — Elegir la acción correcta ("corriendo") tras ver la animación; efecto de victoria.
 
-### 2. Verificar
-- [ ] Probar que solo se pronuncien PA, LE, SO, TU, MI, RO
-- [ ] Probar que Ti, Mo, Si nunca se pronuncien
-- [ ] Probar que el BINGO se complete al marcar las 6 sílabas correctas
-- [ ] Probar que las 3 distractoras sigan visibles en el cartón
+## Pasos completados
 
----
+### 1. Modificar `data/units.json` ✅
+- [x] Agregar `"requires": "castillo"` a la unidad `bosque`
+- [x] Agregar `subActivities` con las 5 actividades nuevas
 
-## Actividad 11 (Banquete) — Imágenes en la cinta transportadora
+### 2. Modificar `js/app.js` ✅
+- [x] `isUnitLocked(unit)` — bloqueo de unidades con `requires`
+- [x] Bloquear tarjeta y mapa de la Unidad 2 hasta completar Unidad 1
+- [x] Guardia de bloqueo en `openActivity()`
+- [x] Nuevos casos en `openSubActivity()`: oracion, puente, frase, detective, accion
+- [x] Funciones render: `renderOracionActivity`, `renderPuenteActivity`, `renderFraseActivity`, `renderDetectiveActivity`, `renderAccionActivity`
+- [x] `animateActivitySuccess(sub)` — animaciones de éxito por escena
+- [x] Nuevos casos en `checkAnswer()`
+- [x] `playUnitSound()` con narración por voz si no hay MP3 (Unidad 2)
+- [x] `renderCastleMap()` con tema bosque cuando no hay imagen de mapa
+- [x] `closeActivity()` limpieza del fondo bosque
 
-## Objetivo
-En la actividad "El Banquete del Gran Comedor" (sub-activity 12, index 11), los productos de la cinta transportadora deben mostrarse con sus imágenes (pan.png, sopa.png, leche.png) en lugar de texto. La orden del cliente también muestra la imagen del producto solicitado.
+### 3. Modificar `css/styles.css` ✅
+- [x] Estilos de unidad bloqueada (`.unit-card.locked`, `.map-stop-locked`)
+- [x] Fondo de mapa bosque (`.forest-map`)
+- [x] Fondo de actividad bosque (`.has-forest-bg`)
+- [x] Estilos de las 5 actividades nuevas
+- [x] Animaciones (gato come, tablones, mono cruza, correr, victoria)
 
-## Pasos
-
-### 1. Modificar `data/units.json`
-- [x] Añadir la propiedad `image` a cada palabra del banquete:
-  - `LECHE` → `assets/images/unit_1/leche.png`
-  - `SOPA` → `assets/images/unit_1/sopa.png`
-  - `PAN` → `assets/images/unit_1/pan.png`
-
-### 2. Modificar `js/app.js`
-- [x] `spawnProduct()`: renderizar `<img class="banquete-label-image">` con la imagen del producto y clase `has-image` cuando `word.image` exista
-- [x] `startBanqueteRound()`: mostrar la imagen del producto en la orden (`banquete-order-image`) tras escuchar el audio
-- [x] `PRODUCT_WIDTH` ajustado de 170 → 180 para acomodar las imágenes
-
-### 3. Modificar `css/styles.css`
-- [x] Estilos para `.banquete-label.has-image` (fondo blanco, sin mayúsculas, padding reducido)
-- [x] Estilos para `.banquete-label-image` (tamaño máximo 140×76px, object-fit contain)
-- [x] Estados seleccionado/correcto/incorrecto con fondo blanco para variantes con imagen
-- [x] Estilos para `.banquete-order-image` (tamaño máximo 90×48px)
-
-### 4. Verificar
-- [ ] Probar que los productos aparezcan con imágenes en la cinta transportadora
-- [ ] Probar que la orden del cliente muestre la imagen del producto
-- [ ] Probar que las imágenes mantengan los estados visuales al seleccionar (correcto/incorrecto)
-
+### 4. Verificar pendiente
+- [ ] Unidad 2 bloqueada hasta completar Unidad 1 al 100%
+- [ ] Mapa del bosque con las 5 actividades en cadena
+- [ ] Las 5 actividades responden y completan correctamente
+- [ ] Progreso cuenta 20 actividades (15 castillo + 5 bosque)
+- [ ] Botón "Escuchar" narra las instrucciones de la Unidad 2
