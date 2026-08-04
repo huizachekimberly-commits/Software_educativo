@@ -16,9 +16,9 @@ for unit in data['units']:
                 "question": "El gato toma de la...",
                 "prefix": "El gato toma de la",
                 "options": [
-                    {"label": "luna", "icon": "🌙"},
+                    {"label": "luna", "icon": "assets/images/unit_2/luna.png"},
                     {"label": "sopa", "icon": "assets/images/unit_1/sopa.png"},
-                    {"label": "piso", "icon": "🧱"}
+                    {"label": "armadura", "icon": "assets/images/unit_2/armadura.png"}
                 ],
                 "answer": "sopa",
                 "success": "¡Muy bien! El gato toma de la sopa y se acerca a comer contento.",
@@ -35,9 +35,9 @@ for unit in data['units']:
                 "question": "El mono come una...",
                 "prefix": "El mono come una",
                 "options": [
-                    {"label": "piedra", "icon": "🪨"},
-                    {"label": "banana", "icon": "🍌"},
-                    {"label": "nube", "icon": "☁️"}
+                    {"label": "piedra", "image": "assets/images/unit_2/piedra.png"},
+                    {"label": "banana", "image": "assets/images/unit_2/banana.png"},
+                    {"label": "nube", "image": "assets/images/unit_2/nube.png"}
                 ],
                 "answer": "banana",
                 "success": "¡Correcto! El mono come una banana y cruza el puente hasta el otro lado.",
@@ -70,9 +70,9 @@ for unit in data['units']:
                 "question": "En la recámara hay una...",
                 "clues": ["cama", "almohada"],
                 "options": [
-                    {"label": "cama", "icon": "🛏️"},
-                    {"label": "mar", "icon": "🌊"},
-                    {"label": "árbol", "icon": "🌳"}
+                    {"label": "cama", "icon": "assets/images/unit_2/cama.png"},
+                    {"label": "manzana", "icon": "assets/images/unit_2/manzana.png"},
+                    {"label": "armadura", "icon": "assets/images/unit_2/armadura.png"}
                 ],
                 "answer": "cama",
                 "success": "¡Detective experto! En la recámara hay una cama.",

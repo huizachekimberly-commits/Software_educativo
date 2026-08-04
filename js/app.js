@@ -20,7 +20,8 @@ const state = {
   authMode: "login",
   inCastleMap: false,
   cofreDropped: null,
-  redoble: null
+  redoble: null,
+  frasePlaced: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -28,6 +29,7 @@ const unitGrid = $("#unitGrid");
 const avatarGrid = $("#avatarGrid");
 const bookList = $("#bookList");
 const mapBoard = $("#mapBoard");
+const badgeBoard = $("#badgeBoard");
 const rewardStrip = $("#rewardStrip");
 const activityZone = $("#actividad");
 const activityScene = $("#activityScene");
@@ -132,6 +134,7 @@ async function persistCurrentUser() {
   state.user.completed = [...state.completed];
   state.user.sound = "on";
   state.user.music = state.music ? "on" : "off";
+  state.user.unit1VideoSeen = hasSeenUnit1Video();
   cacheUserLocally(state.user);
   await saveCloudUser(state.user);
 }
@@ -412,10 +415,11 @@ async function init() {
   }
 
   renderAvatars();
-  renderUnits();
+renderUnits();
   renderLibrary();
   renderMap();
   renderProgress();
+  bindMapTabs();
   bindGlobalEvents();
   bindAuthEvents();
   renderAuthNav();
@@ -771,9 +775,15 @@ function renderUnits() {
     const isUnitCompleted = unit.subActivities
       ? allSubActivitiesCompleted(unit)
       : state.completed.includes(unit.id);
-    const isLocked = isUnitLocked(unit);
+const isLocked = isUnitLocked(unit);
     card.classList.toggle("completed", isUnitCompleted);
     card.classList.toggle("locked", isLocked);
+    if (isLocked) {
+      const legend = document.createElement("div");
+      legend.className = "unit-locked-legend";
+      legend.textContent = "Bloqueada";
+      card.appendChild(legend);
+    }
     card.querySelector(".unit-art").classList.add(unit.theme);
     card.querySelector(".unit-art").dataset.icon = unit.icon;
     card.querySelector(".unit-kicker").textContent = `Unidad ${unit.number}`;
@@ -787,8 +797,8 @@ function renderUnits() {
     startButton.addEventListener("click", () => openActivity(unit.id));
     if (isLocked) {
       const requiredUnit = state.data.units.find((u) => u.id === unit.requires);
-      const requiredName = requiredUnit ? `la ${requiredUnit.title}` : "la unidad anterior";
-      startButton.textContent = "🔒 Completa " + requiredName;
+      const requiredName = requiredUnit ? `${requiredUnit.title}` : "la unidad anterior";
+      startButton.textContent = "Completa " + requiredName;
       startButton.classList.add("locked-btn");
     }
     unitGrid.appendChild(card);
@@ -811,10 +821,9 @@ function renderLibrary() {
 
 function renderMap() {
   const positions = [
-    { left: "10%", top: "18%" },
-    { left: "30%", top: "58%" },
-    { left: "58%", top: "24%" },
-    { left: "72%", top: "66%" }
+    { left: "12%", top: "22%" },
+    { left: "42%", top: "60%" },
+    { left: "72%", top: "26%" }
   ];
 
   mapBoard.innerHTML = "";
@@ -829,6 +838,71 @@ function renderMap() {
     stop.innerHTML = `${locked ? "🔒" : unit.icon} Unidad ${unit.number}<small>${unit.title}</small>`;
     stop.addEventListener("click", () => openActivity(unit.id));
     mapBoard.appendChild(stop);
+  });
+}
+
+// Map reward names to their icon image paths
+function getBadgeIcon(rewardName) {
+  const iconMap = {
+    "Insignia de la Letra Brillante": "assets/images/icons/insignia_de_la_letra_brillante_icon.png",
+    "Hoja del Vocabulario": "assets/images/icons/hoja_del_vocabulario_icon.png"
+  };
+  const path = iconMap[rewardName];
+  if (path) {
+    return `<img src="${path}" alt="" class="badge-icon" />`;
+  }
+  // Fallback to unit emoji for rewards without a custom icon
+  const unit = state.data.units.find((u) => u.reward === rewardName);
+  return unit?.icon || "🏆";
+}
+
+function isUnitRewardEarned(unit) {
+  if (unit.subActivities && unit.subActivities.length > 0) {
+    return allSubActivitiesCompleted(unit);
+  }
+  return state.completed.includes(unit.id);
+}
+
+function renderBadges() {
+  if (!badgeBoard) return;
+  // Show the first three badges (rewards of the first three units)
+  const badgeUnits = state.data.units.slice(0, 3);
+  badgeBoard.innerHTML = badgeUnits.map((unit) => {
+    const earned = isUnitRewardEarned(unit);
+    return `
+      <article class="badge-card ${earned ? "earned" : "locked"}">
+        <div class="badge-card-icon">${getBadgeIcon(unit.reward)}</div>
+        <h3 class="badge-card-name">${escapeHtml(unit.reward)}</h3>
+        <p class="badge-card-status">${earned ? "¡Obtenida!" : "🔒 Bloqueada"}</p>
+      </article>
+    `;
+  }).join("");
+}
+
+function bindMapTabs() {
+  const btnViaje = $("#btnViajeLector");
+  const btnInsignias = $("#btnInsignias");
+  if (!btnViaje || !btnInsignias || !mapBoard || !badgeBoard) return;
+
+  btnViaje.addEventListener("click", () => {
+    btnViaje.classList.add("active");
+    btnViaje.setAttribute("aria-selected", "true");
+    btnInsignias.classList.remove("active");
+    btnInsignias.setAttribute("aria-selected", "false");
+    mapBoard.hidden = false;
+    badgeBoard.hidden = true;
+    playTone("tap");
+  });
+
+  btnInsignias.addEventListener("click", () => {
+    btnInsignias.classList.add("active");
+    btnInsignias.setAttribute("aria-selected", "true");
+    btnViaje.classList.remove("active");
+    btnViaje.setAttribute("aria-selected", "false");
+    renderBadges();
+    mapBoard.hidden = true;
+    badgeBoard.hidden = false;
+    playTone("tap");
   });
 }
 
@@ -858,23 +932,8 @@ function renderProgress() {
     return state.completed.includes(unit.id);
   });
 
-  // Map reward names to their icon image paths
-  function getBadgeIcon(rewardName) {
-    const iconMap = {
-      "Insignia de la Letra Brillante": "assets/images/icons/insignia_de_la_letra_brillante_icon.png",
-      "Hoja del Vocabulario": "assets/images/icons/hoja_del_vocabulario_icon.png"
-    };
-    const path = iconMap[rewardName];
-    if (path) {
-      return `<img src="${path}" alt="" class="badge-icon" />`;
-    }
-    // Fallback to unit emoji for rewards without a custom icon
-    const unit = state.data.units.find((u) => u.reward === rewardName);
-    return unit?.icon || "🏆";
-  }
-
-  rewardStrip.innerHTML = rewards.length
-    ? rewards.map((unit) => `<span class="badge">${getBadgeIcon(unit.reward)} ${unit.reward}</span>`).join("")
+rewardStrip.innerHTML = rewards.length
+    ? rewards.map((unit) => `<span class="badge">${getBadgeIcon(unit.reward)}</span>`).join("")
     : `<span class="badge">Comienza una unidad para ganar recompensas</span>`;
 }
 
@@ -890,15 +949,128 @@ function showToast(message) {
   }, 2600);
 }
 
+/* =============================================
+   UNIT 1 INTRO VIDEO — plays once (first time)
+   ============================================= */
+function hasSeenUnit1Video() {
+  // Per-user tracking (persisted). Fallback to a per-account localStorage flag.
+  if (state.user && state.user.unit1VideoSeen) return true;
+  const accountId = state.user?.accountId || state.user?.username;
+  if (accountId && localStorage.getItem(`reino.unit1VideoSeen.${accountId}`) === "1") return true;
+  return false;
+}
+
+function markUnit1VideoSeen() {
+  const accountId = state.user?.accountId || state.user?.username;
+  if (accountId) {
+    localStorage.setItem(`reino.unit1VideoSeen.${accountId}`, "1");
+  }
+  if (state.user) {
+    state.user.unit1VideoSeen = true;
+    persistCurrentUser();
+  }
+}
+
+function playUnit1IntroVideo(unit) {
+  // Pause background music while the video plays
+  if (backgroundMusic) backgroundMusic.pause();
+
+  // Create a fullscreen overlay that cannot be skipped
+  const overlay = document.createElement("div");
+  overlay.className = "unit1-intro-overlay";
+  overlay.id = "unit1IntroOverlay";
+
+  const video = document.createElement("video");
+  video.id = "unit1IntroVideo";
+  video.src = "assets/videos/unit1.mp4";
+  video.autoplay = true;
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.setAttribute("webkit-playsinline", "");
+  video.removeAttribute("controls");
+  video.style.pointerEvents = "none";
+
+  overlay.appendChild(video);
+  document.body.appendChild(overlay);
+
+  // Block user interaction (cannot be skipped via clicks/touches)
+  const blockEvent = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  overlay.addEventListener("click", blockEvent, true);
+  overlay.addEventListener("touchstart", blockEvent, true);
+  overlay.addEventListener("contextmenu", blockEvent, true);
+
+  // Block keyboard shortcuts (Esc, space, arrows, F11, etc.)
+  const blockKey = (e) => {
+    if (e.key === "Escape" || e.key === " " || e.key === "F11" ||
+        e.key === "ArrowLeft" || e.key === "ArrowRight" ||
+        e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  document.addEventListener("keydown", blockKey, true);
+
+  // Block context menu
+  const blockContext = (e) => e.preventDefault();
+  document.addEventListener("contextmenu", blockContext, true);
+
+  // Attempt native fullscreen
+  const root = document.documentElement;
+  const reqFull = root.requestFullscreen || root.webkitRequestFullscreen;
+  if (reqFull) {
+    try { reqFull.call(root); } catch (err) { /* fullscreen may be unavailable */ }
+  }
+
+  const finish = () => {
+    // Remove the block listeners
+    overlay.removeEventListener("click", blockEvent, true);
+    overlay.removeEventListener("touchstart", blockEvent, true);
+    overlay.removeEventListener("contextmenu", blockEvent, true);
+    document.removeEventListener("keydown", blockKey, true);
+    document.removeEventListener("contextmenu", blockContext, true);
+
+    // Exit native fullscreen if we entered it
+    const exitFull = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exitFull && document.fullscreenElement) {
+      try { exitFull.call(document); } catch (err) { /* ignore */ }
+    }
+
+    // Remove the overlay
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+
+    // Resume background music
+    if (state.music && backgroundMusic) backgroundMusic.play().catch(() => {});
+
+    // Mark as seen and open the unit (castle map) now
+    markUnit1VideoSeen();
+    openActivity(unit.id);
+  };
+
+  // Only proceed to the map once the video has fully ended
+  video.addEventListener("ended", finish, { once: true });
+  video.addEventListener("error", finish, { once: true });
+}
+
 function openActivity(unitId) {
   const unit = state.data.units.find((item) => item.id === unitId);
   if (!unit) return;
-  if (isUnitLocked(unit)) {
+if (isUnitLocked(unit)) {
     const requiredUnit = state.data.units.find((u) => u.id === unit.requires);
     showToast(`Completa ${requiredUnit ? requiredUnit.title : "la unidad anterior"} para desbloquear esta unidad.`);
     playTone("error");
     return;
   }
+
+  // Unit 1 (Castillo): play the intro video the first time (cannot be skipped).
+  // The castle map is only shown after the video has fully ended.
+  if (unit.id === "castillo" && !hasSeenUnit1Video()) {
+    playUnit1IntroVideo(unit);
+    return;
+  }
+
   state.activeUnit = unit;
   state.selectedAnswer = null;
   state.sequenceAnswer = [];
@@ -913,6 +1085,7 @@ function openActivity(unitId) {
   const existingBg = document.getElementById("subActivityBg");
   if (existingBg) existingBg.style.display = "none";
   activityZone.classList.remove("has-castle-bg");
+  activityZone.classList.remove("has-forest-bg");
 
   // If unit has subActivities (castle map), show the map
   if (unit.subActivities && unit.subActivities.length > 0) {
@@ -1011,8 +1184,11 @@ function safePlayAudio(audio, onEnded) {
     if (onEnded) onEnded();
     return;
   }
-  // If any audio is already playing, ignore this new request entirely
-  if (state.audioLock) return;
+// If any audio is already playing, stop it so the new audio (e.g. the
+  // correct-sound → feedback → close sequence) is always audible and its
+  // onEnded callback is guaranteed to run. This prevents the activity from
+  // getting stuck open when the user answers quickly while the option audio
+  // is still playing (the old code just silently dropped the request).
   state.audioLock = true;
   stopAllAudio();
   audio.play().then(() => {
@@ -1044,27 +1220,30 @@ function stopAllAudio() {
 /* =============================================
    ðŸ”Š UNIT SOUND PLAYER â€” Uses MP3 from assets/unit_X_sounds/
    ============================================= */
+function getUnitSoundFolder(unitId, subIndex) {
+  const unit = state.data?.units?.find((u) => u.id === unitId);
+  const unitNumber = unit?.number || 1;
+  // Unit 1 (Castillo) has three themes: theme1 (activities 1-5, indices 0-4), theme2 (activities 6-10, indices 5-9), theme3 (activity 11, index 10+)
+  if (unitId === "castillo") {
+    if (subIndex <= 4) return `assets/unit_${unitNumber}_sounds/theme1`;
+    if (subIndex <= 9) return `assets/unit_${unitNumber}_sounds/theme2`;
+    return `assets/unit_${unitNumber}_sounds/theme3`;
+  }
+  // Unit 2 (Bosque) uses theme1
+  if (unitId === "bosque") {
+    return `assets/unit_${unitNumber}_sounds/theme1`;
+  }
+  return `assets/unit_${unitNumber}_sounds`;
+}
+
 function playUnitSound(unitId, subIndex) {
   const activityNumber = subIndex + 1;
-  // Find the unit number from data
+  const folder = getUnitSoundFolder(unitId, subIndex);
+  const audioPath = `${folder}/activity_${activityNumber}.mp3`;
   const unit = state.data?.units?.find((u) => u.id === unitId);
-  const unitNumber = unit?.number || unitId.replace("unit", "");
-  // Unit 1 (Castillo) has three themes: theme1 (activities 1-5, indices 0-4), theme2 (activities 6-10, indices 5-9), theme3 (activity 11, index 10+)
-  let audioPath;
-  if (unitId === "castillo") {
-    if (subIndex <= 4) {
-      audioPath = `assets/unit_${unitNumber}_sounds/theme1/activity_${activityNumber}.mp3`;
-    } else if (subIndex <= 9) {
-      audioPath = `assets/unit_${unitNumber}_sounds/theme2/activity_${activityNumber}.mp3`;
-    } else {
-      audioPath = `assets/unit_${unitNumber}_sounds/theme3/activity_${activityNumber}.mp3`;
-    }
-  } else {
-    audioPath = `assets/unit_${unitNumber}_sounds/activity_${activityNumber}.mp3`;
-  }
-
-  // Narración por voz si no existe el MP3 (Unidad 2 aún no tiene carpeta de sonidos)
   const sub = unit?.subActivities?.[subIndex];
+
+  // Narración por voz si no existe el MP3
   fetch(audioPath, { method: "HEAD" })
     .then((res) => {
       if (res.ok) {
@@ -1082,6 +1261,32 @@ function playUnitSound(unitId, subIndex) {
     });
 }
 
+function buildOptionAudioName(optionText) {
+  return String(optionText).trim().replace(/[.!?]+$/, "");
+}
+
+function playOptionSound(optionText) {
+  if (!state.sound || state.audioLock) return;
+  const unit = state.activeUnit;
+  if (!unit) return;
+  const subIndex = state.activeSubActivityIndex ?? 0;
+  const folder = getUnitSoundFolder(unit.id, subIndex);
+  const audioPath = `${folder}/${buildOptionAudioName(optionText)}.mp3`;
+
+  fetch(audioPath, { method: "HEAD" })
+    .then((res) => {
+      if (res.ok) {
+        const audio = new Audio(audioPath);
+        safePlayAudio(audio);
+      } else {
+        speak(String(optionText));
+      }
+    })
+    .catch(() => {
+      speak(String(optionText));
+    });
+}
+
 /* =============================================
    ðŸŽ‰ CORRECT ANSWER SEQUENCE â€” Correct sound â†’ Feedback â†’ Done
    ============================================= */
@@ -1091,29 +1296,16 @@ function playCorrectThenFeedback(unitId, subIndex, onComplete) {
     return;
   }
 
-  // 1. Pick a random correct sound from assets/correct_sounds/phrase1-8.mp3
+  // 1. Pick a random correct sound from assets/correct_sounds2/phrase1-8.mp3
   const correctSoundIndex = Math.floor(Math.random() * 8) + 1; // 1 to 8
-  const correctSound = new Audio(`assets/correct_sounds/phrase${correctSoundIndex}.mp3`);
+  const correctSound = new Audio(`assets/correct_sounds2/phrase${correctSoundIndex}.mp3`);
 
   // 2. Determine feedback file dynamically based on unit number
-  const unit = state.data?.units?.find((u) => u.id === unitId);
-  const unitNumber = unit?.number || 1;
   const activityNumber = subIndex + 1;
-  // Unit 1 (Castillo) has three themes: theme1 (activities 1-5, indices 0-4), theme2 (activities 6-10, indices 5-9), theme3 (activity 11, index 10+)
-  let feedbackPath;
-  if (unitId === "castillo") {
-    if (subIndex <= 4) {
-      feedbackPath = `assets/unit_${unitNumber}_sounds/theme1/feedback${activityNumber}.mp3`;
-    } else if (subIndex <= 9) {
-      feedbackPath = `assets/unit_${unitNumber}_sounds/theme2/feedback${activityNumber}.mp3`;
-    } else {
-      feedbackPath = `assets/unit_${unitNumber}_sounds/theme3/feedback${activityNumber}.mp3`;
-    }
-  } else {
-    feedbackPath = `assets/unit_${unitNumber}_sounds/feedback${activityNumber}.mp3`;
-  }
+  const folder = getUnitSoundFolder(unitId, subIndex);
+  const feedbackPath = `${folder}/feedback${activityNumber}.mp3`;
 
-  // Play correct sound first
+// Play correct sound first
   safePlayAudio(correctSound, () => {
     // After correct sound ends (or fails), play feedback
     const feedbackSound = new Audio(feedbackPath);
@@ -1121,6 +1313,102 @@ function playCorrectThenFeedback(unitId, subIndex, onComplete) {
       if (onComplete) onComplete();
     });
   });
+}
+
+/* =============================================
+   PUENTE ACTIVITY — close only when BOTH
+   the feedback dialogue has ended AND the
+   monkey video has finished playing.
+   ============================================= */
+function returnToMapAfterPuente(unitId, subIndex) {
+  let feedbackDone = false;
+  let videoDone = false;
+
+  const tryClose = () => {
+    if (feedbackDone && videoDone) {
+      openActivity(unitId);
+    }
+  };
+
+  // 1. Play the correct sound → feedback. When the feedback ends, mark feedbackDone.
+  playCorrectThenFeedback(unitId, subIndex, () => {
+    feedbackDone = true;
+    tryClose();
+  });
+
+  // 2. Track the monkey video so we only close once it has finished too.
+  const monkeyVideo = document.getElementById("puenteMonkey");
+  if (!monkeyVideo) {
+    // If for some reason the video is not present, don't block closing.
+    videoDone = true;
+    tryClose();
+    return;
+  }
+
+  const markVideoDone = () => {
+    videoDone = true;
+    tryClose();
+  };
+
+  monkeyVideo.addEventListener("ended", markVideoDone, { once: true });
+  monkeyVideo.addEventListener("error", markVideoDone, { once: true });
+
+  // Safety fallback: if the video never fires 'ended' (e.g. it loads but the
+  // app is closed or the element is removed), close anyway after a timeout.
+  setTimeout(() => {
+    if (!videoDone) {
+      videoDone = true;
+      tryClose();
+    }
+  }, 15000);
+}
+
+/* =============================================
+   ORACION ACTIVITY — close only when BOTH
+   the feedback dialogue has ended AND the
+   gato video has finished playing.
+   ============================================= */
+function returnToMapAfterOracion(unitId, subIndex) {
+  let feedbackDone = false;
+  let videoDone = false;
+
+  const tryClose = () => {
+    if (feedbackDone && videoDone) {
+      openActivity(unitId);
+    }
+  };
+
+  // 1. Play the correct sound → feedback. When the feedback ends, mark feedbackDone.
+  playCorrectThenFeedback(unitId, subIndex, () => {
+    feedbackDone = true;
+    tryClose();
+  });
+
+  // 2. Track the gato video so we only close once it has finished too.
+  const gatoVideo = document.getElementById("oracionVideo");
+  if (!gatoVideo) {
+    // If for some reason the video is not present, don't block closing.
+    videoDone = true;
+    tryClose();
+    return;
+  }
+
+  const markVideoDone = () => {
+    videoDone = true;
+    tryClose();
+  };
+
+  gatoVideo.addEventListener("ended", markVideoDone, { once: true });
+  gatoVideo.addEventListener("error", markVideoDone, { once: true });
+
+  // Safety fallback: if the video never fires 'ended' (e.g. it loads but the
+  // app is closed or the element is removed), close anyway after a timeout.
+  setTimeout(() => {
+    if (!videoDone) {
+      videoDone = true;
+      tryClose();
+    }
+  }, 15000);
 }
 
 /* =============================================
@@ -3285,22 +3573,31 @@ function renderOracionActivity(sub) {
   const container = document.createElement("div");
   container.className = "oracion-container";
 
-  // Scene: cat + bowl
+  // Scene with gato video (starts paused on the first frame and plays
+  // exactly once when the activity is completed correctly, like the
+  // monkey video in the Puente activity).
   const scene = document.createElement("div");
   scene.className = "oracion-scene";
   scene.id = "oracionScene";
 
-  const cat = document.createElement("div");
-  cat.className = "oracion-cat";
-  cat.id = "oracionCat";
-  cat.innerHTML = `<img src="${sub.catImage || "assets/images/unit_1/cat1.png"}" alt="Gato" class="oracion-cat-img" />`;
+  const gatoVideo = document.createElement("video");
+  gatoVideo.className = "oracion-gato-video";
+  gatoVideo.id = "oracionVideo";
+  gatoVideo.src = sub.video || "assets/videos/gato_video.mp4";
+  gatoVideo.muted = true;
+  gatoVideo.playsInline = true;
+  gatoVideo.setAttribute("playsinline", "");
+  gatoVideo.setAttribute("webkit-playsinline", "");
+  gatoVideo.setAttribute("muted", "");
+  gatoVideo.preload = "auto";
+  gatoVideo.removeAttribute("controls");
+  gatoVideo.style.pointerEvents = "none";
+  // No autoplay and no loop: the video stays paused showing the first frame
+  // and plays exactly once when the activity is completed correctly.
+  gatoVideo.autoplay = false;
+  gatoVideo.loop = false;
 
-  const bowl = document.createElement("div");
-  bowl.className = "oracion-bowl";
-  bowl.id = "oracionBowl";
-  bowl.innerHTML = `<img src="${sub.bowlImage || "assets/images/unit_1/sopa.png"}" alt="Plato" class="oracion-bowl-img" />`;
-
-  scene.append(cat, bowl);
+  scene.appendChild(gatoVideo);
   container.appendChild(scene);
 
   // Sentence display: prefix + blank
@@ -3318,10 +3615,11 @@ function renderOracionActivity(sub) {
     btn.type = "button";
     btn.className = "oracion-option";
     btn.dataset.label = option.label;
-    const isImage = String(option.icon || "").includes(".");
+    const imageValue = option.image || option.icon || "";
+    const isImage = typeof imageValue === "string" && (imageValue.includes(".") || imageValue.startsWith("data:") || imageValue.startsWith("http"));
     btn.innerHTML = isImage
-      ? `<span class="oracion-option-icon"><img src="${option.icon}" alt="${option.label}" class="oracion-option-img" /></span><span class="oracion-option-label">${option.label}</span>`
-      : `<span class="oracion-option-emoji">${option.icon}</span><span class="oracion-option-label">${option.label}</span>`;
+      ? `<span class="oracion-option-icon"><img src="${imageValue}" alt="${option.label}" class="oracion-option-img" /></span><span class="oracion-option-label">${option.label}</span>`
+      : `<span class="oracion-option-emoji">${imageValue}</span><span class="oracion-option-label">${option.label}</span>`;
     btn.addEventListener("click", () => {
       document.querySelectorAll(".oracion-option").forEach((b) => b.classList.remove("selected-oracion"));
       btn.classList.add("selected-oracion");
@@ -3332,6 +3630,7 @@ function renderOracionActivity(sub) {
         blank.classList.add("filled-oracion");
       }
       playTone("tap");
+      playOptionSound(option.label);
     });
     optionsRow.appendChild(btn);
   });
@@ -3347,25 +3646,29 @@ function renderPuenteActivity(sub) {
   const container = document.createElement("div");
   container.className = "puente-container";
 
-  // River scene with monkey
+  // Scene with monkey video (starts paused, shows first frame, plays once on success)
   const scene = document.createElement("div");
   scene.className = "puente-scene";
   scene.id = "puenteScene";
 
-  const monkey = document.createElement("div");
-  monkey.className = "puente-monkey";
-  monkey.id = "puenteMonkey";
-  monkey.textContent = sub.monkeyEmoji || "🐵";
+  const monkeyVideo = document.createElement("video");
+  monkeyVideo.className = "puente-monkey-video";
+  monkeyVideo.id = "puenteMonkey";
+  monkeyVideo.src = "assets/videos/mono_video.mp4";
+  monkeyVideo.muted = true;
+  monkeyVideo.playsInline = true;
+  monkeyVideo.setAttribute("playsinline", "");
+  monkeyVideo.setAttribute("webkit-playsinline", "");
+  monkeyVideo.setAttribute("muted", "");
+  monkeyVideo.preload = "auto";
+  monkeyVideo.removeAttribute("controls");
+  monkeyVideo.style.pointerEvents = "none";
+  // No autoplay and no loop: the video stays paused on the first frame and
+  // plays exactly once when the activity is completed correctly.
+  monkeyVideo.autoplay = false;
+  monkeyVideo.loop = false;
 
-  const plankRow = document.createElement("div");
-  plankRow.className = "puente-planks";
-  plankRow.id = "puentePlanks";
-
-  const farSide = document.createElement("div");
-  farSide.className = "puente-far-side";
-  farSide.textContent = "🌴";
-
-  scene.append(monkey, plankRow, farSide);
+  scene.appendChild(monkeyVideo);
   container.appendChild(scene);
 
   // Sentence display
@@ -3383,10 +3686,11 @@ function renderPuenteActivity(sub) {
     btn.type = "button";
     btn.className = "puente-option";
     btn.dataset.label = option.label;
-    const isImage = String(option.icon || "").includes(".");
+    const imageValue = option.image || option.icon || "";
+    const isImage = typeof imageValue === "string" && (imageValue.includes(".") || imageValue.startsWith("data:") || imageValue.startsWith("http"));
     btn.innerHTML = isImage
-      ? `<span class="puente-option-icon"><img src="${option.icon}" alt="${option.label}" class="puente-option-img" /></span><span class="puente-option-label">${option.label}</span>`
-      : `<span class="puente-option-emoji">${option.icon}</span><span class="puente-option-label">${option.label}</span>`;
+      ? `<span class="puente-option-icon"><img src="${imageValue}" alt="${option.label}" class="puente-option-img" /></span><span class="puente-option-label">${option.label}</span>`
+      : `<span class="puente-option-emoji">${imageValue}</span><span class="puente-option-label">${option.label}</span>`;
     btn.addEventListener("click", () => {
       document.querySelectorAll(".puente-option").forEach((b) => b.classList.remove("selected-puente"));
       btn.classList.add("selected-puente");
@@ -3397,6 +3701,7 @@ function renderPuenteActivity(sub) {
         blank.classList.add("filled-puente");
       }
       playTone("tap");
+      playOptionSound(option.label);
     });
     optionsRow.appendChild(btn);
   });
@@ -3411,6 +3716,14 @@ function renderPuenteActivity(sub) {
 function renderFraseActivity(sub) {
   const container = document.createElement("div");
   container.className = "frase-container";
+
+  // Cuento image (libro) shown above the story paragraph
+  const image = document.createElement("img");
+  image.className = "frase-image";
+  image.src = sub.image || "assets/images/unit_2/libro.png";
+  image.alt = "Libro";
+  image.draggable = false;
+  container.appendChild(image);
 
   // Story paragraph
   const paragraph = document.createElement("div");
@@ -3463,6 +3776,13 @@ function renderFraseActivity(sub) {
     placeFrase(sub, frase, box);
   });
 
+  // Clicking the placed phrase returns it to its place among the options
+  dropZone.addEventListener("click", () => {
+    if (state.frasePlaced) {
+      returnFrase(sub);
+    }
+  });
+
   container.appendChild(optionsRow);
   activityWorkspace.appendChild(container);
 }
@@ -3471,11 +3791,13 @@ function placeFrase(sub, frase, box) {
   const dropZone = document.getElementById("fraseDropZone");
   const paragraph = document.getElementById("fraseParagraph");
   if (!dropZone || !paragraph) return;
-  if (dropZone.dataset.placed) return; // already placed
+  if (state.frasePlaced) return; // already placed
 
+  state.frasePlaced = { frase, box };
   dropZone.dataset.placed = "true";
   dropZone.textContent = frase;
   dropZone.classList.add("placed-frase");
+  dropZone.title = "Haz clic aquí para devolver la frase a su lugar";
 
   // Mark the chosen box and disable the others
   document.querySelectorAll(".frase-option").forEach((b) => {
@@ -3490,6 +3812,34 @@ function placeFrase(sub, frase, box) {
 
   state.selectedAnswer = frase;
   playTone("tap");
+  playOptionSound(frase);
+}
+
+function returnFrase(sub) {
+  const dropZone = document.getElementById("fraseDropZone");
+  const paragraph = document.getElementById("fraseParagraph");
+  if (!dropZone || !paragraph) return;
+  if (!state.frasePlaced) return;
+
+  // Restore the placeholder and drop zone styles
+  state.frasePlaced = null;
+  delete dropZone.dataset.placed;
+  dropZone.textContent = "Arrastra aquí la frase que completa la idea…";
+  dropZone.classList.remove("placed-frase");
+  dropZone.title = "";
+
+  // Re-enable all option boxes
+  document.querySelectorAll(".frase-option").forEach((b) => {
+    b.draggable = true;
+    b.style.pointerEvents = "";
+    b.classList.remove("used-frase", "chosen-frase");
+  });
+
+  // Restore the original story paragraph
+  paragraph.textContent = sub.story;
+
+  state.selectedAnswer = null;
+  playTone("tap");
 }
 
 /* =============================================
@@ -3499,26 +3849,18 @@ function renderDetectiveActivity(sub) {
   const container = document.createElement("div");
   container.className = "detective-container";
 
-  // Scene with visual clues
+// Scene with the room image (replaces the emoji canvas)
   const scene = document.createElement("div");
   scene.className = "detective-scene";
   scene.id = "detectiveScene";
 
-  const cluesRow = document.createElement("div");
-  cluesRow.className = "detective-clues";
-  sub.clues.forEach((clue, i) => {
-    const clueCard = document.createElement("div");
-    clueCard.className = "detective-clue";
-    const icons = ["🛏️", "🛌"];
-    clueCard.innerHTML = `<span class="detective-clue-icon">${icons[i] || "🔍"}</span><span class="detective-clue-label">${clue}</span>`;
-    cluesRow.appendChild(clueCard);
-  });
+  const roomImage = document.createElement("img");
+  roomImage.className = "detective-room-image";
+  roomImage.src = sub.roomImage || "assets/images/unit_2/room.png";
+  roomImage.alt = "Recámara";
+  roomImage.draggable = false;
 
-  const detective = document.createElement("div");
-  detective.className = "detective-magnifier";
-  detective.textContent = "🔍";
-
-  scene.append(detective, cluesRow);
+  scene.appendChild(roomImage);
   container.appendChild(scene);
 
   // Question
@@ -3536,15 +3878,17 @@ function renderDetectiveActivity(sub) {
     btn.type = "button";
     btn.className = "detective-option";
     btn.dataset.label = option.label;
-    const isImage = String(option.icon || "").includes(".");
+    const imageValue = option.image || option.icon || "";
+    const isImage = typeof imageValue === "string" && (imageValue.includes(".") || imageValue.startsWith("data:") || imageValue.startsWith("http"));
     btn.innerHTML = isImage
-      ? `<span class="detective-option-icon"><img src="${option.icon}" alt="${option.label}" class="detective-option-img" /></span><span class="detective-option-label">${option.label}</span>`
-      : `<span class="detective-option-emoji">${option.icon}</span><span class="detective-option-label">${option.label}</span>`;
+      ? `<span class="detective-option-icon"><img src="${imageValue}" alt="${option.label}" class="detective-option-img" /></span><span class="detective-option-label">${option.label}</span>`
+      : `<span class="detective-option-emoji">${imageValue}</span><span class="detective-option-label">${option.label}</span>`;
     btn.addEventListener("click", () => {
       document.querySelectorAll(".detective-option").forEach((b) => b.classList.remove("selected-detective"));
       btn.classList.add("selected-detective");
       state.selectedAnswer = option.label;
       playTone("tap");
+      playOptionSound(option.label);
     });
     optionsRow.appendChild(btn);
   });
@@ -3560,21 +3904,89 @@ function renderAccionActivity(sub) {
   const container = document.createElement("div");
   container.className = "accion-container";
 
-  // Animation scene: running kid
+  // Animation scene: looping silent video
   const scene = document.createElement("div");
   scene.className = "accion-scene";
   scene.id = "accionScene";
 
-  const runner = document.createElement("div");
-  runner.className = "accion-runner";
-  runner.id = "accionRunner";
-  runner.textContent = "🏃";
+  const video = document.createElement("video");
+  video.className = "accion-video";
+  video.id = "accionVideo";
+  video.src = sub.video || "assets/videos/unit_2_activity_5.mp4";
+  video.loop = true;
+  video.muted = true;
+  video.autoplay = true;
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.setAttribute("webkit-playsinline", "");
+  video.setAttribute("muted", "");
+  video.removeAttribute("controls");
+  video.preload = "auto";
+  video.style.pointerEvents = "none";
 
-  const trail = document.createElement("div");
-  trail.className = "accion-trail";
-  trail.id = "accionTrail";
+  // Loading indicator shown while the video buffers
+  const loading = document.createElement("div");
+  loading.className = "accion-loading";
+  loading.textContent = "Cargando...";
+  scene.appendChild(loading);
 
-  scene.append(trail, runner);
+  let bufferingTimer = null;
+  let attempts = 0;
+
+  function hideLoading() {
+    if (bufferingTimer) {
+      clearTimeout(bufferingTimer);
+      bufferingTimer = null;
+    }
+    loading.style.opacity = "0";
+    loading.style.pointerEvents = "none";
+  }
+
+  function showLoading() {
+    loading.style.opacity = "1";
+    loading.style.pointerEvents = "none";
+  }
+
+  // Start playback only when the whole (tiny) video can play through —
+  // avoids the first-loop stutter that happened while frames were still
+  // being fetched/decoded during an option click.
+  video.addEventListener("canplaythrough", () => {
+    hideLoading();
+    video.play().catch(() => {});
+  }, { once: true });
+
+  video.addEventListener("loadeddata", () => {
+    // If canplaythrough hasn't fired after a short while, start anyway.
+    bufferingTimer = setTimeout(() => {
+      hideLoading();
+      video.play().catch(() => {});
+    }, 1500);
+  });
+
+  // When the player is starving for frames, show a subtle indicator
+  // instead of appearing frozen. It usually resolves by itself now that
+  // the file is much lighter.
+  video.addEventListener("waiting", showLoading);
+  video.addEventListener("stalled", showLoading);
+  video.addEventListener("playing", hideLoading);
+  video.addEventListener("canplay", hideLoading);
+
+  // If the video ever fails, retry up to 3 times with a small delay.
+  video.addEventListener("error", () => {
+    attempts++;
+    if (attempts > 3) {
+      hideLoading();
+      loading.textContent = "";
+      return;
+    }
+    showLoading();
+    setTimeout(() => {
+      video.load();
+      video.play().catch(() => {});
+    }, 600 * attempts);
+  });
+
+  scene.appendChild(video);
   container.appendChild(scene);
 
   // Sentence display
@@ -3592,10 +4004,11 @@ function renderAccionActivity(sub) {
     btn.type = "button";
     btn.className = "accion-option";
     btn.dataset.label = option.label;
-    const isImage = String(option.icon || "").includes(".");
+    const imageValue = option.image || option.icon || "";
+    const isImage = typeof imageValue === "string" && (imageValue.includes(".") || imageValue.startsWith("data:") || imageValue.startsWith("http"));
     btn.innerHTML = isImage
-      ? `<span class="accion-option-icon"><img src="${option.icon}" alt="${option.label}" class="accion-option-img" /></span><span class="accion-option-label">${option.label}</span>`
-      : `<span class="accion-option-emoji">${option.icon}</span><span class="accion-option-label">${option.label}</span>`;
+      ? `<span class="accion-option-icon"><img src="${imageValue}" alt="${option.label}" class="accion-option-img" /></span><span class="accion-option-label">${option.label}</span>`
+      : `<span class="accion-option-emoji">${imageValue}</span><span class="accion-option-label">${option.label}</span>`;
     btn.addEventListener("click", () => {
       document.querySelectorAll(".accion-option").forEach((b) => b.classList.remove("selected-accion"));
       btn.classList.add("selected-accion");
@@ -3606,6 +4019,7 @@ function renderAccionActivity(sub) {
         blank.classList.add("filled-accion");
       }
       playTone("tap");
+      playOptionSound(option.label);
     });
     optionsRow.appendChild(btn);
   });
@@ -3627,29 +4041,23 @@ function animateActivitySuccess(sub) {
 
   switch (sub.type) {
     case "oracion": {
-      // Cat walks to the bowl and eats
-      const cat = document.getElementById("oracionCat");
-      const bowl = document.getElementById("oracionBowl");
-      if (cat) cat.classList.add("cat-walks-to-bowl");
-      if (bowl) bowl.classList.add("bowl-steam");
+      // Play the gato video once (it is paused initially; no loop, so it
+      // stops on the last frame after playing through).
+      const gatoVideo = document.getElementById("oracionVideo");
+      if (gatoVideo && gatoVideo.paused) {
+        gatoVideo.currentTime = 0;
+        gatoVideo.play().catch(() => {});
+      }
       break;
     }
     case "puente": {
-      // Planks drop in sequence, then monkey crosses
-      const planks = document.getElementById("puentePlanks");
-      const monkey = document.getElementById("puenteMonkey");
-      if (planks) {
-        for (let i = 0; i < 3; i++) {
-          const plank = document.createElement("div");
-          plank.className = "puente-plank";
-          plank.style.animationDelay = `${i * 0.35}s`;
-          planks.appendChild(plank);
-        }
-        planks.classList.add("planks-drop");
+      // Play the monkey video once (it is paused initially; no loop, so it
+      // stops on the last frame after playing through).
+      const monkeyVideo = document.getElementById("puenteMonkey");
+      if (monkeyVideo && monkeyVideo.paused) {
+        monkeyVideo.currentTime = 0;
+        monkeyVideo.play().catch(() => {});
       }
-      setTimeout(() => {
-        if (monkey) monkey.classList.add("monkey-crosses");
-      }, 1100);
       break;
     }
     case "frase": {
@@ -3665,11 +4073,9 @@ function animateActivitySuccess(sub) {
       break;
     }
     case "accion": {
-      // Runner speeds up + victory
-      const runner = document.getElementById("accionRunner");
-      const trail = document.getElementById("accionTrail");
-      if (runner) runner.classList.add("runner-victory");
-      if (trail) trail.classList.add("trail-sprint");
+      // Victory glow on the scene — the video keeps looping silently
+      const scene = document.getElementById("accionScene");
+      if (scene) scene.classList.add("accion-victory");
       break;
     }
     default:
@@ -3749,11 +4155,23 @@ case "bingo":
       // Run per-scene success animations (cat eats, monkey crosses, etc.)
       animateActivitySuccess(sub);
 
-      // For units with subActivities: play correct sound → feedback → return to map
-      if (state.activeUnit.id === "castillo") {
-        playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
-          openActivity(state.activeUnit.id);
-        });
+// For units with subActivities: play correct sound → feedback → return to map
+      if (state.activeUnit.id === "castillo" || state.activeUnit.id === "bosque") {
+        // El Puente del Mono (actividad 2 de la unidad 2): la actividad solo se
+        // cierra cuando el diálogo de feedback ha terminado Y el video del mono
+        // también ha acabado de reproducirse.
+        if (sub.type === "puente") {
+          returnToMapAfterPuente(state.activeUnit.id, state.activeSubActivityIndex);
+        } else if (sub.type === "oracion") {
+          // El Gato y el Tazón (actividad 1 de la unidad 2): la actividad solo se
+          // cierra cuando el diálogo de feedback ha terminado Y el video del gato
+          // también ha acabado de reproducirse.
+          returnToMapAfterOracion(state.activeUnit.id, state.activeSubActivityIndex);
+        } else {
+          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+            openActivity(state.activeUnit.id);
+          });
+        }
       } else {
         speak(sub.success);
         setTimeout(() => {
@@ -3836,11 +4254,18 @@ function closeActivity() {
     state.banquete.cleanup();
     state.banquete = null;
   }
+  // Pause any active looping video (accion activity) so it doesn't keep playing in the background
+  const accionVideo = document.getElementById("accionVideo");
+  if (accionVideo) {
+    accionVideo.pause();
+    accionVideo.currentTime = 0;
+  }
 
   // Reset background image
   const existingBg = document.getElementById("subActivityBg");
   if (existingBg) existingBg.style.display = "none";
   activityZone.classList.remove("has-castle-bg");
+  activityZone.classList.remove("has-forest-bg");
 
   activityZone.hidden = true;
   activityZone.classList.remove("unit-fullscreen");
@@ -3901,6 +4326,8 @@ function speak(text) {
   window.speechSynthesis.speak(utterance);
 }
 
+let toneContext = null;
+
 function playTone(kind) {
   if (!state.sound) return;
   // If an MP3 or speech is playing, skip the tone to avoid interrupting it
@@ -3908,7 +4335,27 @@ function playTone(kind) {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return;
 
-  const context = new AudioContext();
+  // Reuse a single AudioContext instead of creating (and leaking) a new one
+  // on every click — this keeps the main thread free for video decoding.
+  if (!toneContext) {
+    try {
+      toneContext = new AudioContext();
+    } catch {
+      return;
+    }
+  }
+  if (toneContext.state === "closed") {
+    try {
+      toneContext = new AudioContext();
+    } catch {
+      return;
+    }
+  }
+  if (toneContext.state === "suspended") {
+    toneContext.resume().catch(() => {});
+  }
+
+  const context = toneContext;
   const oscillator = context.createOscillator();
   const gain = context.createGain();
   const tones = {

@@ -418,15 +418,16 @@
       "icon": "­ƒî│",
       "theme": "theme-forest",
       "castleMapImage": "",
-      "description": "Forma s├¡labas combinando consonantes y vocales, y ensambla palabras tris├¡labas.",
+      "description": "Lee palabras y oraciones, amplía vocabulario y relaciona conceptos.",
       "content": [
-        "Formaci├│n de s├¡labas con vocales.",
-        "Identificaci├│n de s├¡labas en palabras.",
-        "Ensamblaje secuencial de s├¡labas."
+        "Complemento de oraciones.",
+        "Búsqueda en entornos virtuales.",
+        "Asociación de conceptos."
       ],
       "activities": [
-        "Elegir la s├¡laba correcta en el caldero.",
-        "Ordenar s├¡labas en el carruaje."
+        "Complemento de oraciones.",
+        "Encontrar palabras ocultas.",
+        "Asociación de conceptos."
       ],
       "evaluation": [
         "Reconocimiento de s├¡labas.",
@@ -450,15 +451,15 @@
           "options": [
             {
               "label": "luna",
-              "icon": "🌙"
+              "icon": "assets/images/unit_2/luna.png"
             },
             {
               "label": "sopa",
               "icon": "assets/images/unit_1/sopa.png"
             },
             {
-              "label": "piso",
-              "icon": "🧱"
+              "label": "armadura",
+              "icon": "assets/images/unit_2/armadura.png"
             }
           ],
           "answer": "sopa",
@@ -478,15 +479,15 @@
           "options": [
             {
               "label": "piedra",
-              "icon": "🪨"
+              "image": "assets/images/unit_2/piedra.png"
             },
             {
               "label": "banana",
-              "icon": "🍌"
+              "image": "assets/images/unit_2/banana.png"
             },
             {
               "label": "nube",
-              "icon": "☁️"
+              "image": "assets/images/unit_2/nube.png"
             }
           ],
           "answer": "banana",
@@ -525,15 +526,15 @@
           "options": [
             {
               "label": "cama",
-              "icon": "🛏️"
+              "icon": "assets/images/unit_2/cama.png"
             },
             {
-              "label": "mar",
-              "icon": "🌊"
+              "label": "manzana",
+              "icon": "assets/images/unit_2/manzana.png"
             },
             {
-              "label": "árbol",
-              "icon": "🌳"
+              "label": "armadura",
+              "icon": "assets/images/unit_2/armadura.png"
             }
           ],
           "answer": "cama",
@@ -550,16 +551,13 @@
           "prefix": "El niño está",
           "options": [
             {
-              "label": "corriendo",
-              "icon": "🏃"
+              "label": "corriendo"
             },
             {
-              "label": "saltando",
-              "icon": "🤸"
+              "label": "saltando"
             },
             {
-              "label": "durmiendo",
-              "icon": "😴"
+              "label": "durmiendo"
             }
           ],
           "answer": "corriendo",
@@ -571,7 +569,7 @@
     {
       "id": "montanas",
       "number": 3,
-      "title": "Montanas de los Cuentos",
+      "title": "Montañas de los Cuentos",
       "icon": "Ôø░´©Å",
       "theme": "theme-mountain",
       "description": "Lee cuentos cortos e identifica personajes, lugares, acciones y secuencias.",
@@ -611,50 +609,8 @@
         ],
         "success": "Correcto. La historia tiene inicio, desarrollo y final.",
         "hint": "Busca primero la accion que inicia la aventura y deja el descubrimiento para el final."
-      }
-    },
-    {
-      "id": "oceano",
-      "number": 4,
-      "title": "Oceano de la Comprension Lectora",
-      "icon": "­ƒîè",
-      "theme": "theme-ocean",
-      "description": "Lee textos informativos y narrativos, realiza inferencias y analiza mensajes.",
-      "content": [
-        "Lectura de textos informativos y narrativos.",
-        "Inferencias y analisis de informacion.",
-        "Interpretacion de mensajes y ensenanzas."
-      ],
-      "activities": [
-        "Resolver misterios mediante la lectura.",
-        "Busqueda de informacion en textos.",
-        "Desafios de comprension avanzada."
-      ],
-      "evaluation": [
-        "Cuestionarios de comprension lectora.",
-        "Proyecto final de lectura y analisis."
-      ],
-      "feedback": [
-        "Comentarios personalizados.",
-        "Recomendaciones de lectura segun el desempeno."
-      ],
-      "reward": "Perla de la Comprension",
-      "activity": {
-        "type": "choice",
-        "title": "Resuelve el misterio",
-        "prompt": "Texto: La playa amanecio con huellas mojadas junto a una concha abierta. El mensaje decia: 'Solo aparece cuando baja la marea'. Que se puede inferir?",
-        "speak": "La playa amanecio con huellas mojadas junto a una concha abierta. Solo aparece cuando baja la marea.",
-        "question": "Que se puede inferir?",
-        "options": [
-          "El objeto estaba oculto por el agua.",
-          "La concha venia de una montana.",
-          "La marea nunca cambia.",
-          "Las huellas eran de fuego."
-        ],
-        "answer": "El objeto estaba oculto por el agua.",
-        "success": "Muy bien. Inferiste informacion que no estaba escrita directamente: al bajar la marea, el agua dejo ver el objeto.",
-        "hint": "Relaciona la pista 'baja la marea' con lo que el agua puede cubrir u ocultar."
-      }
+      },
+      "requires": "bosque"
     }
   ]
 }

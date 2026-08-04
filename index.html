@@ -81,7 +81,7 @@
           <p class="eyebrow">Software educativo interactivo</p>
           <h1>Aventura de Lectura en el Reino de las Palabras</h1>
           <p>
-            Explora castillos, bosques, montanas y oceanos mientras practicas letras,
+            Explora castillos, bosques y montañas mientras practicas letras,
             palabras, cuentos y comprension lectora.
           </p>
           <div class="hero-actions">
@@ -94,7 +94,7 @@
           <div class="avatar-panel-heading">
             <div>
               <p class="eyebrow">Avatar lector</p>
-              <h2>Elige tu companero</h2>
+              <h2>Elige tu compañero</h2>
             </div>
             <div class="reader reader-hero" id="heroAvatar" aria-hidden="true">🧙</div>
           </div>
@@ -117,8 +117,8 @@
 
       <section class="section-shell" id="unidades">
         <div class="section-heading">
-          <p class="eyebrow">Acceso rapido</p>
-          <h2>Cuatro regiones para aprender</h2>
+<p class="eyebrow">Acceso rapido</p>
+          <h2>Tres regiones para aprender</h2>
         </div>
         <div class="unit-grid" id="unitGrid"></div>
       </section>
@@ -151,12 +151,17 @@
           <div class="book-list" id="bookList"></div>
         </article>
 
-        <article class="map-panel" id="mapa">
+<article class="map-panel" id="mapa">
           <div class="section-heading">
             <p class="eyebrow">Mapa del reino</p>
-            <h2>Viaje lector</h2>
+            <h2>Tu aventura</h2>
+          </div>
+          <div class="map-tabs" role="tablist" aria-label="Vistas del mapa del reino">
+            <button class="map-tab active" id="btnViajeLector" type="button" role="tab" aria-selected="true">Viaje lector</button>
+            <button class="map-tab" id="btnInsignias" type="button" role="tab" aria-selected="false">Insignias</button>
           </div>
           <div class="map-board" id="mapBoard" aria-label="Mapa interactivo del reino"></div>
+          <div class="badge-board" id="badgeBoard" aria-label="Insignias del reino" hidden></div>
         </article>
       </section>
     </main>
