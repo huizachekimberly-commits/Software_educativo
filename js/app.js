@@ -1591,7 +1591,7 @@ function openSubActivity(unitId, index) {
     feedback.className = "feedback ok";
     feedback.textContent = `¡Completaste "${sub.title}"! Usa el botón "Escuchar" para repasar las instrucciones.`;
   } else {
-    $("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete" || sub.type === "mensaje" || sub.type === "palabra-oculta"; // Auto-checked by keypress or number click
+$("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete" || sub.type === "mensaje" || sub.type === "palabra-oculta" || sub.type === "camaleon" || sub.type === "granja" || sub.type === "inspector" || sub.type === "foco" || sub.type === "laberinto" || sub.type === "asociacion" || sub.type === "memorama" || sub.type === "canastos" || sub.type === "red" || sub.type === "arbol"; // Auto-checked by keypress or number click
     $("#listenPrompt").hidden = false;
     $("#pronunciationBtn").hidden = true;
   }
@@ -1654,8 +1654,38 @@ function openSubActivity(unitId, index) {
     case "detective":
       renderDetectiveActivity(sub);
       break;
-    case "accion":
+case "accion":
       renderAccionActivity(sub);
+      break;
+    case "camaleon":
+      renderCamaleonActivity(sub, alreadyCompleted);
+      break;
+    case "granja":
+      renderGranjaActivity(sub, alreadyCompleted);
+      break;
+    case "inspector":
+      renderInspectorActivity(sub, alreadyCompleted);
+      break;
+    case "foco":
+      renderFocoActivity(sub, alreadyCompleted);
+      break;
+    case "laberinto":
+      renderLaberintoActivity(sub, alreadyCompleted);
+      break;
+    case "asociacion":
+      renderAsociacionActivity(sub, alreadyCompleted);
+      break;
+    case "memorama":
+      renderMemoramaActivity(sub, alreadyCompleted);
+      break;
+    case "canastos":
+      renderCanastosActivity(sub, alreadyCompleted);
+      break;
+    case "red":
+      renderRedActivity(sub, alreadyCompleted);
+      break;
+    case "arbol":
+      renderArbolActivity(sub, alreadyCompleted);
       break;
     default:
       feedback.textContent = "Actividad no disponible.";
@@ -4025,6 +4055,935 @@ function renderAccionActivity(sub) {
   });
 
   container.appendChild(optionsRow);
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   CAMALEON ACTIVITY (Unidad 2, act 6) — Encontrar palabras ocultas
+   ============================================= */
+function renderCamaleonActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "camaleon-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "camaleon-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset answer state
+  state.sequenceAnswer = [];
+
+  // Word display
+  const wordDisplay = document.createElement("div");
+  wordDisplay.className = "camaleon-word";
+  wordDisplay.id = "camaleonWord";
+  wordDisplay.textContent = sub.longWord;
+  container.appendChild(wordDisplay);
+
+  // Targeted word hint
+  const targetHint = document.createElement("p");
+  targetHint.className = "camaleon-target";
+  targetHint.textContent = `Busca la palabra: ${sub.target}`;
+  container.appendChild(targetHint);
+
+  // Letter tiles (in the order they appear in the long word)
+  const tiles = document.createElement("div");
+  tiles.className = "camaleon-tiles";
+
+  sub.letters.forEach((letter, i) => {
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = "camaleon-tile";
+    tile.dataset.index = i;
+    tile.dataset.letter = letter.toLowerCase();
+    tile.textContent = letter;
+    tile.addEventListener("click", () => {
+      // Already found
+      if (tile.classList.contains("found")) return;
+      // Expect the next letter of the target
+      const expected = sub.target[state.sequenceAnswer.length];
+      if (letter.toLowerCase() === expected.toLowerCase()) {
+        tile.classList.add("found");
+        state.sequenceAnswer.push(letter);
+        playTone("tap");
+        // Check if the whole target is found
+        const found = state.sequenceAnswer.join("").toLowerCase();
+        if (found === sub.target.toLowerCase()) {
+          state.selectedAnswer = sub.target;
+          feedback.className = "feedback ok";
+          feedback.textContent = sub.success;
+          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+          playTone("success");
+          celebrateConfetti();
+          animateActivitySuccess(sub);
+          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+            openActivity(state.activeUnit.id);
+          });
+        } else {
+          // Update the progress display
+          const progressLetter = document.createElement("span");
+          progressLetter.className = "camaleon-found-letter";
+          progressLetter.textContent = letter;
+          targetDisplay.appendChild(progressLetter);
+        }
+      } else {
+        // Wrong letter — shake
+        tile.classList.add("shake");
+        setTimeout(() => tile.classList.remove("shake"), 400);
+        playTone("error");
+      }
+    });
+    tiles.appendChild(tile);
+  });
+
+  container.appendChild(tiles);
+
+  // Progress display (found letters)
+  const targetDisplay = document.createElement("div");
+  targetDisplay.className = "camaleon-progress";
+  targetDisplay.id = "camaleonProgress";
+  targetDisplay.textContent = "Progreso: ";
+  container.appendChild(targetDisplay);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   GRANJA ACTIVITY (Unidad 2, act 7) — Palabras en la Granja
+   ============================================= */
+function renderGranjaActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "granja-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "granja-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Scene with hidden signs
+  const scene = document.createElement("div");
+  scene.className = "granja-scene";
+  scene.id = "granjaScene";
+
+  const signsRow = document.createElement("div");
+  signsRow.className = "granja-signs";
+
+  sub.signs.forEach((sign) => {
+    const signBtn = document.createElement("button");
+    signBtn.type = "button";
+    signBtn.className = "granja-sign";
+    signBtn.dataset.word = sign.word;
+    signBtn.dataset.pos = sign.pos;
+    signBtn.innerHTML = `<span class="granja-sign-emoji">${sign.emoji}</span><span class="granja-sign-word">???</span>`;
+    signBtn.addEventListener("click", () => {
+      signBtn.classList.add("revealed");
+      signBtn.querySelector(".granja-sign-word").textContent = sign.word;
+      playTone("tap");
+      // Check if it's the correct sign
+      if (sign.word === sub.target) {
+        state.selectedAnswer = sign.word;
+        feedback.className = "feedback ok";
+        feedback.textContent = sub.success;
+        completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+        playTone("success");
+        celebrateConfetti();
+        animateActivitySuccess(sub);
+        playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+          openActivity(state.activeUnit.id);
+        });
+      } else {
+        // Wrong sign — shake
+        setTimeout(() => signBtn.classList.remove("revealed"), 600);
+        playTone("error");
+      }
+    });
+    signsRow.appendChild(signBtn);
+  });
+
+  scene.appendChild(signsRow);
+  container.appendChild(scene);
+
+  const hint = document.createElement("p");
+  hint.className = "granja-hint";
+  hint.textContent = sub.hint;
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   INSPECTOR ACTIVITY (Unidad 2, act 8) — El Inspector de Letras
+   ============================================= */
+function renderInspectorActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "inspector-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "inspector-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset count
+  state.inspectorCount = 0;
+
+  // Paragraph with sealable words
+  const paragraph = document.createElement("div");
+  paragraph.className = "inspector-paragraph";
+  paragraph.id = "inspectorParagraph";
+
+  // Split the paragraph into words, each becomes a sealable chip
+  const words = sub.paragraph.split(" ");
+  words.forEach((word) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "inspector-chip";
+    chip.dataset.word = word.replace(/[.,;:]/g, "").toLowerCase();
+    chip.textContent = word;
+    chip.addEventListener("click", () => {
+      // Already sealed
+      if (chip.classList.contains("sealed")) return;
+      const normalized = chip.dataset.word;
+      if (normalized === sub.target) {
+        chip.classList.add("sealed");
+        state.inspectorCount++;
+        playTone("success");
+        // Check if all found
+        if (state.inspectorCount >= sub.need) {
+          state.selectedAnswer = sub.need;
+          feedback.className = "feedback ok";
+          feedback.textContent = sub.success;
+          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+          celebrateConfetti();
+          animateActivitySuccess(sub);
+          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+            openActivity(state.activeUnit.id);
+          });
+        } else {
+          const counter = document.getElementById("inspectorCounter");
+          if (counter) counter.textContent = `Encontradas: ${state.inspectorCount}/${sub.need}`;
+        }
+      } else {
+        // Wrong word — shake
+        chip.classList.add("shake");
+        setTimeout(() => chip.classList.remove("shake"), 400);
+        playTone("error");
+      }
+    });
+    paragraph.appendChild(chip);
+  });
+
+  container.appendChild(paragraph);
+
+  // Counter
+  const counter = document.createElement("div");
+  counter.className = "inspector-counter";
+  counter.id = "inspectorCounter";
+  counter.textContent = `Encontradas: 0/${sub.need}`;
+  container.appendChild(counter);
+
+  const hint = document.createElement("p");
+  hint.className = "inspector-hint";
+  hint.textContent = sub.hint;
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   FOCO ACTIVITY (Unidad 2, act 9) — La Linterna Mágica
+   ============================================= */
+function renderFocoActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "foco-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "foco-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset answer state
+  state.sequenceAnswer = [];
+
+  // Word display
+  const wordDisplay = document.createElement("div");
+  wordDisplay.className = "foco-word";
+  wordDisplay.id = "focoWord";
+  wordDisplay.textContent = "_ _ _ _ _ _";
+  container.appendChild(wordDisplay);
+
+  // Dark scene with fragments to illuminate
+  const scene = document.createElement("div");
+  scene.className = "foco-scene";
+  scene.id = "focoScene";
+
+  const fragments = document.createElement("div");
+  fragments.className = "foco-fragments";
+
+  // Shuffle fragments for variety
+  const shuffled = [...sub.fragments].sort(() => Math.random() - 0.5);
+  shuffled.forEach((fragment) => {
+    const frag = document.createElement("button");
+    frag.type = "button";
+    frag.className = "foco-fragment";
+    frag.dataset.fragment = fragment;
+    frag.textContent = fragment;
+    frag.addEventListener("click", () => {
+      // Already used
+      if (frag.classList.contains("used")) return;
+      // Expected next fragment
+      const expected = sub.answer[state.sequenceAnswer.length];
+      if (fragment === expected) {
+        frag.classList.add("used");
+        state.sequenceAnswer.push(fragment);
+        playTone("tap");
+        // Update word display
+        const display = document.getElementById("focoWord");
+        if (display) {
+          display.textContent = state.sequenceAnswer.join("").toUpperCase();
+        }
+        // Check if complete
+        if (state.sequenceAnswer.join("") === sub.answer.join("")) {
+          state.selectedAnswer = sub.answer;
+          feedback.className = "feedback ok";
+          feedback.textContent = sub.success;
+          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+          playTone("success");
+          celebrateConfetti();
+          animateActivitySuccess(sub);
+          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+            openActivity(state.activeUnit.id);
+          });
+        }
+      } else {
+        // Wrong fragment — shake
+        frag.classList.add("shake");
+        setTimeout(() => frag.classList.remove("shake"), 400);
+        playTone("error");
+      }
+    });
+    fragments.appendChild(frag);
+  });
+
+  scene.appendChild(fragments);
+  container.appendChild(scene);
+
+  const hint = document.createElement("p");
+  hint.className = "foco-hint";
+  hint.textContent = sub.hint;
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   LABERINTO ACTIVITY (Unidad 2, act 10) — El Laberinto del Conejo
+   ============================================= */
+function renderLaberintoActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "laberinto-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "laberinto-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset correct count
+  state.laberintoCorrect = 0;
+
+  // Rabbit at center
+  const rabbit = document.createElement("div");
+  rabbit.className = "laberinto-rabbit";
+  rabbit.textContent = "🐰";
+  container.appendChild(rabbit);
+
+  // Path walls
+  const paths = document.createElement("div");
+  paths.className = "laberinto-paths";
+
+  sub.paths.forEach((path, i) => {
+    const wall = document.createElement("button");
+    wall.type = "button";
+    wall.className = "laberinto-wall";
+    wall.dataset.index = i;
+    wall.dataset.word = path.word;
+    wall.dataset.correct = path.correct ? "true" : "false";
+    wall.textContent = path.word;
+    wall.addEventListener("click", () => {
+      // Already selected
+      if (wall.classList.contains("selected")) return;
+      if (path.correct) {
+        wall.classList.add("selected");
+        state.laberintoCorrect++;
+        playTone("success");
+        // Check if enough correct walls chosen
+        if (state.laberintoCorrect >= sub.needed) {
+          state.selectedAnswer = sub.needed;
+          feedback.className = "feedback ok";
+          feedback.textContent = sub.success;
+          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+          celebrateConfetti();
+          animateActivitySuccess(sub);
+          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+            openActivity(state.activeUnit.id);
+          });
+        }
+      } else {
+        // Wrong wall — shake
+        wall.classList.add("shake");
+        setTimeout(() => wall.classList.remove("shake"), 400);
+        playTone("error");
+      }
+    });
+    paths.appendChild(wall);
+  });
+
+  container.appendChild(paths);
+
+  const hint = document.createElement("p");
+  hint.className = "laberinto-hint";
+  hint.textContent = sub.hint;
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   ASOCIACION ACTIVITY (Unidad 2, act 11) — Une las Palabras
+   ============================================= */
+function renderAsociacionActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "asociacion-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "asociacion-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset matched count
+  state.asociacionMatched = 0;
+
+  // Two columns: words on left, images on right
+  const board = document.createElement("div");
+  board.className = "asociacion-board";
+
+  const leftCol = document.createElement("div");
+  leftCol.className = "asociacion-col";
+  const rightCol = document.createElement("div");
+  rightCol.className = "asociacion-col";
+
+  // Selected word
+  let selectedWord = null;
+
+  sub.pairs.forEach((pair) => {
+    // Word button (left)
+    const wordBtn = document.createElement("button");
+    wordBtn.type = "button";
+    wordBtn.className = "asociacion-word";
+    wordBtn.dataset.answer = pair.answer;
+    wordBtn.textContent = pair.word;
+    wordBtn.addEventListener("click", () => {
+      document.querySelectorAll(".asociacion-word").forEach((w) => w.classList.remove("selected-word"));
+      wordBtn.classList.add("selected-word");
+      selectedWord = pair.answer;
+      playTone("tap");
+    });
+    leftCol.appendChild(wordBtn);
+
+    // Image button (right)
+    const imgBtn = document.createElement("button");
+    imgBtn.type = "button";
+    imgBtn.className = "asociacion-image";
+    imgBtn.dataset.answer = pair.answer;
+    imgBtn.textContent = pair.image;
+    imgBtn.addEventListener("click", () => {
+      if (!selectedWord) {
+        playTone("error");
+        return;
+      }
+      if (selectedWord === pair.answer) {
+        // Correct match
+        wordBtn.classList.add("matched");
+        imgBtn.classList.add("matched");
+        wordBtn.disabled = true;
+        imgBtn.disabled = true;
+        state.asociacionMatched++;
+        playTone("success");
+        // Check if all matched
+        if (state.asociacionMatched >= sub.pairs.length) {
+          state.selectedAnswer = sub.answer;
+          feedback.className = "feedback ok";
+          feedback.textContent = sub.success;
+          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+          celebrateConfetti();
+          animateActivitySuccess(sub);
+          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+            openActivity(state.activeUnit.id);
+          });
+        }
+      } else {
+        // Wrong match
+        imgBtn.classList.add("shake");
+        setTimeout(() => imgBtn.classList.remove("shake"), 400);
+        playTone("error");
+      }
+    });
+    rightCol.appendChild(imgBtn);
+  });
+
+  board.appendChild(leftCol);
+  board.appendChild(rightCol);
+  container.appendChild(board);
+
+  const hint = document.createElement("p");
+  hint.className = "asociacion-hint";
+  hint.textContent = sub.hint;
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   MEMORAMA ACTIVITY (Unidad 2, act 12) — Parejas Ocultas
+   ============================================= */
+function renderMemoramaActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "memorama-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "memorama-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset matched count
+  state.memoramaMatched = 0;
+
+  // Shuffle cards
+  const shuffled = [...sub.cards].sort(() => Math.random() - 0.5);
+  let firstCard = null;
+  let lock = false;
+
+  const grid = document.createElement("div");
+  grid.className = "memorama-grid";
+
+  shuffled.forEach((card, i) => {
+    const cardEl = document.createElement("button");
+    cardEl.type = "button";
+    cardEl.className = "memorama-card";
+    cardEl.dataset.index = i;
+    cardEl.dataset.label = card.label;
+    cardEl.dataset.kind = card.kind;
+    cardEl.innerHTML = `<span class="memorama-back">?</span><span class="memorama-front">${card.kind === "image" ? card.emoji : card.label}</span>`;
+    cardEl.addEventListener("click", () => {
+      if (lock) return;
+      // Already matched or flipped
+      if (cardEl.classList.contains("matched") || cardEl.classList.contains("flipped")) return;
+      cardEl.classList.add("flipped");
+      if (!firstCard) {
+        firstCard = cardEl;
+        playTone("tap");
+      } else {
+        lock = true;
+        // Check if match
+        if (firstCard.dataset.label === cardEl.dataset.label) {
+          firstCard.classList.add("matched");
+          cardEl.classList.add("matched");
+          state.memoramaMatched++;
+          playTone("success");
+          firstCard = null;
+          lock = false;
+          // Check if all matched
+          if (state.memoramaMatched >= sub.pairs) {
+            state.selectedAnswer = sub.pairs;
+            feedback.className = "feedback ok";
+            feedback.textContent = sub.success;
+            completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+            celebrateConfetti();
+            animateActivitySuccess(sub);
+            playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+              openActivity(state.activeUnit.id);
+            });
+          }
+        } else {
+          // No match — flip back
+          setTimeout(() => {
+            firstCard.classList.remove("flipped");
+            cardEl.classList.remove("flipped");
+            firstCard = null;
+            lock = false;
+            playTone("error");
+          }, 800);
+        }
+      }
+    });
+    grid.appendChild(cardEl);
+  });
+
+  container.appendChild(grid);
+
+  const hint = document.createElement("p");
+  hint.className = "memorama-hint";
+  hint.textContent = sub.hint;
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   CANASTOS ACTIVITY (Unidad 2, act 13) — Clasifica en Canastos
+   ============================================= */
+function renderCanastosActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "canastos-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "canastos-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset matched count
+  state.canastosMatched = 0;
+
+  // Baskets row
+  const baskets = document.createElement("div");
+  baskets.className = "canastos-baskets";
+
+  sub.baskets.forEach((basket) => {
+    const basketEl = document.createElement("div");
+    basketEl.className = "canastos-basket";
+    basketEl.dataset.category = basket.name;
+    basketEl.innerHTML = `<span class="canastos-basket-emoji">${basket.emoji}</span><span class="canastos-basket-name">${basket.name}</span>`;
+    basketEl.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      basketEl.classList.add("drag-over-canastos");
+    });
+    basketEl.addEventListener("dragleave", () => basketEl.classList.remove("drag-over-canastos"));
+    basketEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      basketEl.classList.remove("drag-over-canastos");
+      const word = e.dataTransfer.getData("text/plain");
+      const item = sub.items.find((it) => it.word === word);
+      if (item && item.category === basket.name) {
+        // Correct
+        const chip = document.getElementById(`canastosItem-${word}`);
+        if (chip) {
+          chip.classList.add("correct");
+          chip.draggable = false;
+          basketEl.appendChild(chip);
+          state.canastosMatched++;
+          playTone("success");
+          if (state.canastosMatched >= sub.items.length) {
+            state.selectedAnswer = sub.answer;
+            feedback.className = "feedback ok";
+            feedback.textContent = sub.success;
+            completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+            celebrateConfetti();
+            animateActivitySuccess(sub);
+            playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+              openActivity(state.activeUnit.id);
+            });
+          }
+        }
+      } else {
+        // Wrong — shake basket
+        basketEl.classList.add("shake");
+        setTimeout(() => basketEl.classList.remove("shake"), 400);
+        playTone("error");
+      }
+    });
+    baskets.appendChild(basketEl);
+  });
+
+  container.appendChild(baskets);
+
+  // Items row (draggable chips)
+  const items = document.createElement("div");
+  items.className = "canastos-items";
+
+  const shuffledItems = [...sub.items].sort(() => Math.random() - 0.5);
+  shuffledItems.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "canastos-item";
+    chip.id = `canastosItem-${item.word}`;
+    chip.dataset.word = item.word;
+    chip.textContent = item.word;
+    chip.draggable = true;
+    chip.tabIndex = 0;
+    chip.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", item.word);
+      chip.classList.add("dragging-canastos");
+    });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging-canastos"));
+    // Click fallback for touch: simple cycle through baskets
+    chip.addEventListener("click", () => {
+      const target = sub.items.find((it) => it.word === item.word);
+      if (chip.classList.contains("correct")) return;
+      // Place in the correct basket directly
+      const targetBasket = [...baskets.querySelectorAll(".canastos-basket")].find((b) => b.dataset.category === target.category);
+      if (targetBasket) {
+        chip.classList.add("correct");
+        chip.draggable = false;
+        targetBasket.appendChild(chip);
+        state.canastosMatched++;
+        playTone("success");
+        if (state.canastosMatched >= sub.items.length) {
+          state.selectedAnswer = sub.answer;
+          feedback.className = "feedback ok";
+          feedback.textContent = sub.success;
+          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+          celebrateConfetti();
+          animateActivitySuccess(sub);
+          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+            openActivity(state.activeUnit.id);
+          });
+        }
+      }
+    });
+    items.appendChild(chip);
+  });
+
+  container.appendChild(items);
+
+  const hint = document.createElement("p");
+  hint.className = "canastos-hint";
+  hint.textContent = sub.hint;
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   RED ACTIVITY (Unidad 2, act 14) — La Red de Conexiones
+   ============================================= */
+function renderRedActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "red-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "red-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset selected related
+  state.redSelected = 0;
+
+  // Center concept
+  const center = document.createElement("div");
+  center.className = "red-center";
+  center.innerHTML = `<span class="red-center-emoji">${sub.centerEmoji}</span><span class="red-center-word">${sub.center}</span>`;
+  container.appendChild(center);
+
+  // Satellites
+  const satellites = document.createElement("div");
+  satellites.className = "red-satellites";
+
+  sub.satellites.forEach((sat) => {
+    const satEl = document.createElement("button");
+    satEl.type = "button";
+    satEl.className = "red-satellite";
+    satEl.dataset.label = sat.label;
+    satEl.dataset.related = sat.related ? "true" : "false";
+    satEl.innerHTML = `<span class="red-satellite-emoji">${sat.emoji}</span><span class="red-satellite-word">${sat.label}</span>`;
+    satEl.addEventListener("click", () => {
+      // Already selected
+      if (satEl.classList.contains("selected-satellite")) return;
+      if (sat.related) {
+        satEl.classList.add("selected-satellite");
+        state.redSelected++;
+        playTone("success");
+        // Check if all related selected
+        if (state.redSelected >= sub.answer.length) {
+          // Mark the unrelated one as rejected
+          const unrelated = [...satellites.querySelectorAll(".red-satellite")].find((s) => s.dataset.related === "false");
+          if (unrelated) unrelated.classList.add("rejected-satellite");
+          state.selectedAnswer = sub.answer;
+          feedback.className = "feedback ok";
+          feedback.textContent = sub.success;
+          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+          celebrateConfetti();
+          animateActivitySuccess(sub);
+          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+            openActivity(state.activeUnit.id);
+          });
+        }
+      } else {
+        // Wrong — shake
+        satEl.classList.add("shake");
+        setTimeout(() => satEl.classList.remove("shake"), 400);
+        playTone("error");
+      }
+    });
+    satellites.appendChild(satEl);
+  });
+
+  container.appendChild(satellites);
+
+  const hint = document.createElement("p");
+  hint.className = "red-hint";
+  hint.textContent = sub.hint;
+  container.appendChild(hint);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
+   ARBOL ACTIVITY (Unidad 2, act 15) — El Árbol de las Palabras
+   ============================================= */
+function renderArbolActivity(sub, reviewMode = false) {
+  const container = document.createElement("div");
+  container.className = "arbol-container";
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "arbol-msg";
+    msg.textContent = `¡Completaste "${sub.title}"! Puedes escuchar la instrucción de nuevo con el botón "Escuchar".`;
+    container.appendChild(msg);
+    activityWorkspace.appendChild(container);
+    return;
+  }
+
+  // Reset matched count
+  state.arbolMatched = 0;
+
+  // Category node at top
+  const category = document.createElement("div");
+  category.className = "arbol-category";
+  category.innerHTML = `<span class="arbol-category-emoji">${sub.categoryEmoji}</span><span class="arbol-category-name">${sub.category}</span>`;
+  container.appendChild(category);
+
+  // Branch where terms are placed
+  const branch = document.createElement("div");
+  branch.className = "arbol-branch";
+  branch.id = "arbolBranch";
+  branch.textContent = "Arrastra los términos aquí";
+  branch.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    branch.classList.add("drag-over-arbol");
+  });
+  branch.addEventListener("dragleave", () => branch.classList.remove("drag-over-arbol"));
+  branch.addEventListener("drop", (e) => {
+    e.preventDefault();
+    branch.classList.remove("drag-over-arbol");
+    const term = e.dataTransfer.getData("text/plain");
+    const termData = sub.terms.find((t) => t.label === term);
+    if (termData) {
+      const chip = document.getElementById(`arbolTerm-${term}`);
+      if (chip && !chip.classList.contains("correct")) {
+        chip.classList.add("correct");
+        chip.draggable = false;
+        branch.appendChild(chip);
+        state.arbolMatched++;
+        playTone("success");
+        // Grow leaves
+        const leaves = document.getElementById("arbolLeaves");
+        if (leaves) leaves.classList.add("growing");
+        if (state.arbolMatched >= sub.terms.length) {
+          state.selectedAnswer = sub.answer;
+          feedback.className = "feedback ok";
+          feedback.textContent = sub.success;
+          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+          celebrateConfetti();
+          animateActivitySuccess(sub);
+          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+            openActivity(state.activeUnit.id);
+          });
+        }
+      }
+    }
+  });
+  container.appendChild(branch);
+
+  // Leaves (grow on success)
+  const leaves = document.createElement("div");
+  leaves.className = "arbol-leaves";
+  leaves.id = "arbolLeaves";
+  leaves.textContent = "🌿";
+  container.appendChild(leaves);
+
+  // Term chips
+  const terms = document.createElement("div");
+  terms.className = "arbol-terms";
+
+  sub.terms.forEach((term) => {
+    const chip = document.createElement("div");
+    chip.className = "arbol-term";
+    chip.id = `arbolTerm-${term.label}`;
+    chip.dataset.term = term.label;
+    chip.innerHTML = `<span class="arbol-term-emoji">${term.image}</span><span class="arbol-term-label">${term.label}</span>`;
+    chip.draggable = true;
+    chip.tabIndex = 0;
+    chip.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", term.label);
+      chip.classList.add("dragging-arbol");
+    });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging-arbol"));
+    // Click fallback for touch
+    chip.addEventListener("click", () => {
+      if (chip.classList.contains("correct")) return;
+      chip.classList.add("correct");
+      chip.draggable = false;
+      branch.appendChild(chip);
+      state.arbolMatched++;
+      playTone("success");
+      const leaves = document.getElementById("arbolLeaves");
+      if (leaves) leaves.classList.add("growing");
+      if (state.arbolMatched >= sub.terms.length) {
+        state.selectedAnswer = sub.answer;
+        feedback.className = "feedback ok";
+        feedback.textContent = sub.success;
+        completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+        celebrateConfetti();
+        animateActivitySuccess(sub);
+        playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+          openActivity(state.activeUnit.id);
+        });
+      }
+    });
+    terms.appendChild(chip);
+  });
+
+  container.appendChild(terms);
+
+  const hint = document.createElement("p");
+  hint.className = "arbol-hint";
+  hint.textContent = sub.hint;
+  container.appendChild(hint);
+
   activityWorkspace.appendChild(container);
 }
 

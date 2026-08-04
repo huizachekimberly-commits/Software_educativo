@@ -551,18 +551,304 @@
           "prefix": "El niño está",
           "options": [
             {
-              "label": "corriendo"
+              "label": "corriendo",
+              "icon": "🏃"
             },
             {
-              "label": "saltando"
+              "label": "saltando",
+              "icon": "🤸"
             },
             {
-              "label": "durmiendo"
+              "label": "durmiendo",
+              "icon": "😴"
             }
           ],
           "answer": "corriendo",
           "success": "¡Victoria! El niño está corriendo. ¡Completaste la oración!",
           "hint": "Observa bien la animación: el niño mueve las piernas muy rápido."
+        },
+        {
+          "id": "camaleon",
+          "title": "La Palabra Escondida",
+          "prompt": "Encuentra la palabra corta 'cama' escondida dentro de 'camaleón'.",
+          "speak": "Dentro de la palabra camaleon se esconde la palabra cama. Toca las letras C, A, M, A en orden para buscarla.",
+          "type": "camaleon",
+          "question": "Toca, en orden, las letras que forman la palabra oculta.",
+          "longWord": "CAMALEÓN",
+          "target": "CAMA",
+          "letters": [
+            "C",
+            "A",
+            "M",
+            "A",
+            "L",
+            "E",
+            "Ó",
+            "N"
+          ],
+          "answer": "CAMA",
+          "success": "¡Brillante! La palabra 'cama' brilló en tonos dorados dentro del cofre.",
+          "hint": "Recorre la palabra de izquierda a derecha: C, luego A, M y A otra vez."
+        },
+        {
+          "id": "granja",
+          "title": "El Letrero del Establo",
+          "prompt": "Recorre la granja con la vista y encuentra el letrero oculto.",
+          "speak": "Busca con la vista los letreros camuflados detras de las bardas y los arboles. Toca el letrero que dice pato.",
+          "type": "granja",
+          "question": "Haz clic sobre el letrero oculto que dice 'pato'.",
+          "target": "pato",
+          "signs": [
+            {
+              "word": "pato",
+              "pos": "left",
+              "emoji": "🦆"
+            },
+            {
+              "word": "vaca",
+              "pos": "right",
+              "emoji": "🐄"
+            },
+            {
+              "word": "perro",
+              "pos": "tree",
+              "emoji": "🐕"
+            }
+          ],
+          "answer": "pato",
+          "success": "¡Cuac! Desplegaste el letrero 'pato' y escuchaste el sonido del animal.",
+          "hint": "El letrero del pato está detrás de una barda. El pato nada y dice cuac."
+        },
+        {
+          "id": "inspector",
+          "title": "El Inspector de Letras",
+          "prompt": "Lee el párrafo y sella cada vez que aparezca la palabra 'sol'.",
+          "speak": "Escanea el texto con la vista y coloca tu sello cada vez que encuentres la palabra sol. Encuentra las tres repeticiones.",
+          "type": "inspector",
+          "question": "Sella todas las apariciones de la palabra 'sol'.",
+          "paragraph": "El sol brilla en el cielo. El sol calienta el campo. En la tarde el sol se esconde y sale la luna.",
+          "target": "sol",
+          "need": 3,
+          "answer": 3,
+          "success": "¡Inspector genial! Sellaste las 3 veces que aparece 'sol'.",
+          "hint": "Busca la palabra sol en cada oración: sol, sol y sol."
+        },
+        {
+          "id": "foco",
+          "title": "La Linterna Mágica",
+          "prompt": "Mueve la linterna para iluminar los fragmentos y únelos en orden.",
+          "speak": "Usa la linterna para iluminar los fragmentos za, pa, to. Unelos en orden para formar la palabra zapato.",
+          "type": "foco",
+          "question": "Ilumina los fragmentos y tócalos en orden para formar la palabra.",
+          "fragments": [
+            "za",
+            "pa",
+            "to"
+          ],
+          "answer": [
+            "za",
+            "pa",
+            "to"
+          ],
+          "word": "zapato",
+          "success": "¡La linterna iluminó la palabra completa: ZAPATO!",
+          "hint": "Busca los fragmentos dispersos en la oscuridad: za - pa - to."
+        },
+        {
+          "id": "laberinto",
+          "title": "El Laberinto del Conejo",
+          "prompt": "Elige el camino cuyas paredes digan 'casa' y evita los distractores.",
+          "speak": "El conejito esta atrapado en el centro. Elige el camino correcto cuyas paredes digan casa para que encuentre la salida.",
+          "type": "laberinto",
+          "question": "Construye el camino correcto para el conejo eligiendo las paredes que dicen 'casa'.",
+          "target": "casa",
+          "paths": [
+            {
+              "word": "casa",
+              "correct": true
+            },
+            {
+              "word": "luna",
+              "correct": false
+            },
+            {
+              "word": "casa",
+              "correct": true
+            },
+            {
+              "word": "sol",
+              "correct": false
+            }
+          ],
+          "needed": 2,
+          "answer": 2,
+          "success": "¡El conejo encontró la salida sin tropezar con las palabras incorrectas!",
+          "hint": "Elige solo las paredes que dicen casa. Evita luna y sol."
+        },
+        {
+          "id": "asociacion",
+          "title": "Une las Palabras",
+          "prompt": "Traza líneas para unir cada palabra con su ilustración.",
+          "speak": "Toca una palabra de la izquierda y luego su ilustracion correcta de la derecha. Une rio con su dibujo y arbol con el suyo.",
+          "type": "asociacion",
+          "question": "Une cada palabra con su ilustración.",
+          "pairs": [
+            {
+              "word": "río",
+              "image": "🌊",
+              "answer": "río"
+            },
+            {
+              "word": "árbol",
+              "image": "🌳",
+              "answer": "árbol"
+            }
+          ],
+          "answer": [
+            "río",
+            "árbol"
+          ],
+          "success": "¡Las líneas se fijaron en color azul! La relación semántica es correcta.",
+          "hint": "El río corre con agua y el árbol tiene hojas. Únelos con su dibujo."
+        },
+        {
+          "id": "memorama",
+          "title": "Parejas Ocultas",
+          "prompt": "Voltea las cartas y encuentra la palabra 'perro' con su pareja de animal.",
+          "speak": "Voltea una carta con la palabra perro y encuentra su carta gemela que tiene la ilustracion de un animal.",
+          "type": "memorama",
+          "question": "Encuentra las parejas de conceptos.",
+          "cards": [
+            {
+              "label": "perro",
+              "kind": "word",
+              "emoji": "🐕"
+            },
+            {
+              "label": "perro",
+              "kind": "image",
+              "emoji": "🐕"
+            },
+            {
+              "label": "gato",
+              "kind": "word",
+              "emoji": "🐱"
+            },
+            {
+              "label": "gato",
+              "kind": "image",
+              "emoji": "🐱"
+            },
+            {
+              "label": "pez",
+              "kind": "word",
+              "emoji": "🐟"
+            },
+            {
+              "label": "pez",
+              "kind": "image",
+              "emoji": "🐟"
+            }
+          ],
+          "pairs": 3,
+          "answer": 3,
+          "success": "¡Memorama completado! Las cartas que coinciden quedaron destapadas.",
+          "hint": "Busca la palabra perro y su pareja con el dibujo del animal."
+        },
+        {
+          "id": "canastos",
+          "title": "Clasifica en Canastos",
+          "prompt": "Arrastra cada ficha a su canasto correcto.",
+          "speak": "Arrastra la ficha manzana al canasto de alimentos, martillo al de herramientas y vaca al de animales.",
+          "type": "canastos",
+          "question": "Coloca cada palabra en el canasto que le corresponde.",
+          "baskets": [
+            {
+              "name": "Alimentos",
+              "emoji": "🍎"
+            },
+            {
+              "name": "Herramientas",
+              "emoji": "🔨"
+            },
+            {
+              "name": "Animales",
+              "emoji": "🐄"
+            }
+          ],
+          "items": [
+            {
+              "word": "manzana",
+              "category": "Alimentos"
+            },
+            {
+              "word": "martillo",
+              "category": "Herramientas"
+            },
+            {
+              "word": "vaca",
+              "category": "Animales"
+            }
+          ],
+          "answer": 3,
+          "success": "¡Todos los canastos recibieron sus fichas! Sonido de confirmación.",
+          "hint": "La manzana es un alimento, el martillo es una herramienta y la vaca es un animal."
+        },
+        {
+          "id": "red",
+          "title": "La Red de Conexiones",
+          "prompt": "Dispara hilos hacia las tarjetas que se relacionan con 'Fuego'.",
+          "speak": "Conecta el concepto fuego con las tarjetas que guardan relacion: calor y humo. Descarta la tarjeta hielo.",
+          "type": "red",
+          "question": "Toca las tarjetas relacionadas con 'Fuego'.",
+          "center": "Fuego",
+          "centerEmoji": "🔥",
+          "satellites": [
+            {
+              "label": "calor",
+              "related": true,
+              "emoji": "🌡️"
+            },
+            {
+              "label": "humo",
+              "related": true,
+              "emoji": "💨"
+            },
+            {
+              "label": "hielo",
+              "related": false,
+              "emoji": "🧊"
+            }
+          ],
+          "answer": [
+            "calor",
+            "humo"
+          ],
+          "success": "¡Se formó una red conceptual iluminada alrededor del centro!",
+          "hint": "El fuego produce calor y humo. El hielo es frío, no tiene relación."
+        },
+        {
+          "id": "arbol",
+          "title": "El Árbol de las Palabras",
+          "prompt": "Ubica los términos específicos en la rama de Plantas.",
+          "speak": "Arrastra los terminos rosa y pino al nivel correcto dentro de la rama de Plantas. Cuando completes la jerarquia, creceran las hojas.",
+          "type": "arbol",
+          "question": "Arrastra cada término a la rama de Plantas.",
+          "category": "Plantas",
+          "categoryEmoji": "🌱",
+          "terms": [
+            {
+              "label": "rosa",
+              "image": "🌹"
+            },
+            {
+              "label": "pino",
+              "image": "🌲"
+            }
+          ],
+          "answer": 2,
+          "success": "¡Las hojas del árbol crecieron al completar la jerarquía!",
+          "hint": "La rosa y el pino son plantas. Colócalos en el nido correcto del árbol."
         }
       ]
     },
@@ -570,8 +856,9 @@
       "id": "montanas",
       "number": 3,
       "title": "Montañas de los Cuentos",
-      "icon": "Ôø░´©Å",
+      "icon": "⛰️",
       "theme": "theme-mountain",
+      "castleMapImage": "",
       "description": "Lee cuentos cortos e identifica personajes, lugares, acciones y secuencias.",
       "content": [
         "Lectura de cuentos cortos.",
@@ -592,25 +879,487 @@
         "Relectura guiada de fragmentos importantes."
       ],
       "reward": "Corona del Narrador",
-      "activity": {
-        "type": "sequence",
-        "title": "Ordena las escenas",
-        "prompt": "Selecciona las escenas en el orden correcto de la historia.",
-        "speak": "Primero Ana encuentra un mapa. Luego sube la montana. Al final descubre una biblioteca escondida.",
-        "items": [
-          "Ana encuentra un mapa.",
-          "Ana sube la montana.",
-          "Ana descubre una biblioteca escondida."
-        ],
-        "answer": [
-          "Ana encuentra un mapa.",
-          "Ana sube la montana.",
-          "Ana descubre una biblioteca escondida."
-        ],
-        "success": "Correcto. La historia tiene inicio, desarrollo y final.",
-        "hint": "Busca primero la accion que inicia la aventura y deja el descubrimiento para el final."
-      },
-      "requires": "bosque"
+      "requires": "bosque",
+      "subActivities": [
+        {
+          "id": "cuento",
+          "title": "Escucha y Lee el Cuento",
+          "prompt": "Escucha y lee Caperucita Roja. Al final, responde la pregunta.",
+          "speak": "Habia una vez una nina llamada Caperucita Roja que llevaba una cesta a su abuelita.",
+          "type": "cuento",
+          "story": "Había una vez una niña llamada Caperucita Roja. Un día, su madre le pidió que llevara una cesta de comida a su abuelita. En el camino, Caperucita se encontró con un lobo. El lobo le preguntó a dónde iba. Caperucita le dijo que iba a casa de su abuelita. El lobo corrió por el bosque y llegó antes. Cuando la abuelita abrió la puerta, el lobo entró y la escondió. Al llegar Caperucita, el lobo fingió ser la abuelita. Pero un leñador escuchó los ruidos y salvó a todos.",
+          "question": "¿Qué llevaba Caperucita Roja a su abuelita?",
+          "options": [
+            "Una cesta de comida",
+            "Una espada",
+            "Un pastel de fresa"
+          ],
+          "answer": "Una cesta de comida",
+          "success": "¡Muy bien! Caperucita llevaba una cesta de comida a su abuelita. ¡Tu estrella dorada brilla!",
+          "hint": "Recuerda el inicio del cuento: su madre le pidió llevar una cesta de comida."
+        },
+        {
+          "id": "teatro",
+          "title": "Teatro de Sombras Lector",
+          "prompt": "Lee en voz alta los diálogos de las sombras para avanzar la obra.",
+          "speak": "Lee en voz alta cada dialogo de las sombras para desbloquear la siguiente escena.",
+          "type": "teatro",
+          "scenes": [
+            {
+              "text": "¿A dónde vas, Caperucita?",
+              "emoji": "🐺"
+            },
+            {
+              "text": "Voy a casa de mi abuelita.",
+              "emoji": "🔴"
+            },
+            {
+              "text": "¡Corre, Caperucita, corre!",
+              "emoji": "🪵"
+            }
+          ],
+          "answer": [
+            "¿A dónde vas, Caperucita?",
+            "Voy a casa de mi abuelita.",
+            "¡Corre, Caperucita, corre!"
+          ],
+          "success": "¡Excelente! Las sombras representaron la obra completa.",
+          "hint": "Lee cada burbuja en voz alta del primero al último."
+        },
+        {
+          "id": "libro",
+          "title": "El Libro Mágico de Páginas Activas",
+          "prompt": "Pasa las hojas y toca las palabras mágicas para ver su animación.",
+          "speak": "Toca cada palabra magica del cuento para ver su definicion divertida.",
+          "type": "libro",
+          "pages": [
+            "El lobo se escondió detrás de un árbol.",
+            "Caperucita llevó la cesta por el bosque.",
+            "El leñador escuchó la voz de la abuelita."
+          ],
+          "keywords": [
+            {
+              "word": "lobo",
+              "emoji": "🐺",
+              "def": "El lobo es un animal grande que vive en el bosque y aúlla a la luna."
+            },
+            {
+              "word": "bosque",
+              "emoji": "🌲",
+              "def": "El bosque es un lugar lleno de árboles altos y verdes."
+            },
+            {
+              "word": "cesta",
+              "emoji": "🧺",
+              "def": "La cesta es un canasto que se usa para llevar comida."
+            }
+          ],
+          "explored": 3,
+          "success": "¡Muy bien! Descubriste todas las palabras mágicas del libro.",
+          "hint": "Toca cada palabra resaltada para desplegar su pista."
+        },
+        {
+          "id": "capitulos",
+          "title": "Cuento por Capítulos",
+          "prompt": "Lee cada capítulo y supera el mini-juego para avanzar.",
+          "speak": "Lee el primer capitulo, responde y desbloquea el siguiente.",
+          "type": "capitulos",
+          "chapters": [
+            {
+              "title": "Capítulo 1",
+              "text": "Caperucita sale de su casa con la cesta para la abuelita.",
+              "question": "¿Para quién es la cesta?",
+              "options": [
+                "La abuelita",
+                "El lobo",
+                "El leñador"
+              ],
+              "answer": "La abuelita"
+            },
+            {
+              "title": "Capítulo 2",
+              "text": "En el bosque, el lobo le pregunta a dónde va.",
+              "question": "¿Quién le pregunta a dónde va?",
+              "options": [
+                "El leñador",
+                "El lobo",
+                "La madre"
+              ],
+              "answer": "El lobo"
+            },
+            {
+              "title": "Capítulo 3",
+              "text": "El leñador salva a la abuelita y a Caperucita.",
+              "question": "¿Quién salva a todos?",
+              "options": [
+                "El lobo",
+                "El leñador",
+                "La madre"
+              ],
+              "answer": "El leñador"
+            }
+          ],
+          "success": "¡Completaste el recorrido completo del cuento por capítulos!",
+          "hint": "Responde cada mini-juego para abrir el siguiente capítulo."
+        },
+        {
+          "id": "karaoke",
+          "title": "Karaoke Literario",
+          "prompt": "Sigue el cursor que rebota y lee la estrofa con ritmo.",
+          "speak": "Caperucita va por el bosque, con su cesta y su capa roja.",
+          "type": "karaoke",
+          "verse": "Caperucita va por el bosque, con su cesta y su capa roja.",
+          "words": [
+            "Caperucita",
+            "va",
+            "por",
+            "el",
+            "bosque,",
+            "con",
+            "su",
+            "cesta",
+            "y",
+            "su",
+            "capa",
+            "roja."
+          ],
+          "answer": true,
+          "success": "¡Excelente lectura! Tu ritmo y precisión fueron brillantes.",
+          "hint": "Lee siguiendo el ritmo del cursor que rebota sobre cada palabra."
+        },
+        {
+          "id": "personajes",
+          "title": "Personajes y Lugares",
+          "prompt": "Arrastra cada cromo a su categoría: Personajes o Escenarios.",
+          "speak": "Arrastra Caperucita y el lobo a Personajes, y el bosque y la casa a Escenarios.",
+          "type": "personajes",
+          "categories": [
+            {
+              "name": "Personajes",
+              "emoji": "🎭"
+            },
+            {
+              "name": "Escenarios",
+              "emoji": "🏞️"
+            }
+          ],
+          "items": [
+            {
+              "word": "Caperucita",
+              "category": "Personajes",
+              "emoji": "🔴"
+            },
+            {
+              "word": "Lobo",
+              "category": "Personajes",
+              "emoji": "🐺"
+            },
+            {
+              "word": "Bosque",
+              "category": "Escenarios",
+              "emoji": "🌲"
+            },
+            {
+              "word": "Casa",
+              "category": "Escenarios",
+              "emoji": "🏠"
+            }
+          ],
+          "answer": 4,
+          "success": "¡Todos los cromos quedaron en su categoría con su sello de aprobación!",
+          "hint": "Los personajes son quienes actúan; los escenarios son lugares donde ocurre."
+        },
+        {
+          "id": "quien",
+          "title": "¿Quién dijo qué?",
+          "prompt": "Toca el rostro del personaje que pronunció esta frase.",
+          "speak": "Quien dijo: A donde vas, Caperucita. Toca el personaje correcto.",
+          "type": "quien",
+          "quote": "¿A dónde vas, Caperucita?",
+          "characters": [
+            {
+              "name": "El Lobo",
+              "emoji": "🐺"
+            },
+            {
+              "name": "Caperucita",
+              "emoji": "🔴"
+            },
+            {
+              "name": "La Madre",
+              "emoji": "👩"
+            }
+          ],
+          "answer": "El Lobo",
+          "success": "¡Se encendió el haz de luz! El lobo fue quien dijo la frase.",
+          "hint": "¿Quién esperó a Caperucita en el camino para preguntarle?"
+        },
+        {
+          "id": "mapa",
+          "title": "Mapa del Narrador",
+          "prompt": "Ubica las fichas de los personajes en la zona del mapa donde ocurrió la acción.",
+          "speak": "Coloca a Caperucita en el camino, al lobo en el bosque y a la abuelita en la casa.",
+          "type": "mapa",
+          "zones": [
+            {
+              "name": "El Camino",
+              "emoji": "🛤️",
+              "events": "Caperucita caminó por el camino hacia la casa."
+            },
+            {
+              "name": "El Bosque",
+              "emoji": "🌲",
+              "events": "El lobo se encontró con Caperucita en el bosque."
+            },
+            {
+              "name": "La Casa",
+              "emoji": "🏠",
+              "events": "La abuelita estaba en su casa."
+            }
+          ],
+          "items": [
+            {
+              "word": "Caperucita",
+              "zone": "El Camino",
+              "emoji": "🔴"
+            },
+            {
+              "word": "Lobo",
+              "zone": "El Bosque",
+              "emoji": "🐺"
+            },
+            {
+              "word": "Abuelita",
+              "zone": "La Casa",
+              "emoji": "👵"
+            }
+          ],
+          "answer": 3,
+          "success": "¡Las zonas se activaron y mostraron el resumen del evento!",
+          "hint": "Ubica cada personaje en el lugar donde realizó su acción clave."
+        },
+        {
+          "id": "galeria",
+          "title": "Galería de Protagonistas",
+          "prompt": "Selecciona solo a los personajes que formaron parte de la trama.",
+          "speak": "Selecciona a Caperucita, el lobo, la abuelita y el lenador. Evita los distractores.",
+          "type": "galeria",
+          "characters": [
+            {
+              "name": "Caperucita",
+              "emoji": "🔴",
+              "correct": true
+            },
+            {
+              "name": "El Lobo",
+              "emoji": "🐺",
+              "correct": true
+            },
+            {
+              "name": "La Abuelita",
+              "emoji": "👵",
+              "correct": true
+            },
+            {
+              "name": "El Leñador",
+              "emoji": "🪵",
+              "correct": true
+            },
+            {
+              "name": "Un Dragón",
+              "emoji": "🐉",
+              "correct": false
+            },
+            {
+              "name": "Un Robot",
+              "emoji": "🤖",
+              "correct": false
+            }
+          ],
+          "answer": 4,
+          "success": "¡Los personajes correctos brillan en marcos dorados y los distractores desaparecen!",
+          "hint": "Elige solo a quienes aparecieron en el cuento de Caperucita."
+        },
+        {
+          "id": "escenario",
+          "title": "Escenario Ideal",
+          "prompt": "Elige el paisaje donde se desarrolló el suceso clave.",
+          "speak": "Elige el lugar donde Caperucita se encontro con el lobo.",
+          "type": "escenario",
+          "question": "¿Dónde se encontró Caperucita con el lobo?",
+          "options": [
+            {
+              "label": "El bosque",
+              "emoji": "🌲",
+              "scene": "el bosque frondoso y oscuro"
+            },
+            {
+              "label": "La playa",
+              "emoji": "🏖️",
+              "scene": "la playa soleada"
+            },
+            {
+              "label": "El castillo",
+              "emoji": "🏰",
+              "scene": "el castillo de piedra"
+            }
+          ],
+          "answer": "El bosque",
+          "success": "¡El fondo se desplegó en pantalla completa! El encuentro fue en el bosque.",
+          "hint": "El lobo vivía escondido entre los árboles."
+        },
+        {
+          "id": "ordenar",
+          "title": "Ordena la Historia",
+          "prompt": "Arrastra las viñetas a los espacios del 1 al 3 en orden lógico.",
+          "speak": "Ordena: primero sale de casa, luego encuentra al lobo, al final llega a la casa.",
+          "type": "ordenar",
+          "items": [
+            {
+              "label": "Caperucita sale de casa",
+              "emoji": "🏠"
+            },
+            {
+              "label": "Encuentra al lobo",
+              "emoji": "🐺"
+            },
+            {
+              "label": "Llega a la casa",
+              "emoji": "🏡"
+            }
+          ],
+          "answer": [
+            "Caperucita sale de casa",
+            "Encuentra al lobo",
+            "Llega a la casa"
+          ],
+          "success": "¡Las viñetas se acomodaron en la línea reproduciendo la historia en orden!",
+          "hint": "¿Qué pasó primero? ¿Qué pasó después? ¿Qué pasó al final?"
+        },
+        {
+          "id": "linea",
+          "title": "Línea del Tiempo Interactiva",
+          "prompt": "Arrastra las tarjetas a Inicio, Desarrollo o Desenlace.",
+          "speak": "Coloca la salida de casa en Inicio, el encuentro con el lobo en Desarrollo y el rescate en Desenlace.",
+          "type": "linea",
+          "categories": [
+            {
+              "name": "Inicio",
+              "emoji": "🌅"
+            },
+            {
+              "name": "Desarrollo",
+              "emoji": "⏳"
+            },
+            {
+              "name": "Desenlace",
+              "emoji": "🌇"
+            }
+          ],
+          "items": [
+            {
+              "word": "Caperucita sale de casa",
+              "category": "Inicio",
+              "emoji": "🏠"
+            },
+            {
+              "word": "El lobo la engaña",
+              "category": "Desarrollo",
+              "emoji": "🐺"
+            },
+            {
+              "word": "El leñador salva a todos",
+              "category": "Desenlace",
+              "emoji": "🪵"
+            }
+          ],
+          "answer": 3,
+          "success": "¡La línea del tiempo se completó y muestra el resumen animado del relato!",
+          "hint": "Inicio es el comienzo, Desarrollo la parte central y Desenlace el final."
+        },
+        {
+          "id": "domino",
+          "title": "El Dominó de los Sucesos",
+          "prompt": "Une las fichas siguiendo la lógica temporal y causa-efecto.",
+          "speak": "Une las fichas en orden: primero sale de casa, luego el lobo, despues el rescate.",
+          "type": "domino",
+          "pieces": [
+            {
+              "text": "Caperucita sale de casa",
+              "next": "Encuentra al lobo",
+              "emoji": "🔴"
+            },
+            {
+              "text": "Encuentra al lobo",
+              "next": "El lobo engaña a la abuelita",
+              "emoji": "🐺"
+            },
+            {
+              "text": "El lobo engaña a la abuelita",
+              "next": "El leñador rescata a todos",
+              "emoji": "👵"
+            }
+          ],
+          "answer": [
+            "Caperucita sale de casa",
+            "Encuentra al lobo",
+            "El lobo engaña a la abuelita",
+            "El leñador rescata a todos"
+          ],
+          "success": "¡Las fichas formaron una cadena continua sin interrupciones!",
+          "hint": "Busca la ficha que continúa después de cada hecho."
+        },
+        {
+          "id": "cinta",
+          "title": "Cinta Cinematográfica",
+          "prompt": "Ordena los fotogramas de izquierda a derecha y presiona Play.",
+          "speak": "Arrastra los fotogramas para que la historia tenga coherencia causal.",
+          "type": "cinta",
+          "frames": [
+            {
+              "text": "Caperucita sale",
+              "emoji": "🏠"
+            },
+            {
+              "text": "Encuentra al lobo",
+              "emoji": "🐺"
+            },
+            {
+              "text": "El rescate",
+              "emoji": "🪵"
+            }
+          ],
+          "answer": [
+            "Caperucita sale",
+            "Encuentra al lobo",
+            "El rescate"
+          ],
+          "success": "¡La mini-película se reprodujo en orden!",
+          "hint": "Pon el inicio a la izquierda y el final a la derecha."
+        },
+        {
+          "id": "antes",
+          "title": "Antes y Después",
+          "prompt": "Elige qué ocurrió antes y qué ocurrió después de la escena central.",
+          "speak": "La escena central es en el bosque. Que paso antes y despues?",
+          "type": "antes",
+          "central": "Caperucita se encuentra con el lobo en el bosque",
+          "beforeOptions": [
+            "Caperucita caminaba por el camino",
+            "Caperucita llegó a la casa",
+            "El leñador salvó a todos"
+          ],
+          "afterOptions": [
+            "El lobo corre a casa de la abuelita",
+            "Caperucita vuelve a casa",
+            "El leñador se esconde"
+          ],
+          "answerBefore": "Caperucita caminaba por el camino",
+          "answerAfter": "El lobo corre a casa de la abuelita",
+          "success": "¡Enlazaste los tres momentos clave y completaste el ciclo de la historia!",
+          "hint": "Antes del encuentro, Caperucita caminaba; después, el lobo corrió a la casa."
+        }
+      ]
     }
   ]
 }

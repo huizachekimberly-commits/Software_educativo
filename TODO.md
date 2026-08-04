@@ -1,9 +1,14 @@
-# TODO — Alineación y centrado de contenedores de unidades (sin Unidad 4)
+# TODO — Actividades de la Unidad 3 (Montañas de los Cuentos)
 
-- [x] 1. Eliminar la Unidad 4 (oceano) de `data/units.json` (ya estaba hecha).
-- [x] 2. Añadir `requires:"bosque"` a la Unidad 3 (montanas) (ya estaba hecha).
-- [x] 3. Actualizar el encabezado "Cuatro regiones" → "Tres regiones" en `index.html` (ya estaba hecha).
-- [x] 4. Leyenda "🔒 Bloqueada" centrada en tarjetas bloqueadas en `js/app.js` (ya estaba hecha).
-- [x] 5. Estilizar leyenda y aspecto gris de unidades bloqueadas en `css/styles.css` (ya estaba hecha).
-- [x] 6. Cambiar `.unit-grid` de 4 a 3 columnas en `css/styles.css` para centrar/alinear las 3 tarjetas.
-- [x] 7. Ajustar posiciones de `renderMap()` en `js/app.js` a 3 regiones.
+Historia central: **Caperucita Roja**
+
+- [ ] 1. Agregar las 15 sub-actividades a `data/units.json` (unidad `montanas`).
+- [ ] 2. Añadir funciones render en `js/app.js` para cada nuevo tipo.
+- [ ] 3. Añadir casos `switch` en `openSubActivity`.
+- [ ] 4. Añadir casos `switch` en `checkAnswer`.
+- [ ] 5. Añadir casos en `animateActivitySuccess`.
+- [ ] 6. Añadir limpieza en `closeActivity` donde se requiera.
+- [ ] 7. Añadir manejo de sonido para `montanas` en `getUnitSoundFolder`.
+- [ ] 8. Añadir estilos CSS para los nuevos contenedores/animaciones.
+- [ ] 9. Añadir `getBadgeIcon` para "Corona del Narrador".
+- [ ] 10. Verificar JSON válido y conteo de actividades.
