@@ -1281,7 +1281,7 @@
           "id": "domino",
           "title": "El Dominó de los Sucesos",
           "prompt": "Une las fichas siguiendo la lógica temporal y causa-efecto.",
-          "speak": "Une las fichas en orden: primero sale de casa, luego el lobo, despues el rescate.",
+          "speak": "Une las fichas en orden: primero fue el bien, luego el lobo, despues el rescate.",
           "type": "domino",
           "pieces": [
             {

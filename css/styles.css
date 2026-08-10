@@ -4228,6 +4228,805 @@ radial-gradient(circle at 83% 70%, #00b8ff 0 11%, transparent 11.5%),
 }
 
 /* =============================================
+   INSPECTOR ACTIVITY (Unidad 2) — El Inspector de Letras
+   ============================================= */
+.inspector-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.inspector-scene {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(180deg, #e0e7ff 0%, #c7d2fe 100%);
+  border-radius: var(--radius-lg);
+  border: 3px solid rgba(79, 70, 229, 0.35);
+  overflow: hidden;
+}
+
+/* Inspector de Letras — paper look for the scene (act 8) */
+.inspector-scene.inspector-paper {
+  background: linear-gradient(180deg, #fffdf0 0%, #fdf6e3 40%, #f7ecd0 100%);
+  border-radius: var(--radius-lg);
+  border: 4px solid #d4a853;
+  box-shadow:
+    inset 0 4px 12px rgba(0, 0, 0, 0.06),
+    0 12px 32px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  overflow: auto;
+}
+
+/* Toolbar — "Busca la palabra: sol" */
+.inspector-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  border: 3px solid rgba(79, 70, 229, 0.25);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.inspector-search-icon {
+  font-size: 1.6rem;
+}
+
+.inspector-search-label {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #3730a3;
+}
+
+.inspector-search-label strong {
+  color: #7c3aed;
+  font-size: 1.3rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Paragraph rendered as word chips */
+.inspector-paragraph {
+  background: rgba(255, 255, 255, 0.75);
+  border: 3px dashed #d4a853;
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #4a3f2a;
+  line-height: 2.1;
+  text-align: left;
+  flex: 1;
+}
+
+/* Word chips — every word is a clickable pill */
+.inspector-word-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  margin: 0 2px;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #4a3f2a;
+  font-weight: 800;
+  font-size: 1.25rem;
+  cursor: default;
+  transition: all 0.2s var(--bounce);
+  line-height: 1.4;
+}
+
+/* Target word — highlighted and clickable */
+.inspector-word-chip.is-target {
+  background: rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.35);
+  color: #6d28d9;
+  cursor: pointer;
+}
+
+.inspector-word-chip.is-target:hover {
+  transform: scale(1.08);
+  background: rgba(124, 58, 237, 0.2);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+}
+
+/* Sealed (stamped) target word */
+.inspector-word-chip.is-target.sealed {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  border-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3);
+  animation: popIn 0.35s var(--bounce);
+  pointer-events: none;
+  position: relative;
+}
+
+.inspector-word-chip.is-target.sealed::after {
+  content: "✓";
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  background: #ffffff;
+  color: #059669;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Punctuation spans between words */
+.inspector-punct {
+  color: #8d7a5a;
+  font-weight: 700;
+}
+
+/* Progress counter — "Selladas: 0 / 3" */
+.inspector-progress {
+  flex-shrink: 0;
+  margin-top: 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #6d28d9;
+  text-align: center;
+  background: #eef2ff;
+  border: 3px solid rgba(124, 58, 237, 0.2);
+  border-radius: var(--radius-xl);
+  padding: 10px 18px;
+}
+
+.inspector-progress.has-progress {
+  background: linear-gradient(135deg, #e0f7f0, #d0f0ec);
+  border-color: rgba(0, 184, 148, 0.3);
+  color: #00665a;
+}
+
+/* Solved state — green glow */
+.inspector-scene.inspector-solved {
+  border-color: #10b981;
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.6);
+}
+
+.inspector-hint {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #4c1d95;
+  text-align: center;
+  max-width: 460px;
+  margin: 0;
+  line-height: 1.5;
+  background: #eef2ff;
+  border: 2px dashed #a5b4fc;
+  padding: 12px 18px;
+  border-radius: 14px;
+}
+
+.inspector-msg {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+/* =============================================
+   CAMALEON ACTIVITY (Unidad 2) — La Palabra Escondida
+   ============================================= */
+.camaleon-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.camaleon-container.camaleon-solved .camaleon-word {
+  background: linear-gradient(135deg, #fff4cf, #ffe8b8);
+  border-color: var(--gold);
+  box-shadow: 0 0 24px rgba(255, 184, 77, 0.45);
+}
+
+.camaleon-scene {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+  border-radius: var(--radius-lg);
+  border: 3px solid rgba(46, 125, 50, 0.35);
+  overflow: hidden;
+}
+
+.camaleon-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  z-index: 1;
+  pointer-events: none;
+  background: #a5d6a7;
+}
+
+.camaleon-word {
+  font-size: 2.6rem;
+  font-weight: 900;
+  letter-spacing: 8px;
+  color: var(--ink);
+  text-align: center;
+  background: #ffffff;
+  border: 4px dashed var(--teal);
+  border-radius: var(--radius);
+  padding: 16px 28px;
+  box-shadow: 0 8px 24px rgba(0, 184, 148, 0.12);
+  transition: all 0.3s var(--bounce);
+  text-transform: uppercase;
+}
+
+.camaleon-target {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1b5e20;
+  text-align: center;
+  margin: 0;
+  background: #e8f5e9;
+  border: 2px dashed #81c784;
+  padding: 10px 22px;
+  border-radius: 14px;
+}
+
+.camaleon-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: 480px;
+}
+
+.camaleon-tile {
+  width: 64px;
+  height: 64px;
+  border: none;
+  border-radius: 18px;
+  background: var(--tile-color, var(--pink));
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.25s var(--bounce);
+  text-transform: uppercase;
+}
+
+/* Bouncy "swar" color dance for each syllable tile (like the rest of the unit) */
+.camaleon-tile-swar {
+  animation: camaleonSwar 1.6s ease-in-out infinite;
+  animation-delay: var(--swar-delay, 0s);
+}
+
+@keyframes camaleonSwar {
+  0%, 100% { transform: translateY(0) scale(1); filter: brightness(1); }
+  35% { transform: translateY(-7px) scale(1.08); filter: brightness(1.15); }
+  70% { transform: translateY(0) scale(0.97); filter: brightness(0.95); }
+}
+
+.camaleon-tile:hover:not(.found) {
+  transform: translateY(-5px) scale(1.08);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
+/* Correct syllables light up gold with a glowing golden border */
+.camaleon-tile.found {
+  background: var(--gold);
+  transform: scale(1.05);
+  border: 4px solid #ffd54f;
+  box-shadow:
+    0 0 0 4px rgba(255, 184, 77, 0.45),
+    0 0 22px rgba(255, 184, 77, 0.8),
+    0 6px 16px rgba(0, 0, 0, 0.15);
+  animation: camaleonGoldGlow 1.2s ease-in-out infinite;
+  color: #5a3e00;
+}
+
+@keyframes camaleonGoldGlow {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(255, 184, 77, 0.45), 0 0 18px rgba(255, 184, 77, 0.7), 0 6px 16px rgba(0, 0, 0, 0.15); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 184, 77, 0.6), 0 0 34px rgba(255, 184, 77, 0.95), 0 6px 16px rgba(0, 0, 0, 0.15); }
+}
+
+.camaleon-progress {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-align: center;
+  min-height: 32px;
+}
+
+.camaleon-found-letter {
+  display: inline-block;
+  color: var(--gold);
+  font-size: 1.4rem;
+  font-weight: 900;
+  margin-left: 4px;
+  animation: popIn 0.3s var(--bounce);
+}
+
+.camaleon-msg {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+/* =============================================
+   GRANJA ACTIVITY (Unidad 2) — El Letrero del Establo
+   ============================================= */
+.granja-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.granja-container.granja-solved .granja-scene {
+  border-color: #66bb6a;
+  box-shadow: 0 0 24px rgba(102, 187, 106, 0.6);
+}
+
+.granja-scene {
+  position: relative;
+  width: 100%;
+  max-width: 690px;
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(180deg, #ffe0b2 0%, #ffcc80 100%);
+  border-radius: var(--radius-lg);
+  border: 3px solid rgba(230, 81, 0, 0.35);
+  overflow: hidden;
+}
+
+.granja-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  z-index: 1;
+  pointer-events: none;
+  background: #ffcc80;
+}
+
+/* Single purple clickable target button positioned over the sign */
+.granja-target-btn {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  min-width: 0.1px;
+  max-width: 0.1px;
+  padding: 12px 20px;
+  border: 1px solid #00000000;
+  border-radius: 0px;
+  /* Color y tamaño configurables desde JS (--pato-color / --pato-size) */
+  background: var(--pato-color, #7c3aed);
+  color: #00000000;
+  font-weight: 900;
+  font-size: var(--pato-size, 1px);
+  letter-spacing: 1px;
+  cursor: hand;
+  transition: all 0.25s var(--bounce);
+  text-align: center;
+  line-height: 1.2;
+  animation: granjaAttention 1.6s ease-in-out infinite;
+}
+
+
+.granja-sign-word {
+  display: block;
+  text-transform: capitalize;
+}
+
+.granja-hint {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e65100;
+  text-align: center;
+  max-width: 460px;
+  margin: 0;
+  line-height: 1.5;
+  background: #fff8e1;
+  border: 2px dashed #ffcc80;
+  padding: 12px 18px;
+  border-radius: 14px;
+}
+
+.granja-msg {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+/* =============================================
+   FOCO ACTIVITY (Unidad 2) — La Linterna Mágica
+   ============================================= */
+.foco-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.foco-word {
+  font-size: 2.6rem;
+  font-weight: 900;
+  letter-spacing: 10px;
+  color: #fff9c4;
+  text-align: center;
+  background: linear-gradient(135deg, #1a237e, #283593);
+  border: 4px solid #ffd54f;
+  border-radius: var(--radius);
+  padding: 16px 28px;
+  box-shadow: 0 0 24px rgba(255, 213, 79, 0.25);
+  text-transform: uppercase;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.foco-scene {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  min-height: 220px;
+  background: radial-gradient(circle at 50% 40%, #1a1a3e 0%, #000022 100%);
+  border-radius: var(--radius-lg);
+  border: 3px solid rgba(255, 213, 79, 0.4);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Novedoso escenario linterna: la habitación oscura con el cursor-linterna.
+   El fondo (room2.png) se muestra tenue y desaturado; los fragmentos de la
+   palabra se iluminan cuando la linterna pasa cerca. */
+.foco-scene.foco-room {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  min-height: 420px;
+  background: linear-gradient(160deg, #0d0d2b 0%, #05051a 100%);
+  border-radius: var(--radius-lg);
+  border: 3px solid rgba(255, 213, 79, 0.45);
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* Imagen de fondo de la habitación (tenue / desaturada para dar sensación de noche) */
+.foco-room-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(0.42) saturate(0.55) contrast(1.05);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Aura de la linterna — sigue al puntero. Círculo radial cálido. */
+.foco-lamp {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 120px;
+  height: 120px;
+  border-radius: 90%;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle,
+    rgba(255, 244, 180, 0.95) 0%,
+    rgba(255, 213, 79, 0.55) 32%,
+    rgba(255, 213, 79, 0.18) 90%,
+    transparent 92%);
+  box-shadow: 0 0 60px 30px rgba(255, 213, 79, 0.35);
+  transition: opacity 0.2s ease;
+}
+
+.foco-lamp.on {
+  opacity: 1;
+}
+
+/* Cajas con los fragmentos (za, pa, to) dispersos por la escena oscura */
+.foco-boxes {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  z-index: 2;
+}
+
+.foco-box {
+  position: absolute;
+  min-width: 46px;
+  min-height: 26px;
+  padding: 12px 22px;
+  border: 4px solid rgba(0, 0, 0, 0);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0);
+  color: rgba(0, 0, 0, 0.9);
+  font-weight: 900;
+  font-size: 2.1rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: all 0.25s var(--bounce);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+  user-select: none;
+  letter-spacing: 2px;
+}
+
+/* Iluminado por la linterna → brilla y se vuelve clickeable */
+.foco-box.lit {
+  border-color: #ffd54f;
+  background: rgba(255, 213, 79, 0.28);
+  color: #fff9c4;
+  box-shadow: 0 0 26px rgba(255, 213, 79, 0.65);
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+.foco-box.lit:hover {
+  transform: translate(-50%, -50%) scale(1.12);
+  background: rgba(255, 213, 79, 0.42);
+  box-shadow: 0 0 36px rgba(255, 213, 79, 0.85);
+}
+
+/* Fragmento usado correctamente */
+.foco-box.used {
+  background: linear-gradient(135deg, #ffd54f, #ffb300);
+  color: #1a1a3e;
+  border-color: #ffd54f;
+  transform: translate(-50%, -50%) scale(0.94);
+  box-shadow: 0 0 0 4px rgba(255, 213, 79, 0.4), 0 0 28px rgba(255, 213, 79, 0.7);
+  animation: popIn 0.35s var(--bounce);
+  pointer-events: none;
+}
+
+.foco-box.shake {
+  animation: shake 0.4s ease;
+}
+
+/* Invitación a acercar la linterna */
+.foco-box.foco-nudge {
+  animation: fledglingNudge 0.4s ease;
+  border-color: rgba(255, 107, 107, 0.7);
+  box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.25);
+}
+
+@keyframes fledglingNudge {
+  0%, 100% { transform: translate(-50%, -50%); }
+  30% { transform: translate(-42%, -50%); }
+  60% { transform: translate(-58%, -50%); }
+}
+
+/* Espacios de letras que se revelan en la palabra (Z A P A T O) */
+.foco-word-slots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.foco-letter-slot {
+  width: 46px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px dashed rgba(255, 213, 79, 0.5);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 213, 79, 0.08);
+  color: #fff9c4;
+  font-size: 2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  transition: all 0.3s var(--bounce);
+}
+
+.foco-letter-slot.revealed {
+  background: linear-gradient(135deg, #ffd54f, #ffb300);
+  border: 4px solid #ffd54f;
+  color: #1a1a3e;
+  animation: popIn 0.35s var(--bounce);
+  box-shadow: 0 0 14px rgba(255, 213, 79, 0.6);
+}
+
+/* Palabra completa resplandeciente */
+.foco-word.foco-word-complete {
+  border-color: #ffd54f;
+  box-shadow: 0 0 34px rgba(255, 213, 79, 0.6);
+  animation: pulseGlow 1.4s ease-in-out infinite;
+}
+
+.foco-hint {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #283593;
+  text-align: center;
+  max-width: 460px;
+  margin: 0;
+  line-height: 1.5;
+  background: #e8eaf6;
+  border: 2px dashed #9fa8da;
+  padding: 12px 18px;
+  border-radius: 14px;
+}
+
+.foco-msg {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+/* =============================================
+   LABERINTO ACTIVITY (Unidad 2) — El Laberinto del Conejo
+   ============================================= */
+.laberinto-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+/* Maze board — relative container where the rabbit and walls are positioned */
+.laberinto-board {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  min-height: 340px;
+  background:
+    radial-gradient(circle at 50% 50%, #66bb6a 0%, #43a047 70%, #2e7d32 100%);
+  border: 5px solid #1b5e20;
+  border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.25),
+    0 12px 32px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+/* Ground path lines (decorative) */
+.laberinto-board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 49.5%, rgba(255, 255, 255, 0.18) 49.5%, rgba(255, 255, 255, 0.18) 50.5%, transparent 50.5%),
+    linear-gradient(0deg, transparent 49.5%, rgba(255, 255, 255, 0.18) 49.5%, rgba(255, 255, 255, 0.18) 50.5%, transparent 50.5%);
+  background-size: 90px 90px;
+  pointer-events: none;
+}
+
+/* Rabbit — centered in the maze */
+.laberinto-rabbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  font-size: 4rem;
+  line-height: 1;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.3));
+  animation: bounce 2.3s ease-in-out infinite;
+}
+
+.laberinto-rabbit.hop {
+  animation: popIn 0.4s var(--bounce);
+}
+
+/* Walls — positioned absolutely on the maze board */
+.laberinto-wall {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 96px;
+  min-height: 64px;
+  padding: 10px 16px;
+  border: 4px solid #1b5e20;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #8d6e63, #6d4c41);
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: all 0.25s var(--bounce);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  text-transform: capitalize;
+  z-index: 2;
+}
+
+.laberinto-wall:hover:not(.opened) {
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  border-color: #ffd54f;
+}
+
+/* Correct wall opened — the path opens and the way is revealed */
+.laberinto-wall.opened {
+  background: linear-gradient(135deg, #66bb6a, #43a047);
+  border-color: #1b5e20;
+  transform: translate(-50%, -50%) scale(0.94);
+  box-shadow: 0 0 0 4px rgba(102, 187, 106, 0.5), 0 8px 20px rgba(0, 0, 0, 0.2);
+  animation: popIn 0.35s var(--bounce);
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Solved state — the rabbit reaches home */
+.laberinto-board.laberinto-solved {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+.laberinto-board.laberinto-solved .laberinto-rabbit {
+  animation: popIn 0.5s var(--bounce);
+}
+
+.laberinto-hint {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1b5e20;
+  text-align: center;
+  max-width: 460px;
+  margin: 0;
+  line-height: 1.5;
+  background: #e8f5e9;
+  border: 2px dashed #81c784;
+  padding: 12px 18px;
+  border-radius: 14px;
+}
+
+.laberinto-msg {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+/* =============================================
    ACTIVITY SUCCESS — Workspace celebration state
    ============================================= */
 .activity-workspace.activity-success {

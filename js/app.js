@@ -1,4 +1,4 @@
-﻿import { firebaseConfig, firebaseEnabled } from "./firebase-config.js";
+import { firebaseConfig, firebaseEnabled } from "./firebase-config.js";
 
 const state = {
   data: null,
@@ -845,7 +845,8 @@ function renderMap() {
 function getBadgeIcon(rewardName) {
   const iconMap = {
     "Insignia de la Letra Brillante": "assets/images/icons/insignia_de_la_letra_brillante_icon.png",
-    "Hoja del Vocabulario": "assets/images/icons/hoja_del_vocabulario_icon.png"
+    "Hoja del Vocabulario": "assets/images/icons/hoja_del_vocabulario_icon.png",
+    "Corona del Narrador": "assets/images/icons/unit3_icon.png"
   };
   const path = iconMap[rewardName];
   if (path) {
@@ -1233,6 +1234,10 @@ function getUnitSoundFolder(unitId, subIndex) {
   if (unitId === "bosque") {
     return `assets/unit_${unitNumber}_sounds/theme1`;
   }
+  // Unit 3 (Montañas) has no MP3 folder: fall back to theme1-style path
+  if (unitId === "montanas") {
+    return `assets/unit_${unitNumber}_sounds/theme1`;
+  }
   return `assets/unit_${unitNumber}_sounds`;
 }
 
@@ -1419,8 +1424,11 @@ function renderCastleMap(unit) {
   activityZone.classList.add("unit-fullscreen");
   activityUnit.textContent = `Unidad ${unit.number}: ${unit.title}`;
   const isForest = unit.id === "bosque";
+  const isMountain = unit.id === "montanas";
   activityTitle.textContent = isForest
     ? "Mapa del Bosque \u2014 Elige una actividad"
+    : isMountain
+    ? "Mapa de las Monta\u00f1as \u2014 Elige un cuento"
     : "Mapa del Castillo \u2014 Elige una actividad";
   activityPrompt.textContent = "Completa cada actividad para desbloquear la siguiente.";
   feedback.className = "feedback";
@@ -1435,7 +1443,7 @@ function renderCastleMap(unit) {
   const allDone = done === total;
 
   const container = document.createElement("div");
-  container.className = unit.id === "bosque" ? "castle-map-container forest-map" : "castle-map-container";
+  container.className = unit.id === "bosque" ? "castle-map-container forest-map" : unit.id === "montanas" ? "castle-map-container mountain-map" : "castle-map-container";
   if (unit.castleMapImage) {
     container.style.backgroundImage = `url("${unit.castleMapImage}")`;
   }
@@ -1544,21 +1552,35 @@ function openSubActivity(unitId, index) {
   state.escudoExpired = false;
   state.escudoStarted = false;
   state.cofreDropped = null;
-  state.redoble = null;
+state.redoble = null;
   state.frasePlaced = null;
+  // Unit 3 state resets
+  state.antesBefore = null;
+  state.antesAfter = null;
+  if (state.karaokeTimer) { clearInterval(state.karaokeTimer); state.karaokeTimer = null; }
+  if (state.cintaTimer) { clearInterval(state.cintaTimer); state.cintaTimer = null; }
 
   activityScene.hidden = true;
   activityZone.classList.add("unit-fullscreen");
 
-  // Bosque unit uses a themed CSS gradient background instead of castle images
+// Bosque unit uses a themed CSS gradient background instead of castle images
   if (unit.id === "bosque") {
     activityZone.classList.add("has-forest-bg");
   } else {
     activityZone.classList.remove("has-forest-bg");
   }
 
+  // Montañas unit uses its own mountain-themed gradient background
+  if (unit.id === "montanas") {
+    activityZone.classList.add("has-mountain-bg");
+    const bgLayer = document.getElementById("subActivityBg");
+    if (bgLayer) bgLayer.style.display = "none";
+  } else {
+    activityZone.classList.remove("has-mountain-bg");
+  }
+
   // Set background image inside the activity card (b1 for index 0, b2 for index 1, etc.)
-  if (unit.id !== "bosque" && index >= 0 && index < SUB_ACTIVITY_BACKGROUNDS.length) {
+  if (unit.id !== "bosque" && unit.id !== "montanas" && index >= 0 && index < SUB_ACTIVITY_BACKGROUNDS.length) {
     let bgLayer = document.getElementById("subActivityBg");
     if (!bgLayer) {
       bgLayer = document.createElement("div");
@@ -1591,7 +1613,7 @@ function openSubActivity(unitId, index) {
     feedback.className = "feedback ok";
     feedback.textContent = `¡Completaste "${sub.title}"! Usa el botón "Escuchar" para repasar las instrucciones.`;
   } else {
-$("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete" || sub.type === "mensaje" || sub.type === "palabra-oculta" || sub.type === "camaleon" || sub.type === "granja" || sub.type === "inspector" || sub.type === "foco" || sub.type === "laberinto" || sub.type === "asociacion" || sub.type === "memorama" || sub.type === "canastos" || sub.type === "red" || sub.type === "arbol"; // Auto-checked by keypress or number click
+$("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete" || sub.type === "mensaje" || sub.type === "palabra-oculta" || sub.type === "camaleon" || sub.type === "granja" || sub.type === "inspector" || sub.type === "foco" || sub.type === "laberinto" || sub.type === "asociacion" || sub.type === "memorama" || sub.type === "canastos" || sub.type === "red" || sub.type === "arbol" || sub.type === "teatro" || sub.type === "libro" || sub.type === "capitulos" || sub.type === "karaoke" || sub.type === "personajes" || sub.type === "mapa" || sub.type === "galeria" || sub.type === "linea" || sub.type === "domino" || sub.type === "cinta"; // Auto-checked
     $("#listenPrompt").hidden = false;
     $("#pronunciationBtn").hidden = true;
   }
@@ -1686,6 +1708,51 @@ case "accion":
       break;
     case "arbol":
       renderArbolActivity(sub, alreadyCompleted);
+      break;
+    case "cuento":
+      renderCuentoActivity(sub, alreadyCompleted);
+      break;
+    case "teatro":
+      renderTeatroActivity(sub, alreadyCompleted);
+      break;
+    case "libro":
+      renderLibroActivity(sub, alreadyCompleted);
+      break;
+    case "capitulos":
+      renderCapitulosActivity(sub, alreadyCompleted);
+      break;
+    case "karaoke":
+      renderKaraokeActivity(sub, alreadyCompleted);
+      break;
+    case "personajes":
+      renderPersonajesActivity(sub, alreadyCompleted);
+      break;
+    case "quien":
+      renderQuienActivity(sub);
+      break;
+    case "mapa":
+      renderMapaActivity(sub, alreadyCompleted);
+      break;
+    case "galeria":
+      renderGaleriaActivity(sub, alreadyCompleted);
+      break;
+    case "escenario":
+      renderEscenarioActivity(sub);
+      break;
+    case "ordenar":
+      renderOrdenarActivity(sub, alreadyCompleted);
+      break;
+    case "linea":
+      renderLineaActivity(sub, alreadyCompleted);
+      break;
+    case "domino":
+      renderDominoActivity(sub, alreadyCompleted);
+      break;
+    case "cinta":
+      renderCintaActivity(sub, alreadyCompleted);
+      break;
+    case "antes":
+      renderAntesActivity(sub);
       break;
     default:
       feedback.textContent = "Actividad no disponible.";
@@ -4077,6 +4144,18 @@ function renderCamaleonActivity(sub, reviewMode = false) {
   // Reset answer state
   state.sequenceAnswer = [];
 
+  // Camaleon image (decorative scene)
+  const scene = document.createElement("div");
+  scene.className = "camaleon-scene";
+  scene.id = "camaleonScene";
+  const camaleonImg = document.createElement("img");
+  camaleonImg.className = "camaleon-image";
+  camaleonImg.src = sub.image || "assets/images/unit_2/camaleon.png";
+  camaleonImg.alt = "Camaleón";
+  camaleonImg.draggable = false;
+  scene.appendChild(camaleonImg);
+  container.appendChild(scene);
+
   // Word display
   const wordDisplay = document.createElement("div");
   wordDisplay.className = "camaleon-word";
@@ -4094,12 +4173,16 @@ function renderCamaleonActivity(sub, reviewMode = false) {
   const tiles = document.createElement("div");
   tiles.className = "camaleon-tiles";
 
+const palette = ["--pink", "--blue", "--mint", "--purple", "--orange", "--gold", "--teal", "--rose"];
   sub.letters.forEach((letter, i) => {
     const tile = document.createElement("button");
     tile.type = "button";
     tile.className = "camaleon-tile";
+    tile.classList.add("camaleon-tile-swar");
     tile.dataset.index = i;
     tile.dataset.letter = letter.toLowerCase();
+    tile.style.setProperty("--tile-color", `var(${palette[i % palette.length]})`);
+    tile.style.setProperty("--swar-delay", `${i * 0.07}s`);
     tile.textContent = letter;
     tile.addEventListener("click", () => {
       // Already found
@@ -4108,6 +4191,7 @@ function renderCamaleonActivity(sub, reviewMode = false) {
       const expected = sub.target[state.sequenceAnswer.length];
       if (letter.toLowerCase() === expected.toLowerCase()) {
         tile.classList.add("found");
+        tile.style.setProperty("--tile-color", "var(--gold)");
         state.sequenceAnswer.push(letter);
         playTone("tap");
         // Check if the whole target is found
@@ -4116,6 +4200,7 @@ function renderCamaleonActivity(sub, reviewMode = false) {
           state.selectedAnswer = sub.target;
           feedback.className = "feedback ok";
           feedback.textContent = sub.success;
+          container.classList.add("camaleon-solved");
           completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
           playTone("success");
           celebrateConfetti();
@@ -4168,47 +4253,71 @@ function renderGranjaActivity(sub, reviewMode = false) {
     return;
   }
 
-  // Scene with hidden signs
+// Scene uses the granja.png image as the background. A single purple
+  // clickable button is overlaid on the sign hidden behind the tree.
+  // The button is the ONLY correct answer (target word).
   const scene = document.createElement("div");
   scene.className = "granja-scene";
   scene.id = "granjaScene";
 
-  const signsRow = document.createElement("div");
-  signsRow.className = "granja-signs";
+  // Farm image background
+  const granjaImg = document.createElement("img");
+  granjaImg.className = "granja-image";
+  granjaImg.src = sub.image || "assets/images/unit_2/granja.png";
+  granjaImg.alt = "Granja";
+  granjaImg.draggable = false;
+  scene.appendChild(granjaImg);
 
-  sub.signs.forEach((sign) => {
-    const signBtn = document.createElement("button");
-    signBtn.type = "button";
-    signBtn.className = "granja-sign";
-    signBtn.dataset.word = sign.word;
-    signBtn.dataset.pos = sign.pos;
-    signBtn.innerHTML = `<span class="granja-sign-emoji">${sign.emoji}</span><span class="granja-sign-word">???</span>`;
-    signBtn.addEventListener("click", () => {
-      signBtn.classList.add("revealed");
-      signBtn.querySelector(".granja-sign-word").textContent = sign.word;
-      playTone("tap");
-      // Check if it's the correct sign
-      if (sign.word === sub.target) {
-        state.selectedAnswer = sign.word;
-        feedback.className = "feedback ok";
-        feedback.textContent = sub.success;
-        completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
-        playTone("success");
-        celebrateConfetti();
-        animateActivitySuccess(sub);
-        playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
-          openActivity(state.activeUnit.id);
-        });
-      } else {
-        // Wrong sign — shake
-        setTimeout(() => signBtn.classList.remove("revealed"), 600);
-        playTone("error");
-      }
+// ============================================================
+  // CONFIGURACIÓN DEL BOTÓN DEL PATO (actividad 7, Unidad 2)
+  // ============================================================
+  // Ajusta manualmente aquí estos valores:
+  //
+  //  - posX: posición horizontal en porcentaje (%).
+  //          0 = borde izquierdo, 50 = centro, 100 = borde derecho.
+  //  - posY: posición vertical en porcentaje (%).
+  //          0 = arriba, 50 = centro, 100 = abajo.
+  //  - color: color de fondo del botón (acepta cualquier color CSS,
+  //           por ejemplo "#7c3aed", "purple", "rgb(255,0,0)", etc.)
+  //  - size: tamaño del botón en píxeles (controla el texto y el área).
+  //          Valor sugerido: 32.
+  const botonPato = {
+    posX: 60,     // % horizontal
+    posY: 52,     // % vertical
+    color: "#00000000", // color de fondo
+    size:1// tamaño (px)
+  };
+
+  // Botón clickeable posicionado sobre el letrero del pato.
+  const signBtn = document.createElement("button");
+  signBtn.type = "button";
+  signBtn.className = "granja-sign granja-target-btn";
+  signBtn.dataset.word = sub.target;
+  signBtn.style.left = `${botonPato.posX}%`;
+  signBtn.style.top = `${botonPato.posY}%`;
+  signBtn.style.setProperty("--pato-color", botonPato.color);
+  signBtn.style.setProperty("--pato-size", `${botonPato.size}px`);
+  signBtn.title = "Haz clic en el letrero del pato";
+  signBtn.innerHTML = `<span class="granja-sign-word">${sub.target}</span>`;
+  signBtn.addEventListener("click", () => {
+    // Already solved
+    if (signBtn.classList.contains("revealed")) return;
+    signBtn.classList.add("revealed");
+    playTone("tap");
+    state.selectedAnswer = sub.target;
+    feedback.className = "feedback ok";
+    feedback.textContent = sub.success;
+    container.classList.add("granja-solved");
+    completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+    playTone("success");
+    celebrateConfetti();
+    animateActivitySuccess(sub);
+    playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+      openActivity(state.activeUnit.id);
     });
-    signsRow.appendChild(signBtn);
   });
+  scene.appendChild(signBtn);
 
-  scene.appendChild(signsRow);
   container.appendChild(scene);
 
   const hint = document.createElement("p");
@@ -4235,63 +4344,83 @@ function renderInspectorActivity(sub, reviewMode = false) {
     return;
   }
 
-  // Reset count
-  state.inspectorCount = 0;
+// Inspector de Letras: read the paragraph and "seal" (stamp) each
+  // occurrence of the target word (e.g. "sol"). Friendly animated chips.
+  const scene = document.createElement("div");
+  scene.className = "inspector-scene inspector-paper";
+  scene.id = "inspectorScene";
 
-  // Paragraph with sealable words
-  const paragraph = document.createElement("div");
-  paragraph.className = "inspector-paragraph";
-  paragraph.id = "inspectorParagraph";
+  const titleBar = document.createElement("div");
+  titleBar.className = "inspector-toolbar";
+  titleBar.innerHTML = `<span class="inspector-search-icon">🔍</span><span class="inspector-search-label">Busca la palabra: <strong>${sub.target}</strong></span>`;
+  scene.appendChild(titleBar);
 
-  // Split the paragraph into words, each becomes a sealable chip
-  const words = sub.paragraph.split(" ");
-  words.forEach((word) => {
+  // Paragraph rendered as word chips so each word is a clickable container
+  const paragraphBox = document.createElement("div");
+  paragraphBox.className = "inspector-paragraph";
+  paragraphBox.id = "inspectorParagraph";
+
+  const words = String(sub.paragraph || "").split(/\s+/);
+  let foundCount = 0;
+
+  words.forEach((raw) => {
+    const clean = raw.replace(/[.,;:!?¿¡]/g, "");
+    const punctuation = raw.replace(clean, "");
     const chip = document.createElement("button");
     chip.type = "button";
-    chip.className = "inspector-chip";
-    chip.dataset.word = word.replace(/[.,;:]/g, "").toLowerCase();
-    chip.textContent = word;
-    chip.addEventListener("click", () => {
-      // Already sealed
-      if (chip.classList.contains("sealed")) return;
-      const normalized = chip.dataset.word;
-      if (normalized === sub.target) {
+    chip.className = "inspector-word-chip";
+    chip.dataset.word = clean.toLowerCase();
+    chip.textContent = clean;
+
+    if (clean.toLowerCase() === sub.target.toLowerCase()) {
+      chip.classList.add("is-target");
+      chip.addEventListener("click", () => {
+        if (chip.classList.contains("sealed")) return;
         chip.classList.add("sealed");
-        state.inspectorCount++;
-        playTone("success");
-        // Check if all found
-        if (state.inspectorCount >= sub.need) {
+        foundCount++;
+        playTone("tap");
+        updateProgress();
+        if (foundCount >= sub.need) {
           state.selectedAnswer = sub.need;
+          scene.classList.add("inspector-solved");
           feedback.className = "feedback ok";
           feedback.textContent = sub.success;
           completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+          playTone("success");
           celebrateConfetti();
           animateActivitySuccess(sub);
           playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
             openActivity(state.activeUnit.id);
           });
-        } else {
-          const counter = document.getElementById("inspectorCounter");
-          if (counter) counter.textContent = `Encontradas: ${state.inspectorCount}/${sub.need}`;
         }
-      } else {
-        // Wrong word — shake
-        chip.classList.add("shake");
-        setTimeout(() => chip.classList.remove("shake"), 400);
-        playTone("error");
-      }
-    });
-    paragraph.appendChild(chip);
+      });
+    }
+
+    paragraphBox.appendChild(chip);
+    if (punctuation) {
+      const span = document.createElement("span");
+      span.className = "inspector-punct";
+      span.textContent = punctuation;
+      paragraphBox.appendChild(span);
+    }
+    paragraphBox.appendChild(document.createTextNode(" "));
   });
 
-  container.appendChild(paragraph);
+  scene.appendChild(paragraphBox);
 
-  // Counter
-  const counter = document.createElement("div");
-  counter.className = "inspector-counter";
-  counter.id = "inspectorCounter";
-  counter.textContent = `Encontradas: 0/${sub.need}`;
-  container.appendChild(counter);
+  // Progress counter
+  const progress = document.createElement("div");
+  progress.className = "inspector-progress";
+  progress.id = "inspectorProgress";
+  progress.textContent = `Selladas: 0 / ${sub.need}`;
+  scene.appendChild(progress);
+
+  function updateProgress() {
+    progress.textContent = `Selladas: ${foundCount} / ${sub.need}`;
+    if (foundCount > 0) progress.classList.add("has-progress");
+  }
+
+  container.appendChild(scene);
 
   const hint = document.createElement("p");
   hint.className = "inspector-hint";
@@ -4324,42 +4453,90 @@ function renderFocoActivity(sub, reviewMode = false) {
   const wordDisplay = document.createElement("div");
   wordDisplay.className = "foco-word";
   wordDisplay.id = "focoWord";
-  wordDisplay.textContent = "_ _ _ _ _ _";
+
+  // Placeholder slots for the full word (e.g. Z A P A T O)
+  const wordSlots = document.createElement("div");
+  wordSlots.className = "foco-word-slots";
+  wordSlots.id = "focoWordSlots";
+  const fullWord = (sub.word || sub.answer.join("")).toUpperCase();
+  [...fullWord].forEach((letter) => {
+    const slot = document.createElement("span");
+    slot.className = "foco-letter-slot";
+    slot.textContent = "_";
+    wordSlots.appendChild(slot);
+  });
+  wordDisplay.appendChild(wordSlots);
   container.appendChild(wordDisplay);
 
-  // Dark scene with fragments to illuminate
+  // Dark room scene with a lamp (linterna) following the pointer.
   const scene = document.createElement("div");
-  scene.className = "foco-scene";
+  scene.className = "foco-scene foco-room";
   scene.id = "focoScene";
 
-  const fragments = document.createElement("div");
-  fragments.className = "foco-fragments";
+  // Dim image background (room2.png rendered dark/desaturated via CSS)
+  const roomImg = document.createElement("div");
+  roomImg.className = "foco-room-image";
+  roomImg.style.backgroundImage = `url("assets/images/unit_2/room2.png")`;
+  scene.appendChild(roomImg);
 
-  // Shuffle fragments for variety
-  const shuffled = [...sub.fragments].sort(() => Math.random() - 0.5);
-  shuffled.forEach((fragment) => {
-    const frag = document.createElement("button");
-    frag.type = "button";
-    frag.className = "foco-fragment";
-    frag.dataset.fragment = fragment;
-    frag.textContent = fragment;
-    frag.addEventListener("click", () => {
-      // Already used
-      if (frag.classList.contains("used")) return;
-      // Expected next fragment
+  // The lamp cursor (yellow aura that illuminates fragments near it)
+  const lamp = document.createElement("div");
+  lamp.className = "foco-lamp";
+  lamp.id = "focoLamp";
+  scene.appendChild(lamp);
+
+  // Separate syllable boxes (za, pa, to) scattered around the dark scene.
+  // They start dim; when the lamp is near, they light up and become clickable.
+  const boxesWrap = document.createElement("div");
+  boxesWrap.className = "foco-boxes";
+
+  const positions = [
+    { left: "18%", top: "30%" },
+    { left: "55%", top: "18%" },
+    { left: "38%", top: "62%" }
+  ];
+
+  sub.fragments.forEach((fragment, i) => {
+    const box = document.createElement("button");
+    box.type = "button";
+    box.className = "foco-box";
+    box.dataset.fragment = fragment;
+    box.dataset.index = i;
+    box.textContent = fragment;
+    box.style.left = positions[i % positions.length].left;
+    box.style.top = positions[i % positions.length].top;
+
+    box.addEventListener("click", () => {
       const expected = sub.answer[state.sequenceAnswer.length];
+      if (!box.classList.contains("lit")) {
+        // Not illuminated yet — invite the child to move the lamp closer
+        box.classList.add("foco-nudge");
+        setTimeout(() => box.classList.remove("foco-nudge"), 400);
+        playTone("error");
+        return;
+      }
+      if (box.classList.contains("used")) return;
       if (fragment === expected) {
-        frag.classList.add("used");
+        box.classList.add("used");
         state.sequenceAnswer.push(fragment);
         playTone("tap");
-        // Update word display
-        const display = document.getElementById("focoWord");
-        if (display) {
-          display.textContent = state.sequenceAnswer.join("").toUpperCase();
+        // Reveal the matching letters in the word slots
+        let filled = 0;
+        for (let k = 0; k < state.sequenceAnswer.length; k++) {
+          filled += sub.answer[k].length;
         }
+        const revealed = state.sequenceAnswer.join("");
+        const slots = wordSlots.querySelectorAll(".foco-letter-slot");
+        slots.forEach((slot, idx) => {
+          if (idx < revealed.length) {
+            slot.textContent = revealed[idx];
+            slot.classList.add("revealed");
+          }
+        });
         // Check if complete
         if (state.sequenceAnswer.join("") === sub.answer.join("")) {
           state.selectedAnswer = sub.answer;
+          wordDisplay.classList.add("foco-word-complete");
           feedback.className = "feedback ok";
           feedback.textContent = sub.success;
           completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
@@ -4371,16 +4548,55 @@ function renderFocoActivity(sub, reviewMode = false) {
           });
         }
       } else {
-        // Wrong fragment — shake
-        frag.classList.add("shake");
-        setTimeout(() => frag.classList.remove("shake"), 400);
+        // Wrong illuminated fragment — shake
+        box.classList.add("shake");
+        setTimeout(() => box.classList.remove("shake"), 400);
         playTone("error");
       }
     });
-    fragments.appendChild(frag);
+
+    boxesWrap.appendChild(box);
   });
 
-  scene.appendChild(fragments);
+  scene.appendChild(boxesWrap);
+
+  // Move the lamp with the pointer/touch and light up boxes within range.
+  let lastX = 0, lastY = 0;
+  const litRadiusSq = 110 * 110;
+
+function updateLamp(clientX, clientY) {
+    const rect = scene.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    lastX = x; lastY = y;
+    // The lamp is 220x220px and its base CSS uses translate(-50%,-50%),
+    // so position it at the cursor and let the CSS center it on the pointer.
+    lamp.style.left = x + "px";
+    lamp.style.top = y + "px";
+    lamp.classList.add("on");
+
+    scene.querySelectorAll(".foco-box").forEach((box) => {
+      const bx = parseFloat(box.style.left) * rect.width / 100;
+      const by = parseFloat(box.style.top) * rect.height / 100;
+      const dx = bx - x;
+      const dy = by - y;
+      if (dx * dx + dy * dy < litRadiusSq) {
+        box.classList.add("lit");
+      } else {
+        box.classList.remove("lit");
+      }
+    });
+  }
+
+  scene.addEventListener("pointermove", (e) => updateLamp(e.clientX, e.clientY));
+  scene.addEventListener("pointerdown", (e) => updateLamp(e.clientX, e.clientY));
+
+  // Keep the lamp centered on first touch so it is visible immediately.
+  setTimeout(() => {
+    const rect = scene.getBoundingClientRect();
+    updateLamp(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }, 100);
+
   container.appendChild(scene);
 
   const hint = document.createElement("p");
@@ -4407,36 +4623,60 @@ function renderLaberintoActivity(sub, reviewMode = false) {
     return;
   }
 
-  // Reset correct count
+  // Reset game state
   state.laberintoCorrect = 0;
 
-  // Rabbit at center
+  // Target word to find (e.g. "casa")
+  const target = (sub.target || "casa").toLowerCase();
+
+  // Maze board
+  const board = document.createElement("div");
+  board.className = "laberinto-board";
+  board.id = "laberintoBoard";
+
+  // Rabbit at the center
   const rabbit = document.createElement("div");
   rabbit.className = "laberinto-rabbit";
   rabbit.textContent = "🐰";
-  container.appendChild(rabbit);
+  board.appendChild(rabbit);
 
-  // Path walls
-  const paths = document.createElement("div");
-  paths.className = "laberinto-paths";
+  // Walls with words. Only the walls whose word is the target ("casa")
+  // open the path — pressing them advances the rabbit toward home.
+  const maze = sub.paths || [];
+  const positions = [
+    { left: "12%", top: "18%" },
+    { left: "70%", top: "16%" },
+    { left: "20%", top: "70%" },
+    { left: "68%", top: "72%" },
+    { left: "42%", top: "46%" }
+  ];
 
-  sub.paths.forEach((path, i) => {
+  maze.forEach((path, i) => {
     const wall = document.createElement("button");
     wall.type = "button";
     wall.className = "laberinto-wall";
     wall.dataset.index = i;
     wall.dataset.word = path.word;
     wall.dataset.correct = path.correct ? "true" : "false";
+    wall.style.left = positions[i % positions.length].left;
+    wall.style.top = positions[i % positions.length].top;
     wall.textContent = path.word;
+
     wall.addEventListener("click", () => {
-      // Already selected
-      if (wall.classList.contains("selected")) return;
-      if (path.correct) {
-        wall.classList.add("selected");
+      // Already opened
+      if (wall.classList.contains("opened")) return;
+      if (path.correct && String(path.word).toLowerCase() === target) {
+        // Correct wall — open the path and move the rabbit.
+        wall.classList.add("opened");
         state.laberintoCorrect++;
         playTone("success");
-        // Check if enough correct walls chosen
+        rabbit.classList.add("hop");
+        setTimeout(() => rabbit.classList.remove("hop"), 400);
+
+        // Check if enough correct walls opened
         if (state.laberintoCorrect >= sub.needed) {
+          board.classList.add("laberinto-solved");
+          rabbit.textContent = "🏠";
           state.selectedAnswer = sub.needed;
           feedback.className = "feedback ok";
           feedback.textContent = sub.success;
@@ -4448,16 +4688,16 @@ function renderLaberintoActivity(sub, reviewMode = false) {
           });
         }
       } else {
-        // Wrong wall — shake
+        // Wrong wall — shake and block the way
         wall.classList.add("shake");
         setTimeout(() => wall.classList.remove("shake"), 400);
         playTone("error");
       }
     });
-    paths.appendChild(wall);
+    board.appendChild(wall);
   });
 
-  container.appendChild(paths);
+  container.appendChild(board);
 
   const hint = document.createElement("p");
   hint.className = "laberinto-hint";
@@ -4988,6 +5228,1069 @@ function renderArbolActivity(sub, reviewMode = false) {
 }
 
 /* =============================================
+   UNIT 3 (MONTANAS) — 15 ACTIVITIES
+   Historia central: Caperucita Roja
+   ============================================= */
+
+/* ---------- shared completion helper for unit 3 ---------- */
+function completeUnit3Activity(sub) {
+  feedback.className = "feedback ok";
+  feedback.textContent = sub.success + " ¡Has completado esta actividad!";
+  completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+  playTone("success");
+  celebrateConfetti();
+  animateActivitySuccess(sub);
+  playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+    openActivity(state.activeUnit.id);
+  });
+}
+
+/* ---------- 1. CUENTO: listen & read + final question ---------- */
+function renderCuentoActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "cuento-container";
+
+  const storyBox = document.createElement("div");
+  storyBox.className = "cuento-story";
+  storyBox.id = "cuentoStory";
+  storyBox.innerHTML = sub.story.split(" ").map((w) => `<span class="cuento-word">${escapeHtml(w)}</span>`).join(" ");
+  container.appendChild(storyBox);
+
+  const narrateBtn = document.createElement("button");
+  narrateBtn.className = "primary-btn cuento-listen";
+  narrateBtn.textContent = "🔊 Escuchar el cuento";
+  narrateBtn.addEventListener("click", () => {
+    speak(sub.story);
+    highlightCuentoWords();
+  });
+  container.appendChild(narrateBtn);
+
+  const question = document.createElement("p");
+  question.className = "cuento-question";
+  question.textContent = sub.question;
+  container.appendChild(question);
+
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "cuento-options";
+  sub.options.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cuento-option";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".cuento-option").forEach((b) => b.classList.remove("selected-cuento"));
+      btn.classList.add("selected-cuento");
+      state.selectedAnswer = opt;
+      playTone("tap");
+    });
+    optionsRow.appendChild(btn);
+  });
+  container.appendChild(optionsRow);
+
+  const star = document.createElement("div");
+  star.className = "cuento-star";
+  star.id = "cuentoStar";
+  star.textContent = "⭐";
+  container.appendChild(star);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "cuento-msg";
+    msg.textContent = "¡Completaste el cuento! Puedes escucharlo de nuevo.";
+    container.appendChild(msg);
+  }
+
+  activityWorkspace.appendChild(container);
+}
+
+function highlightCuentoWords() {
+  const words = document.querySelectorAll(".cuento-word");
+  let i = 0;
+  const id = setInterval(() => {
+    if (state.activeSubActivityIndex === null) { clearInterval(id); return; }
+    words.forEach((w) => w.classList.remove("active-cuento"));
+    if (words[i]) words[i].classList.add("active-cuento");
+    i++;
+    if (i >= words.length) clearInterval(id);
+  }, 400);
+}
+
+/* ---------- 2. TEATRO: shadow theater read-aloud ---------- */
+function renderTeatroActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "teatro-container";
+
+  const stage = document.createElement("div");
+  stage.className = "teatro-stage";
+  stage.id = "teatroStage";
+  container.appendChild(stage);
+
+  const bubble = document.createElement("div");
+  bubble.className = "teatro-bubble";
+  bubble.id = "teatroBubble";
+  stage.appendChild(bubble);
+
+  const counter = document.createElement("div");
+  counter.className = "teatro-counter";
+  counter.id = "teatroCounter";
+  container.appendChild(counter);
+
+  const nextBtn = document.createElement("button");
+  nextBtn.className = "primary-btn teatro-next";
+  nextBtn.id = "teatroNext";
+  nextBtn.textContent = "¡Leí en voz alta! Siguiente escena";
+  container.appendChild(nextBtn);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "teatro-msg";
+    msg.textContent = "¡Ya completaste la obra de sombras!";
+    container.appendChild(msg);
+    nextBtn.disabled = true;
+  }
+
+  state.teatroIndex = 0;
+  state.teatroDone = false;
+
+  function renderScene() {
+    const idx = state.teatroIndex;
+    if (state.teatroDone) return;
+    if (idx >= sub.scenes.length) {
+      state.teatroDone = true;
+      state.selectedAnswer = sub.answer;
+      completeUnit3Activity(sub);
+      return;
+    }
+    const scene = sub.scenes[idx];
+    stage.className = "teatro-stage scene-" + idx;
+    bubble.innerHTML = `<span class="teatro-emoji">${scene.emoji}</span><span class="teatro-text">${escapeHtml(scene.text)}</span>`;
+    counter.textContent = `Escena ${idx + 1} de ${sub.scenes.length}`;
+  }
+
+  nextBtn.addEventListener("click", () => {
+    if (state.teatroDone) return;
+    state.teatroIndex++;
+    renderScene();
+  });
+
+  renderScene();
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 3. LIBRO: magic book with clickable keywords ---------- */
+function renderLibroActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "libro-container";
+
+  const book = document.createElement("div");
+  book.className = "libro-book";
+  book.id = "libroBook";
+  container.appendChild(book);
+
+  const page = document.createElement("div");
+  page.className = "libro-page";
+  page.id = "libroPage";
+  book.appendChild(page);
+
+  const defBox = document.createElement("div");
+  defBox.className = "libro-def";
+  defBox.id = "libroDef";
+  defBox.textContent = "Toca una palabra mágica para ver su pista.";
+  container.appendChild(defBox);
+
+  const nav = document.createElement("div");
+  nav.className = "libro-nav";
+  const prevBtn = document.createElement("button");
+  prevBtn.className = "secondary-btn libro-prev";
+  prevBtn.textContent = "◀ Hoja anterior";
+  const nextBtn = document.createElement("button");
+  nextBtn.className = "secondary-btn libro-next";
+  nextBtn.textContent = "Hoja siguiente ▶";
+  nav.append(prevBtn, nextBtn);
+  container.appendChild(nav);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "libro-msg";
+    msg.textContent = "¡Ya descubriste todas las palabras mágicas!";
+    container.appendChild(msg);
+  }
+
+  state.libroPage = 0;
+  state.libroExplored = 0;
+
+  function renderPage() {
+    const pageText = sub.pages[state.libroPage];
+    const html = pageText.split(" ").map((w) => {
+      const clean = w.replace(/[.,;:!¿?]/g, "").toLowerCase();
+      const kw = sub.keywords.find((k) => k.word === clean);
+      if (kw) {
+        return `<button type="button" class="libro-keyword" data-word="${kw.word}">${escapeHtml(w)}</button>`;
+      }
+      return `<span>${escapeHtml(w)}</span>`;
+    }).join(" ");
+    page.innerHTML = html;
+
+    page.querySelectorAll(".libro-keyword").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const kw = sub.keywords.find((k) => k.word === btn.dataset.word);
+        if (!kw || btn.classList.contains("discovered")) return;
+        btn.classList.add("discovered");
+        defBox.innerHTML = `${kw.emoji} <strong>${kw.word}</strong>: ${kw.def}`;
+        state.libroExplored++;
+        playTone("success");
+        if (state.libroExplored >= sub.explored) {
+          state.selectedAnswer = sub.explored;
+          completeUnit3Activity(sub);
+        }
+      });
+    });
+  }
+
+  prevBtn.addEventListener("click", () => {
+    if (state.libroPage > 0) { state.libroPage--; renderPage(); }
+  });
+  nextBtn.addEventListener("click", () => {
+    if (state.libroPage < sub.pages.length - 1) { state.libroPage++; renderPage(); }
+  });
+
+  renderPage();
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 4. CAPITULOS: progress in 3 stations + mini-game ---------- */
+function renderCapitulosActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "capitulos-container";
+
+  const progress = document.createElement("div");
+  progress.className = "capitulos-progress";
+  progress.id = "capitulosProgress";
+  container.appendChild(progress);
+
+  const chapterBox = document.createElement("div");
+  chapterBox.className = "capitulos-box";
+  chapterBox.id = "capitulosBox";
+  container.appendChild(chapterBox);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "capitulos-msg";
+    msg.textContent = "¡Ya completaste el cuento por capítulos!";
+    container.appendChild(msg);
+  }
+
+  state.capitulos = { index: 0, done: false };
+
+  function renderProgressBar() {
+    const idx = state.capitulos.index;
+    progress.innerHTML = sub.chapters.map((c, i) => {
+      let cls = "capitulos-station";
+      if (i < idx) cls += " done";
+      if (i === idx) cls += " active";
+      return `<span class="${cls}">${i < idx ? "✓" : i + 1}</span>`;
+    }).join("");
+  }
+
+  function renderChapter() {
+    if (state.capitulos.done) return;
+    const idx = state.capitulos.index;
+    if (idx >= sub.chapters.length) {
+      state.capitulos.done = true;
+      state.selectedAnswer = true;
+      completeUnit3Activity(sub);
+      return;
+    }
+    const ch = sub.chapters[idx];
+    renderProgressBar();
+    chapterBox.innerHTML = "";
+    const title = document.createElement("h4");
+    title.className = "capitulos-title";
+    title.textContent = ch.title;
+    const text = document.createElement("p");
+    text.className = "capitulos-text";
+    text.textContent = ch.text;
+    const q = document.createElement("p");
+    q.className = "capitulos-q";
+    q.textContent = ch.question;
+    chapterBox.append(title, text, q);
+
+    const opts = document.createElement("div");
+    opts.className = "capitulos-options";
+    ch.options.forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "capitulo-option";
+      btn.textContent = opt;
+      btn.addEventListener("click", () => {
+        if (ch.answer === opt) {
+          playTone("success");
+          state.capitulos.index++;
+          renderChapter();
+        } else {
+          playTone("error");
+          feedback.className = "feedback try";
+          feedback.textContent = sub.hint;
+        }
+      });
+      opts.appendChild(btn);
+    });
+    chapterBox.appendChild(opts);
+  }
+
+  renderChapter();
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 5. KARAOKE: bouncing cursor + read the verse ---------- */
+function renderKaraokeActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "karaoke-container";
+
+  const stage = document.createElement("div");
+  stage.className = "karaoke-stage";
+  stage.id = "karaokeStage";
+  container.appendChild(stage);
+
+  const wordsRow = document.createElement("div");
+  wordsRow.className = "karaoke-words";
+  stage.appendChild(wordsRow);
+
+  const cursor = document.createElement("div");
+  cursor.className = "karaoke-cursor";
+  cursor.textContent = "🎤";
+  stage.appendChild(cursor);
+
+  const doneBtn = document.createElement("button");
+  doneBtn.className = "primary-btn karaoke-done";
+  doneBtn.textContent = "✔ Terminé de leer la estrofa";
+  container.appendChild(doneBtn);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "karaoke-msg";
+    msg.textContent = "¡Ya leíste la estrofa con ritmo!";
+    container.appendChild(msg);
+    doneBtn.disabled = true;
+  }
+
+  const wordEls = [];
+  sub.words.forEach((w) => {
+    const span = document.createElement("span");
+    span.className = "karaoke-word";
+    span.textContent = w;
+    wordsRow.appendChild(span);
+    wordEls.push(span);
+  });
+
+  let idx = 0;
+  if (wordEls[0]) wordEls[0].classList.add("active-karaoke");
+  state.karaokeTimer = setInterval(() => {
+    if (state.activeSubActivityIndex === null) {
+      if (state.karaokeTimer) { clearInterval(state.karaokeTimer); state.karaokeTimer = null; }
+      return;
+    }
+    if (wordEls[idx]) wordEls[idx].classList.remove("active-karaoke");
+    idx = (idx + 1) % wordEls.length;
+    if (wordEls[idx]) wordEls[idx].classList.add("active-karaoke");
+    cursor.style.left = (wordEls[idx].offsetLeft + wordEls[idx].offsetWidth / 2 - 16) + "px";
+    cursor.style.top = (wordEls[idx].offsetTop - 40) + "px";
+  }, 700);
+
+  doneBtn.addEventListener("click", () => {
+    if (state.karaokeTimer) { clearInterval(state.karaokeTimer); state.karaokeTimer = null; }
+    state.selectedAnswer = true;
+    completeUnit3Activity(sub);
+  });
+
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 6. PERSONAJES: drag to Personajes / Escenarios ---------- */
+function renderPersonajesActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "personajes-container";
+
+  state.personajesMatched = 0;
+
+  const catsRow = document.createElement("div");
+  catsRow.className = "personajes-cats";
+  sub.categories.forEach((cat) => {
+    const catEl = document.createElement("div");
+    catEl.className = "personajes-cat";
+    catEl.dataset.category = cat.name;
+    catEl.innerHTML = `<span class="personajes-cat-emoji">${cat.emoji}</span><span class="personajes-cat-name">${cat.name}</span>`;
+    catEl.addEventListener("dragover", (e) => { e.preventDefault(); catEl.classList.add("drag-over-personajes"); });
+    catEl.addEventListener("dragleave", () => catEl.classList.remove("drag-over-personajes"));
+    catEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      catEl.classList.remove("drag-over-personajes");
+      const word = e.dataTransfer.getData("text/plain");
+      const item = sub.items.find((it) => it.word === word);
+      const chip = document.getElementById("personajesItem-" + word);
+      if (item && item.category === cat.name && chip && !chip.classList.contains("correct")) {
+        chip.classList.add("correct");
+        chip.draggable = false;
+        catEl.appendChild(chip);
+        state.personajesMatched++;
+        playTone("success");
+        if (state.personajesMatched >= sub.items.length) {
+          state.selectedAnswer = sub.answer;
+          completeUnit3Activity(sub);
+        }
+      } else {
+        playTone("error");
+      }
+    });
+    catsRow.appendChild(catEl);
+  });
+  container.appendChild(catsRow);
+
+  const itemsRow = document.createElement("div");
+  itemsRow.className = "personajes-items";
+  const shuffled = [...sub.items].sort(() => Math.random() - 0.5);
+  shuffled.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "personajes-item";
+    chip.id = "personajesItem-" + item.word;
+    chip.dataset.word = item.word;
+    chip.innerHTML = `<span class="personajes-item-emoji">${item.emoji}</span><span class="personajes-item-word">${item.word}</span>`;
+    chip.draggable = true;
+    chip.tabIndex = 0;
+    chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", item.word); chip.classList.add("dragging-personajes"); });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging-personajes"));
+    // click fallback for touch
+    chip.addEventListener("click", () => {
+      if (chip.classList.contains("correct")) return;
+      const targetCat = sub.categories.find((c) => c.name === item.category).name;
+      const catEl = [...catsRow.querySelectorAll(".personajes-cat")].find((c) => c.dataset.category === targetCat);
+      if (catEl) {
+        chip.classList.add("correct");
+        chip.draggable = false;
+        catEl.appendChild(chip);
+        state.personajesMatched++;
+        playTone("success");
+        if (state.personajesMatched >= sub.items.length) {
+          state.selectedAnswer = sub.answer;
+          completeUnit3Activity(sub);
+        }
+      }
+    });
+    itemsRow.appendChild(chip);
+  });
+  container.appendChild(itemsRow);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "personajes-msg";
+    msg.textContent = "¡Ya clasificaste todos los cromos!";
+    container.appendChild(msg);
+  }
+
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 7. QUIEN: light-beam association ---------- */
+function renderQuienActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "quien-container";
+
+  const quote = document.createElement("div");
+  quote.className = "quien-quote";
+  quote.textContent = "💬 " + sub.quote;
+  container.appendChild(quote);
+
+  const charsRow = document.createElement("div");
+  charsRow.className = "quien-chars";
+  sub.characters.forEach((ch) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "quien-char";
+    btn.dataset.name = ch.name;
+    btn.innerHTML = `<span class="quien-char-emoji">${ch.emoji}</span><span class="quien-char-name">${ch.name}</span>`;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".quien-char").forEach((b) => b.classList.remove("selected-quien"));
+      btn.classList.add("selected-quien");
+      state.selectedAnswer = ch.name;
+      playTone("tap");
+    });
+    charsRow.appendChild(btn);
+  });
+  container.appendChild(charsRow);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 8. MAPA: place character chips into zones ---------- */
+function renderMapaActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "mapa-container";
+
+  state.mapaMatched = 0;
+
+  const zonesRow = document.createElement("div");
+  zonesRow.className = "mapa-zones";
+  sub.zones.forEach((zone) => {
+    const zoneEl = document.createElement("div");
+    zoneEl.className = "mapa-zone";
+    zoneEl.dataset.zone = zone.name;
+    zoneEl.innerHTML = `<span class="mapa-zone-emoji">${zone.emoji}</span><span class="mapa-zone-name">${zone.name}</span><span class="mapa-zone-event"></span>`;
+    zoneEl.addEventListener("dragover", (e) => { e.preventDefault(); zoneEl.classList.add("drag-over-mapa"); });
+    zoneEl.addEventListener("dragleave", () => zoneEl.classList.remove("drag-over-mapa"));
+    zoneEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zoneEl.classList.remove("drag-over-mapa");
+      const word = e.dataTransfer.getData("text/plain");
+      const item = sub.items.find((it) => it.word === word);
+      const chip = document.getElementById("mapaItem-" + word);
+      if (item && item.zone === zone.name && chip && !chip.classList.contains("correct")) {
+        chip.classList.add("correct");
+        chip.draggable = false;
+        zoneEl.appendChild(chip);
+        zoneEl.querySelector(".mapa-zone-event").textContent = "📌 " + zone.events;
+        state.mapaMatched++;
+        playTone("success");
+        if (state.mapaMatched >= sub.items.length) {
+          state.selectedAnswer = sub.answer;
+          completeUnit3Activity(sub);
+        }
+      } else {
+        playTone("error");
+      }
+    });
+    zonesRow.appendChild(zoneEl);
+  });
+  container.appendChild(zonesRow);
+
+  const tray = document.createElement("div");
+  tray.className = "mapa-tray";
+  const shuffled = [...sub.items].sort(() => Math.random() - 0.5);
+  shuffled.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "mapa-item";
+    chip.id = "mapaItem-" + item.word;
+    chip.dataset.zone = item.zone;
+    chip.innerHTML = `<span class="mapa-item-emoji">${item.emoji}</span><span class="mapa-item-word">${item.word}</span>`;
+    chip.draggable = true;
+    chip.tabIndex = 0;
+    chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", item.word); chip.classList.add("dragging-mapa"); });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging-mapa"));
+    chip.addEventListener("click", () => {
+      if (chip.classList.contains("correct")) return;
+      const zoneEl = [...zonesRow.querySelectorAll(".mapa-zone")].find((z) => z.dataset.zone === item.zone);
+      if (zoneEl) {
+        chip.classList.add("correct");
+        chip.draggable = false;
+        zoneEl.appendChild(chip);
+        zoneEl.querySelector(".mapa-zone-event").textContent = "📌 " + item.zone;
+        state.mapaMatched++;
+        playTone("success");
+        if (state.mapaMatched >= sub.items.length) {
+          state.selectedAnswer = sub.answer;
+          completeUnit3Activity(sub);
+        }
+      }
+    });
+    tray.appendChild(chip);
+  });
+  container.appendChild(tray);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "mapa-msg";
+    msg.textContent = "¡Ya ubicaste todos los personajes en el mapa!";
+    container.appendChild(msg);
+  }
+
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 9. GALERIA: select real characters ---------- */
+function renderGaleriaActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "galeria-container";
+
+  state.galeriaCorrect = 0;
+
+  const grid = document.createElement("div");
+  grid.className = "galeria-grid";
+  const shuffled = [...sub.characters].sort(() => Math.random() - 0.5);
+  shuffled.forEach((ch) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "galeria-char";
+    card.dataset.correct = ch.correct ? "true" : "false";
+    card.innerHTML = `<span class="galeria-char-emoji">${ch.emoji}</span><span class="galeria-char-name">${ch.name}</span>`;
+    card.addEventListener("click", () => {
+      if (card.classList.contains("resolved")) return;
+      if (ch.correct) {
+        card.classList.add("correct-char");
+        card.classList.add("resolved");
+        state.galeriaCorrect++;
+        playTone("success");
+        if (state.galeriaCorrect >= sub.answer) {
+          // hide distractors
+          document.querySelectorAll(".galeria-char[data-correct='false']").forEach((d) => d.classList.add("rejected-char"));
+          state.selectedAnswer = sub.answer;
+          completeUnit3Activity(sub);
+        }
+      } else {
+        card.classList.add("rejected-char");
+        card.classList.add("resolved");
+        playTone("error");
+      }
+    });
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "galeria-msg";
+    msg.textContent = "¡Ya identificaste a todos los protagonistas!";
+    container.appendChild(msg);
+  }
+
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 10. ESCENARIO: choose the correct landscape ---------- */
+function renderEscenarioActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "escenario-container";
+
+  const scene = document.createElement("div");
+  scene.className = "escenario-scene";
+  scene.id = "escenarioScene";
+  scene.textContent = "🌄 ¿En qué lugar ocurrió?";
+  container.appendChild(scene);
+
+  const question = document.createElement("p");
+  question.className = "escenario-question";
+  question.textContent = sub.question;
+  container.appendChild(question);
+
+  const optionsRow = document.createElement("div");
+  optionsRow.className = "escenario-options";
+  sub.options.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "escenario-option";
+    btn.dataset.label = opt.label;
+    btn.innerHTML = `<span class="escenario-option-emoji">${opt.emoji}</span><span class="escenario-option-label">${opt.label}</span>`;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".escenario-option").forEach((b) => b.classList.remove("selected-escenario"));
+      btn.classList.add("selected-escenario");
+      state.selectedAnswer = opt.label;
+      scene.textContent = opt.emoji + " " + opt.scene;
+      playTone("tap");
+    });
+    optionsRow.appendChild(btn);
+  });
+  container.appendChild(optionsRow);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 11. ORDENAR: arrange 3 vignettes ---------- */
+function renderOrdenarActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "ordenar-container";
+
+  state.sequenceAnswer = [];
+
+  const slots = document.createElement("div");
+  slots.className = "ordenar-slots";
+  sub.items.forEach((_, i) => {
+    const slot = document.createElement("div");
+    slot.className = "ordenar-slot";
+    slot.id = "ordenarSlot" + i;
+    slot.dataset.index = i;
+    slot.textContent = (i + 1) + ". ___";
+    slots.appendChild(slot);
+  });
+  container.appendChild(slots);
+
+  const tray = document.createElement("div");
+  tray.className = "ordenar-tray";
+  const shuffled = [...sub.items].sort(() => Math.random() - 0.5);
+  const itemMap = {};
+  shuffled.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "ordenar-item";
+    chip.id = "ordenarItem-" + item.label;
+    chip.dataset.label = item.label;
+    chip.innerHTML = `<span class="ordenar-item-emoji">${item.emoji}</span><span class="ordenar-item-label">${item.label}</span>`;
+    chip.draggable = true;
+    chip.tabIndex = 0;
+    itemMap[item.label] = chip;
+    chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", item.label); chip.classList.add("dragging-ordenar"); });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging-ordenar"));
+    chip.addEventListener("click", () => {
+      if (chip.classList.contains("used")) return;
+      const next = state.sequenceAnswer.length;
+      if (next >= sub.items.length) return;
+      const slot = document.getElementById("ordenarSlot" + next);
+      if (slot) { slot.textContent = (next + 1) + ". " + item.label; slot.classList.add("filled-ordenar"); }
+      chip.classList.add("used");
+      state.sequenceAnswer.push(item.label);
+      playTone("tap");
+    });
+    tray.appendChild(chip);
+  });
+  container.appendChild(tray);
+
+  // clicking a filled slot returns it
+  sub.items.forEach((_, i) => {
+    const slot = container.querySelector("#ordenarSlot" + i);
+    slot.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const last = state.sequenceAnswer.length - 1;
+      if (parseInt(slot.dataset.index) !== last) return;
+      const label = state.sequenceAnswer.pop();
+      slot.textContent = (last + 1) + ". ___";
+      slot.classList.remove("filled-ordenar");
+      const chip = itemMap[label];
+      if (chip) chip.classList.remove("used");
+      playTone("tap");
+    });
+  });
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "ordenar-msg";
+    msg.textContent = "¡Ya ordenaste la historia!";
+    container.appendChild(msg);
+  }
+
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 12. LINEA: timeline Inicio/Desarrollo/Desenlace ---------- */
+function renderLineaActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "linea-container";
+
+  state.lineaMatched = 0;
+
+  const catsRow = document.createElement("div");
+  catsRow.className = "linea-cats";
+  sub.categories.forEach((cat) => {
+    const catEl = document.createElement("div");
+    catEl.className = "linea-cat";
+    catEl.dataset.category = cat.name;
+    catEl.innerHTML = `<span class="linea-cat-emoji">${cat.emoji}</span><span class="linea-cat-name">${cat.name}</span>`;
+    catEl.addEventListener("dragover", (e) => { e.preventDefault(); catEl.classList.add("drag-over-linea"); });
+    catEl.addEventListener("dragleave", () => catEl.classList.remove("drag-over-linea"));
+    catEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      catEl.classList.remove("drag-over-linea");
+      const word = e.dataTransfer.getData("text/plain");
+      const item = sub.items.find((it) => it.word === word);
+      const chip = document.getElementById("lineaItem-" + word);
+      if (item && item.category === cat.name && chip && !chip.classList.contains("correct")) {
+        chip.classList.add("correct");
+        chip.draggable = false;
+        catEl.appendChild(chip);
+        state.lineaMatched++;
+        playTone("success");
+        if (state.lineaMatched >= sub.items.length) {
+          state.selectedAnswer = sub.answer;
+          completeUnit3Activity(sub);
+        }
+      } else {
+        playTone("error");
+      }
+    });
+    catsRow.appendChild(catEl);
+  });
+  container.appendChild(catsRow);
+
+  const tray = document.createElement("div");
+  tray.className = "linea-tray";
+  const shuffled = [...sub.items].sort(() => Math.random() - 0.5);
+  shuffled.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "linea-item";
+    chip.id = "lineaItem-" + item.word;
+    chip.dataset.category = item.category;
+    chip.innerHTML = `<span class="linea-item-emoji">${item.emoji}</span><span class="linea-item-word">${item.word}</span>`;
+    chip.draggable = true;
+    chip.tabIndex = 0;
+    chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", item.word); chip.classList.add("dragging-linea"); });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging-linea"));
+    chip.addEventListener("click", () => {
+      if (chip.classList.contains("correct")) return;
+      const catEl = [...catsRow.querySelectorAll(".linea-cat")].find((c) => c.dataset.category === item.category);
+      if (catEl) {
+        chip.classList.add("correct");
+        chip.draggable = false;
+        catEl.appendChild(chip);
+        state.lineaMatched++;
+        playTone("success");
+        if (state.lineaMatched >= sub.items.length) {
+          state.selectedAnswer = sub.answer;
+          completeUnit3Activity(sub);
+        }
+      }
+    });
+    tray.appendChild(chip);
+  });
+  container.appendChild(tray);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "linea-msg";
+    msg.textContent = "¡Ya completaste la línea del tiempo!";
+    container.appendChild(msg);
+  }
+
+  activityWorkspace.appendChild(container);
+}
+
+/* ---------- 13. DOMINO: chain of events ---------- */
+function renderDominoActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "domino-container";
+
+  state.dominoPlaced = [];
+
+  const chain = document.createElement("div");
+  chain.className = "domino-chain";
+  chain.id = "dominoChain";
+  container.appendChild(chain);
+
+  const tray = document.createElement("div");
+  tray.className = "domino-tray";
+  const shuffled = [...sub.pieces].sort(() => Math.random() - 0.5);
+  shuffled.forEach((piece) => {
+    const chip = document.createElement("div");
+    chip.className = "domino-piece";
+    chip.id = "dominoPiece-" + piece.text;
+    chip.dataset.text = piece.text;
+    chip.innerHTML = `<span class="domino-piece-emoji">${piece.emoji}</span><span class="domino-piece-text">${piece.text}</span><span class="domino-piece-next">→ ${piece.next}</span>`;
+    chip.draggable = true;
+    chip.tabIndex = 0;
+    chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", piece.text); chip.classList.add("dragging-domino"); });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging-domino"));
+    chip.addEventListener("click", () => {
+      placeDomino(sub, piece.text);
+    });
+    tray.appendChild(chip);
+  });
+  container.appendChild(tray);
+
+  chain.addEventListener("dragover", (e) => e.preventDefault());
+  chain.addEventListener("drop", (e) => {
+    e.preventDefault();
+    const text = e.dataTransfer.getData("text/plain");
+    placeDomino(sub, text);
+  });
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "domino-msg";
+    msg.textContent = "¡Ya formaste la cadena de sucesos!";
+    container.appendChild(msg);
+  }
+
+  activityWorkspace.appendChild(container);
+}
+
+function placeDomino(sub, text) {
+  const chip = document.getElementById("dominoPiece-" + text);
+  if (!chip || chip.classList.contains("placed")) return;
+  const nextExpected = sub.answer[state.dominoPlaced.length];
+  if (text !== nextExpected) {
+    chip.classList.add("shake");
+    setTimeout(() => chip.classList.remove("shake"), 400);
+    playTone("error");
+    return;
+  }
+  chip.classList.add("placed");
+  chip.draggable = false;
+  document.getElementById("dominoChain").appendChild(chip);
+  state.dominoPlaced.push(text);
+  playTone("success");
+  if (state.dominoPlaced.length >= sub.answer.length) {
+    state.selectedAnswer = sub.answer;
+    completeUnit3Activity(sub);
+  }
+}
+
+/* ---------- 14. CINTA: film strip + Play ---------- */
+function renderCintaActivity(sub, reviewMode) {
+  const container = document.createElement("div");
+  container.className = "cinta-container";
+
+  state.cintaOrder = [];
+
+  const film = document.createElement("div");
+  film.className = "cinta-film";
+  film.id = "cintaFilm";
+  container.appendChild(film);
+
+  const tray = document.createElement("div");
+  tray.className = "cinta-tray";
+  const shuffled = [...sub.frames].sort(() => Math.random() - 0.5);
+  const frameMap = {};
+  shuffled.forEach((frame) => {
+    const chip = document.createElement("div");
+    chip.className = "cinta-frame";
+    chip.id = "cintaFrame-" + frame.text;
+    chip.dataset.text = frame.text;
+    chip.innerHTML = `<span class="cinta-frame-emoji">${frame.emoji}</span><span class="cinta-frame-text">${frame.text}</span>`;
+    chip.draggable = true;
+    chip.tabIndex = 0;
+    frameMap[frame.text] = chip;
+    chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", frame.text); chip.classList.add("dragging-cinta"); });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging-cinta"));
+    chip.addEventListener("click", () => {
+      placeCinta(sub, frame.text);
+    });
+    tray.appendChild(chip);
+  });
+  container.appendChild(tray);
+
+  film.addEventListener("dragover", (e) => e.preventDefault());
+  film.addEventListener("drop", (e) => {
+    e.preventDefault();
+    const text = e.dataTransfer.getData("text/plain");
+    placeCinta(sub, text);
+  });
+
+const playBtn = document.createElement("button");
+  playBtn.className = "primary-btn cinta-play";
+  playBtn.id = "cintaPlayBtn";
+  playBtn.textContent = "▶ Play";
+  playBtn.disabled = true;
+  playBtn.addEventListener("click", playCinta);
+  container.appendChild(playBtn);
+
+  if (reviewMode) {
+    const msg = document.createElement("p");
+    msg.className = "cinta-msg";
+    msg.textContent = "¡Ya ordenaste la película!";
+    container.appendChild(msg);
+  }
+
+  activityWorkspace.appendChild(container);
+}
+
+function placeCinta(sub, text) {
+  const chip = document.getElementById("cintaFrame-" + text);
+  if (!chip || chip.classList.contains("placed")) return;
+  const nextExpected = sub.answer[state.cintaOrder.length];
+  if (text !== nextExpected) {
+    chip.classList.add("shake");
+    setTimeout(() => chip.classList.remove("shake"), 400);
+    playTone("error");
+    return;
+  }
+  chip.classList.add("placed");
+  chip.draggable = false;
+  document.getElementById("cintaFilm").appendChild(chip);
+  state.cintaOrder.push(text);
+  playTone("success");
+  if (state.cintaOrder.length >= sub.answer.length) {
+    const playBtn = document.getElementById("cintaPlayBtn");
+    if (playBtn) playBtn.disabled = false;
+  }
+}
+
+/* Play button handler — attached in render, but re-bound here for safety */
+function playCinta() {
+  const film = document.getElementById("cintaFilm");
+  if (!film || state.cintaOrder.length === 0) return;
+  const frames = film.querySelectorAll(".cinta-frame");
+  if (state.cintaTimer) { clearInterval(state.cintaTimer); state.cintaTimer = null; }
+  frames.forEach((f) => f.classList.remove("playing-cinta"));
+  let i = 0;
+  frames[0]?.classList.add("playing-cinta");
+  state.cintaTimer = setInterval(() => {
+    frames[i]?.classList.remove("playing-cinta");
+    i++;
+    if (i >= frames.length) {
+      clearInterval(state.cintaTimer);
+      state.cintaTimer = null;
+      const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
+      state.selectedAnswer = sub.answer;
+      completeUnit3Activity(sub);
+      return;
+    }
+    frames[i]?.classList.add("playing-cinta");
+  }, 900);
+}
+
+/* ---------- 15. ANTES: before & after the central scene ---------- */
+function renderAntesActivity(sub) {
+  const container = document.createElement("div");
+  container.className = "antes-container";
+
+  const central = document.createElement("div");
+  central.className = "antes-central";
+  central.textContent = "🎬 " + sub.central;
+  container.appendChild(central);
+
+  state.antesBefore = null;
+  state.antesAfter = null;
+
+  const beforeBox = document.createElement("div");
+  beforeBox.className = "antes-box";
+  beforeBox.id = "antesBeforeBox";
+  beforeBox.innerHTML = "<strong>Antes:</strong> <span class='antes-value' id='antesBeforeValue'>___</span>";
+  container.appendChild(beforeBox);
+
+  const afterBox = document.createElement("div");
+  afterBox.className = "antes-box";
+  afterBox.id = "antesAfterBox";
+  afterBox.innerHTML = "<strong>Después:</strong> <span class='antes-value' id='antesAfterValue'>___</span>";
+  container.appendChild(afterBox);
+
+  const beforeRow = document.createElement("div");
+  beforeRow.className = "antes-options";
+  beforeRow.innerHTML = "<p class='antes-label'>¿Qué ocurrió ANTES?</p>";
+  sub.beforeOptions.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "antes-option";
+    btn.dataset.slot = "before";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".antes-option[data-slot='before']").forEach((b) => b.classList.remove("selected-antes"));
+      btn.classList.add("selected-antes");
+      state.antesBefore = opt;
+      document.getElementById("antesBeforeValue").textContent = opt;
+      playTone("tap");
+    });
+    beforeRow.appendChild(btn);
+  });
+  container.appendChild(beforeRow);
+
+  const afterRow = document.createElement("div");
+  afterRow.className = "antes-options";
+  afterRow.innerHTML = "<p class='antes-label'>¿Qué ocurrió DESPUÉS?</p>";
+  sub.afterOptions.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "antes-option";
+    btn.dataset.slot = "after";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".antes-option[data-slot='after']").forEach((b) => b.classList.remove("selected-antes"));
+      btn.classList.add("selected-antes");
+      state.antesAfter = opt;
+      document.getElementById("antesAfterValue").textContent = opt;
+      playTone("tap");
+    });
+    afterRow.appendChild(btn);
+  });
+  container.appendChild(afterRow);
+
+  activityWorkspace.appendChild(container);
+}
+
+/* =============================================
    ANIMATE SUCCESS — per-scene celebration for Unidad 2
    ============================================= */
 function animateActivitySuccess(sub) {
@@ -5035,6 +6338,26 @@ function animateActivitySuccess(sub) {
       // Victory glow on the scene — the video keeps looping silently
       const scene = document.getElementById("accionScene");
       if (scene) scene.classList.add("accion-victory");
+      break;
+    }
+    case "cuento": {
+      const star = document.getElementById("cuentoStar");
+      if (star) star.classList.add("star-won");
+      break;
+    }
+    case "karaoke": {
+      const karaoke = document.getElementById("karaokeStage");
+      if (karaoke) karaoke.classList.add("karaoke-won");
+      break;
+    }
+    case "escenario": {
+      const scene = document.getElementById("escenarioScene");
+      if (scene) scene.classList.add("escenario-revealed");
+      break;
+    }
+    case "cinta": {
+      const film = document.getElementById("cintaFilm");
+      if (film) film.classList.add("film-playing");
       break;
     }
     default:
@@ -5100,6 +6423,17 @@ case "bingo":
       case "accion":
         isCorrect = state.selectedAnswer === sub.answer;
         break;
+      case "cuento":
+      case "quien":
+      case "escenario":
+        isCorrect = state.selectedAnswer === sub.answer;
+        break;
+      case "antes":
+        isCorrect = state.antesBefore === sub.answerBefore && state.antesAfter === sub.answerAfter;
+        break;
+      case "ordenar":
+        isCorrect = sub.answer.every((item, idx) => state.sequenceAnswer[idx] === item);
+        break;
       default:
         isCorrect = false;
     }
@@ -5115,7 +6449,7 @@ case "bingo":
       animateActivitySuccess(sub);
 
 // For units with subActivities: play correct sound → feedback → return to map
-      if (state.activeUnit.id === "castillo" || state.activeUnit.id === "bosque") {
+      if (state.activeUnit.id === "castillo" || state.activeUnit.id === "bosque" || state.activeUnit.id === "montanas") {
         // El Puente del Mono (actividad 2 de la unidad 2): la actividad solo se
         // cierra cuando el diálogo de feedback ha terminado Y el video del mono
         // también ha acabado de reproducirse.
@@ -5219,12 +6553,23 @@ function closeActivity() {
     accionVideo.pause();
     accionVideo.currentTime = 0;
   }
+  // Unit 3 cleanup: stop karaoke cursor interval
+  if (state.karaokeTimer) {
+    clearInterval(state.karaokeTimer);
+    state.karaokeTimer = null;
+  }
+  // Unit 3 cleanup: stop cinta playback interval
+  if (state.cintaTimer) {
+    clearInterval(state.cintaTimer);
+    state.cintaTimer = null;
+  }
 
   // Reset background image
   const existingBg = document.getElementById("subActivityBg");
   if (existingBg) existingBg.style.display = "none";
   activityZone.classList.remove("has-castle-bg");
   activityZone.classList.remove("has-forest-bg");
+  activityZone.classList.remove("has-mountain-bg");
 
   activityZone.hidden = true;
   activityZone.classList.remove("unit-fullscreen");
@@ -5390,7 +6735,7 @@ function popButton(element) {
 
 // Apply pop effect to all primary and secondary buttons
 document.addEventListener("click", (e) => {
-const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar, .banquete-label, .banquete-start-btn, .pergamino-send-btn, .mensaje-btn, .mensaje-listen-btn, .pasaje-card, .pasaje-slot, .pasaje-listen-btn, .palabra-oculta-slot");
+const btn = e.target.closest(".primary-btn, .secondary-btn, .answer-choice, .sequence-item, .globo, .balcon-box, .intruso-card, .castle-node, .map-stop, .auth-tab, .auth-link, .auth-submit, .icon-btn, .unit-start, .redoble-number, .redoble-comenzar, .banquete-label, .banquete-start-btn, .pergamino-send-btn, .mensaje-btn, .mensaje-listen-btn, .pasaje-card, .pasaje-slot, .pasaje-listen-btn, .palabra-oculta-slot, .cuento-option, .teatro-next, .libro-keyword, .capitulo-option, .karaoke-done, .personajes-item, .quien-char, .mapa-item, .galeria-char, .escenario-option, .ordenar-item, .linea-item, .domino-piece, .cinta-frame, .cinta-play, .antes-option");
   if (btn) {
     popButton(btn);
   }
