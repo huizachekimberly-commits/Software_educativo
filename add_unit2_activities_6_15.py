@@ -214,6 +214,9 @@ for unit in data['units']:
                 "speak": "Voltea una carta con la palabra perro y encuentra su carta gemela que tiene la ilustracion de un animal.",
                 "type": "memorama",
                 "question": "Encuentra las parejas de conceptos.",
+                "targetLabel": "perro",
+                "targetKinds": ["word", "image"],
+                "targetHint": "Busca solamente la pareja de perro: una carta con palabra y otra con imagen.",
                 "cards": [
                     {"label": "perro", "kind": "word", "emoji": "🐕"},
                     {"label": "perro", "kind": "image", "emoji": "🐕"},

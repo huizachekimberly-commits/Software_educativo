@@ -13,6 +13,7 @@ const state = {
   escudoExpired: false,
   escudoStarted: false,
   audioLock: false,
+  currentAudio: null,
   confettiLock: false,
   checkingLock: false,
   sound: localStorage.getItem("reino.sound") !== "off",
@@ -1185,37 +1186,54 @@ function safePlayAudio(audio, onEnded) {
     if (onEnded) onEnded();
     return;
   }
-// If any audio is already playing, stop it so the new audio (e.g. the
-  // correct-sound → feedback → close sequence) is always audible and its
-  // onEnded callback is guaranteed to run. This prevents the activity from
-  // getting stuck open when the user answers quickly while the option audio
-  // is still playing (the old code just silently dropped the request).
+
+  if (state.audioLock) {
+    return;
+  }
+
+  if (state.currentAudio && state.currentAudio !== audio) {
+    state.currentAudio.pause();
+    state.currentAudio.currentTime = 0;
+  }
+
   state.audioLock = true;
-  stopAllAudio();
-  audio.play().then(() => {
-    audio.addEventListener("ended", () => {
-      state.audioLock = false;
-      if (onEnded) onEnded();
-    }, { once: true });
-    audio.addEventListener("error", () => {
-      state.audioLock = false;
-      if (onEnded) onEnded();
-    }, { once: true });
-  }).catch(() => {
+  state.currentAudio = audio;
+
+  const releasePlayback = () => {
+    if (state.currentAudio === audio) {
+      state.currentAudio = null;
+    }
     state.audioLock = false;
     if (onEnded) onEnded();
+  };
+
+  stopAllAudio(audio);
+
+  audio.play().then(() => {
+    audio.addEventListener("ended", releasePlayback, { once: true });
+    audio.addEventListener("error", releasePlayback, { once: true });
+  }).catch(() => {
+    releasePlayback();
   });
 }
 
-function stopAllAudio() {
+function stopAllAudio(exceptAudio = null) {
   if ("speechSynthesis" in window) {
     window.speechSynthesis.cancel();
   }
-  // Stop any currently playing MP3 Audio elements
+  // Stop any currently playing MP3 Audio elements, except the one we are about
+  // to start so a rapid repeat press doesn't cause overlapping playback.
   document.querySelectorAll("audio").forEach((el) => {
+    if (el === exceptAudio) return;
     el.pause();
     el.currentTime = 0;
   });
+
+  if (state.currentAudio && state.currentAudio !== exceptAudio) {
+    state.currentAudio.pause();
+    state.currentAudio.currentTime = 0;
+    state.currentAudio = null;
+  }
 }
 
 /* =============================================
@@ -4312,8 +4330,15 @@ function renderGranjaActivity(sub, reviewMode = false) {
     playTone("success");
     celebrateConfetti();
     animateActivitySuccess(sub);
-    playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
-      openActivity(state.activeUnit.id);
+
+    const correctSoundIndex = Math.floor(Math.random() * 8) + 1;
+    const correctSound = new Audio(`assets/correct_sounds2/phrase${correctSoundIndex}.mp3`);
+    const cuackSound = new Audio("assets/unit_2_sounds/theme1/cuack.mp3");
+
+    safePlayAudio(correctSound, () => {
+      safePlayAudio(cuackSound, () => {
+        openActivity(state.activeUnit.id);
+      });
     });
   });
   scene.appendChild(signBtn);
@@ -4623,79 +4648,95 @@ function renderLaberintoActivity(sub, reviewMode = false) {
     return;
   }
 
-  // Reset game state
   state.laberintoCorrect = 0;
-
-  // Target word to find (e.g. "casa")
   const target = (sub.target || "casa").toLowerCase();
 
-  // Maze board
   const board = document.createElement("div");
-  board.className = "laberinto-board";
+  board.className = "laberinto-board laberinto-path-board";
   board.id = "laberintoBoard";
 
-  // Rabbit at the center
+  const startStone = document.createElement("div");
+  startStone.className = "laberinto-start";
+  startStone.innerHTML = '<span class="laberinto-start-label">Inicio</span>';
+  board.appendChild(startStone);
+
   const rabbit = document.createElement("div");
   rabbit.className = "laberinto-rabbit";
   rabbit.textContent = "🐰";
+  rabbit.style.left = "12%";
+  rabbit.style.top = "10%";
   board.appendChild(rabbit);
 
-  // Walls with words. Only the walls whose word is the target ("casa")
-  // open the path — pressing them advances the rabbit toward home.
-  const maze = sub.paths || [];
-  const positions = [
-    { left: "12%", top: "18%" },
-    { left: "70%", top: "16%" },
-    { left: "20%", top: "70%" },
-    { left: "68%", top: "72%" },
-    { left: "42%", top: "46%" }
-  ];
+  const rows = Array.isArray(sub.rows) && sub.rows.length ? sub.rows : (Array.isArray(sub.paths) ? [{ stones: sub.paths }] : []);
+  const needed = Number(sub.needed || sub.answer || rows.length || 1);
 
-  maze.forEach((path, i) => {
-    const wall = document.createElement("button");
-    wall.type = "button";
-    wall.className = "laberinto-wall";
-    wall.dataset.index = i;
-    wall.dataset.word = path.word;
-    wall.dataset.correct = path.correct ? "true" : "false";
-    wall.style.left = positions[i % positions.length].left;
-    wall.style.top = positions[i % positions.length].top;
-    wall.textContent = path.word;
+  rows.forEach((row, rowIndex) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "laberinto-row";
 
-    wall.addEventListener("click", () => {
-      // Already opened
-      if (wall.classList.contains("opened")) return;
-      if (path.correct && String(path.word).toLowerCase() === target) {
-        // Correct wall — open the path and move the rabbit.
-        wall.classList.add("opened");
-        state.laberintoCorrect++;
-        playTone("success");
-        rabbit.classList.add("hop");
-        setTimeout(() => rabbit.classList.remove("hop"), 400);
+    const stones = Array.isArray(row?.stones) ? row.stones : row || [];
+    stones.forEach((stone) => {
+      const stoneButton = document.createElement("button");
+      stoneButton.type = "button";
+      stoneButton.className = "laberinto-stone";
+      const isCorrect = Boolean(stone.correct) || String(stone.word || "").toLowerCase() === target;
+      stoneButton.dataset.correct = String(isCorrect);
+      stoneButton.dataset.row = String(rowIndex);
+      stoneButton.dataset.word = String(stone.word || "");
+      stoneButton.innerHTML = `<span class="laberinto-stone-word">${stone.word}</span>`;
 
-        // Check if enough correct walls opened
-        if (state.laberintoCorrect >= sub.needed) {
-          board.classList.add("laberinto-solved");
-          rabbit.textContent = "🏠";
-          state.selectedAnswer = sub.needed;
-          feedback.className = "feedback ok";
-          feedback.textContent = sub.success;
-          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
-          celebrateConfetti();
-          animateActivitySuccess(sub);
-          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
-            openActivity(state.activeUnit.id);
-          });
+      stoneButton.addEventListener("click", () => {
+        if (stoneButton.classList.contains("selected") || stoneButton.classList.contains("wrong")) return;
+        const rowButtons = [...rowEl.querySelectorAll(".laberinto-stone")];
+        if (rowButtons.some((btn) => btn.classList.contains("selected"))) return;
+
+        if (isCorrect) {
+          stoneButton.classList.add("selected");
+          rowButtons.forEach((btn) => { btn.disabled = true; });
+          state.laberintoCorrect++;
+          playTone("success");
+          rabbit.classList.add("hop");
+          setTimeout(() => rabbit.classList.remove("hop"), 420);
+
+          const boardRect = board.getBoundingClientRect();
+          const stoneRect = stoneButton.getBoundingClientRect();
+          const leftPercent = ((stoneRect.left - boardRect.left) + (stoneRect.width / 2)) / boardRect.width * 100;
+          const topPercent = ((stoneRect.top - boardRect.top) + (stoneRect.height / 2)) / boardRect.height * 100;
+          rabbit.style.left = `${Math.min(90, Math.max(10, leftPercent))}%`;
+          rabbit.style.top = `${Math.min(88, Math.max(12, topPercent))}%`;
+
+          if (state.laberintoCorrect >= needed) {
+            board.classList.add("laberinto-solved");
+            rabbit.textContent = "🏠";
+            state.selectedAnswer = needed;
+            feedback.className = "feedback ok";
+            feedback.textContent = sub.success;
+            completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+            celebrateConfetti();
+            animateActivitySuccess(sub);
+            playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+              openActivity(state.activeUnit.id);
+            });
+          }
+        } else {
+          stoneButton.classList.add("wrong");
+          setTimeout(() => stoneButton.classList.remove("wrong"), 420);
+          playTone("error");
+          feedback.className = "feedback try";
+          feedback.textContent = "Esa piedra no lleva a casa. Intenta otra vez.";
         }
-      } else {
-        // Wrong wall — shake and block the way
-        wall.classList.add("shake");
-        setTimeout(() => wall.classList.remove("shake"), 400);
-        playTone("error");
-      }
+      });
+
+      rowEl.appendChild(stoneButton);
     });
-    board.appendChild(wall);
+
+    board.appendChild(rowEl);
   });
+
+  const finalStone = document.createElement("div");
+  finalStone.className = "laberinto-end";
+  finalStone.innerHTML = '<span>🏠</span>';
+  board.appendChild(finalStone);
 
   container.appendChild(board);
 
@@ -4723,79 +4764,179 @@ function renderAsociacionActivity(sub, reviewMode = false) {
     return;
   }
 
-  // Reset matched count
   state.asociacionMatched = 0;
 
-  // Two columns: words on left, images on right
   const board = document.createElement("div");
   board.className = "asociacion-board";
+  board.setAttribute("aria-label", "Asociación de imágenes y palabras");
 
-  const leftCol = document.createElement("div");
-  leftCol.className = "asociacion-col";
-  const rightCol = document.createElement("div");
-  rightCol.className = "asociacion-col";
+  const canvas = document.createElement("canvas");
+  canvas.className = "asociacion-canvas";
+  board.appendChild(canvas);
 
-  // Selected word
-  let selectedWord = null;
+  const topRow = document.createElement("div");
+  topRow.className = "asociacion-top";
+  const bottomRow = document.createElement("div");
+  bottomRow.className = "asociacion-bottom";
+
+  let drawing = null;
+
+  const updateCanvasSize = () => {
+    const rect = board.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, rect.width, rect.height);
+  };
+
+  const getCenter = (el) => {
+    const rect = el.getBoundingClientRect();
+    const boardRect = board.getBoundingClientRect();
+    return {
+      x: rect.left - boardRect.left + rect.width / 2,
+      y: rect.top - boardRect.top + rect.height / 2
+    };
+  };
+
+  const drawStroke = (from, to) => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    updateCanvasSize();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 12;
+    ctx.strokeStyle = "#1d4ed8";
+    ctx.shadowColor = "rgba(29, 78, 216, 0.45)";
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  };
+
+  const clearLine = () => {
+    drawing = null;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
+  const completeMatch = (fromEl, toEl) => {
+    fromEl.classList.add("matched");
+    toEl.classList.add("matched");
+    fromEl.disabled = true;
+    toEl.disabled = true;
+    state.asociacionMatched++;
+    playTone("success");
+    clearLine();
+
+    if (state.asociacionMatched >= sub.pairs.length) {
+      state.selectedAnswer = sub.answer;
+      feedback.className = "feedback ok";
+      feedback.textContent = sub.success;
+      completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+      celebrateConfetti();
+      animateActivitySuccess(sub);
+      playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+        openActivity(state.activeUnit.id);
+      });
+    }
+  };
+
+  const failMatch = (targetEl) => {
+    targetEl.classList.add("shake");
+    setTimeout(() => targetEl.classList.remove("shake"), 420);
+    playTone("error");
+    clearLine();
+  };
+
+  const finalizeStroke = (endEl) => {
+    if (!drawing || !endEl || endEl === drawing.startEl) {
+      clearLine();
+      return;
+    }
+
+    const startAnswer = drawing.startEl.dataset.answer;
+    const endAnswer = endEl.dataset.answer;
+    if (startAnswer === endAnswer) {
+      completeMatch(drawing.startEl, endEl);
+    } else {
+      failMatch(endEl);
+    }
+  };
+
+  const startStroke = (startEl) => {
+    if (startEl.disabled || startEl.classList.contains("matched")) return;
+    drawing = { startEl, from: getCenter(startEl), current: getCenter(startEl) };
+    drawStroke(drawing.from, drawing.current);
+    startEl.classList.add("selected");
+  };
+
+  const handlePointerMove = (event) => {
+    if (!drawing) return;
+    const rect = board.getBoundingClientRect();
+    const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
+    const y = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
+    drawing.current = { x, y };
+    drawStroke(drawing.from, drawing.current);
+  };
+
+  const handlePointerUp = (event) => {
+    if (!drawing) return;
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".asociacion-icon, .asociacion-word-card");
+    if (target) {
+      finalizeStroke(target);
+    } else {
+      clearLine();
+    }
+    document.querySelectorAll(".asociacion-icon, .asociacion-word-card").forEach((el) => el.classList.remove("selected"));
+  };
+
+  window.addEventListener("pointermove", handlePointerMove);
+  window.addEventListener("pointerup", handlePointerUp, { once: false });
 
   sub.pairs.forEach((pair) => {
-    // Word button (left)
-    const wordBtn = document.createElement("button");
-    wordBtn.type = "button";
-    wordBtn.className = "asociacion-word";
-    wordBtn.dataset.answer = pair.answer;
-    wordBtn.textContent = pair.word;
-    wordBtn.addEventListener("click", () => {
-      document.querySelectorAll(".asociacion-word").forEach((w) => w.classList.remove("selected-word"));
-      wordBtn.classList.add("selected-word");
-      selectedWord = pair.answer;
+    const iconBtn = document.createElement("button");
+    iconBtn.type = "button";
+    iconBtn.className = "asociacion-icon";
+    iconBtn.dataset.answer = pair.answer;
+    iconBtn.innerHTML = `<img src="${pair.image}" alt="${pair.answer}" />`;
+    iconBtn.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      document.querySelectorAll(".asociacion-icon, .asociacion-word-card").forEach((el) => el.classList.remove("selected"));
+      startStroke(iconBtn);
       playTone("tap");
     });
-    leftCol.appendChild(wordBtn);
+    topRow.appendChild(iconBtn);
 
-    // Image button (right)
-    const imgBtn = document.createElement("button");
-    imgBtn.type = "button";
-    imgBtn.className = "asociacion-image";
-    imgBtn.dataset.answer = pair.answer;
-    imgBtn.textContent = pair.image;
-    imgBtn.addEventListener("click", () => {
-      if (!selectedWord) {
-        playTone("error");
-        return;
-      }
-      if (selectedWord === pair.answer) {
-        // Correct match
-        wordBtn.classList.add("matched");
-        imgBtn.classList.add("matched");
-        wordBtn.disabled = true;
-        imgBtn.disabled = true;
-        state.asociacionMatched++;
-        playTone("success");
-        // Check if all matched
-        if (state.asociacionMatched >= sub.pairs.length) {
-          state.selectedAnswer = sub.answer;
-          feedback.className = "feedback ok";
-          feedback.textContent = sub.success;
-          completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
-          celebrateConfetti();
-          animateActivitySuccess(sub);
-          playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
-            openActivity(state.activeUnit.id);
-          });
-        }
+    const wordBtn = document.createElement("button");
+    wordBtn.type = "button";
+    wordBtn.className = "asociacion-word-card";
+    wordBtn.dataset.answer = pair.answer;
+    wordBtn.textContent = pair.word;
+    wordBtn.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      document.querySelectorAll(".asociacion-icon, .asociacion-word-card").forEach((el) => el.classList.remove("selected"));
+      if (drawing) {
+        finalizeStroke(wordBtn);
       } else {
-        // Wrong match
-        imgBtn.classList.add("shake");
-        setTimeout(() => imgBtn.classList.remove("shake"), 400);
-        playTone("error");
+        startStroke(wordBtn);
+        playTone("tap");
       }
     });
-    rightCol.appendChild(imgBtn);
+    bottomRow.appendChild(wordBtn);
   });
 
-  board.appendChild(leftCol);
-  board.appendChild(rightCol);
+  board.appendChild(topRow);
+  board.appendChild(bottomRow);
   container.appendChild(board);
 
   const hint = document.createElement("p");
@@ -4803,6 +4944,8 @@ function renderAsociacionActivity(sub, reviewMode = false) {
   hint.textContent = sub.hint;
   container.appendChild(hint);
 
+  setTimeout(updateCanvasSize, 0);
+  window.addEventListener("resize", updateCanvasSize);
   activityWorkspace.appendChild(container);
 }
 
@@ -4822,16 +4965,57 @@ function renderMemoramaActivity(sub, reviewMode = false) {
     return;
   }
 
-  // Reset matched count
   state.memoramaMatched = 0;
 
-  // Shuffle cards
   const shuffled = [...sub.cards].sort(() => Math.random() - 0.5);
   let firstCard = null;
   let lock = false;
+  const targetLabel = String(sub.targetLabel || "").trim().toLowerCase();
+  const targetKinds = Array.isArray(sub.targetKinds)
+    ? sub.targetKinds.map((k) => String(k || "").toLowerCase())
+    : [];
+  const targetMode = targetLabel.length > 0;
 
   const grid = document.createElement("div");
   grid.className = "memorama-grid";
+
+  function getMemoramaFrontContent(card) {
+    const kind = String(card.kind || "").toLowerCase();
+    const textValue = String(card.text ?? card.word ?? card.label ?? "");
+    const imageValue = String(card.image ?? card.emoji ?? card.icon ?? "").trim();
+    const hasImage = /^(data:image\/|https?:\/\/|\.{0,2}\/|\/|assets\/).+|\.(png|jpe?g|gif|webp|svg)$/i.test(imageValue);
+
+    if (kind === "image") {
+      if (hasImage) {
+        return `<img src="${imageValue}" alt="${escapeHtml(String(card.label || textValue || "imagen"))}" class="memorama-icon" />`;
+      }
+      return escapeHtml(textValue);
+    }
+
+    if (kind === "word" || kind === "text") {
+      return escapeHtml(textValue);
+    }
+
+    if (hasImage) {
+      return `<img src="${imageValue}" alt="${escapeHtml(String(card.label || textValue || "imagen"))}" class="memorama-icon" />`;
+    }
+
+    return escapeHtml(textValue);
+  }
+
+  function isTargetMemoramaPair(cardA, cardB) {
+    if (!targetMode) return true;
+
+    const labelA = String(cardA?.dataset?.label || "").toLowerCase();
+    const labelB = String(cardB?.dataset?.label || "").toLowerCase();
+    if (labelA !== targetLabel || labelB !== targetLabel) return false;
+
+    if (!targetKinds.length) return true;
+
+    const kindA = String(cardA?.dataset?.kind || "").toLowerCase();
+    const kindB = String(cardB?.dataset?.kind || "").toLowerCase();
+    return targetKinds.every((kind) => kind === kindA || kind === kindB);
+  }
 
   shuffled.forEach((card, i) => {
     const cardEl = document.createElement("button");
@@ -4839,11 +5023,15 @@ function renderMemoramaActivity(sub, reviewMode = false) {
     cardEl.className = "memorama-card";
     cardEl.dataset.index = i;
     cardEl.dataset.label = card.label;
-    cardEl.dataset.kind = card.kind;
-    cardEl.innerHTML = `<span class="memorama-back">?</span><span class="memorama-front">${card.kind === "image" ? card.emoji : card.label}</span>`;
+    cardEl.dataset.kind = card.kind || "auto";
+    cardEl.innerHTML = `
+      <span class="memorama-back">?</span>
+      <span class="memorama-front">
+        ${getMemoramaFrontContent(card)}
+      </span>
+    `;
     cardEl.addEventListener("click", () => {
       if (lock) return;
-      // Already matched or flipped
       if (cardEl.classList.contains("matched") || cardEl.classList.contains("flipped")) return;
       cardEl.classList.add("flipped");
       if (!firstCard) {
@@ -4851,17 +5039,18 @@ function renderMemoramaActivity(sub, reviewMode = false) {
         playTone("tap");
       } else {
         lock = true;
-        // Check if match
-        if (firstCard.dataset.label === cardEl.dataset.label) {
+        const isLabelMatch = firstCard.dataset.label === cardEl.dataset.label;
+        const isGoalMatch = isLabelMatch && isTargetMemoramaPair(firstCard, cardEl);
+        if (isGoalMatch) {
           firstCard.classList.add("matched");
           cardEl.classList.add("matched");
           state.memoramaMatched++;
           playTone("success");
           firstCard = null;
           lock = false;
-          // Check if all matched
-          if (state.memoramaMatched >= sub.pairs) {
-            state.selectedAnswer = sub.pairs;
+          const shouldComplete = targetMode ? true : state.memoramaMatched >= sub.pairs;
+          if (shouldComplete) {
+            state.selectedAnswer = targetMode ? sub.targetLabel : sub.pairs;
             feedback.className = "feedback ok";
             feedback.textContent = sub.success;
             completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
@@ -4872,14 +5061,17 @@ function renderMemoramaActivity(sub, reviewMode = false) {
             });
           }
         } else {
-          // No match — flip back
           setTimeout(() => {
             firstCard.classList.remove("flipped");
             cardEl.classList.remove("flipped");
             firstCard = null;
             lock = false;
             playTone("error");
-          }, 800);
+            if (targetMode) {
+              feedback.className = "feedback try";
+              feedback.textContent = sub.targetHint || `Busca solo la pareja "${sub.targetLabel}".`;
+            }
+          }, 850);
         }
       }
     });
@@ -4915,7 +5107,6 @@ function renderCanastosActivity(sub, reviewMode = false) {
   // Reset matched count
   state.canastosMatched = 0;
 
-  // Baskets row
   const baskets = document.createElement("div");
   baskets.className = "canastos-baskets";
 
@@ -4923,7 +5114,10 @@ function renderCanastosActivity(sub, reviewMode = false) {
     const basketEl = document.createElement("div");
     basketEl.className = "canastos-basket";
     basketEl.dataset.category = basket.name;
-    basketEl.innerHTML = `<span class="canastos-basket-emoji">${basket.emoji}</span><span class="canastos-basket-name">${basket.name}</span>`;
+    basketEl.innerHTML = `
+      <img src="${basket.image}" alt="${basket.name}" class="canastos-basket-image" />
+      <span class="canastos-basket-name">${basket.name}</span>
+    `;
     basketEl.addEventListener("dragover", (e) => {
       e.preventDefault();
       basketEl.classList.add("drag-over-canastos");
@@ -4935,7 +5129,6 @@ function renderCanastosActivity(sub, reviewMode = false) {
       const word = e.dataTransfer.getData("text/plain");
       const item = sub.items.find((it) => it.word === word);
       if (item && item.category === basket.name) {
-        // Correct
         const chip = document.getElementById(`canastosItem-${word}`);
         if (chip) {
           chip.classList.add("correct");
@@ -4956,7 +5149,6 @@ function renderCanastosActivity(sub, reviewMode = false) {
           }
         }
       } else {
-        // Wrong — shake basket
         basketEl.classList.add("shake");
         setTimeout(() => basketEl.classList.remove("shake"), 400);
         playTone("error");
@@ -4967,7 +5159,6 @@ function renderCanastosActivity(sub, reviewMode = false) {
 
   container.appendChild(baskets);
 
-  // Items row (draggable chips)
   const items = document.createElement("div");
   items.className = "canastos-items";
 
@@ -4977,7 +5168,7 @@ function renderCanastosActivity(sub, reviewMode = false) {
     chip.className = "canastos-item";
     chip.id = `canastosItem-${item.word}`;
     chip.dataset.word = item.word;
-    chip.textContent = item.word;
+    chip.innerHTML = `<img src="${item.icon}" alt="${item.word}" class="canastos-item-icon" /><span>${item.word}</span>`;
     chip.draggable = true;
     chip.tabIndex = 0;
     chip.addEventListener("dragstart", (e) => {
@@ -4985,11 +5176,9 @@ function renderCanastosActivity(sub, reviewMode = false) {
       chip.classList.add("dragging-canastos");
     });
     chip.addEventListener("dragend", () => chip.classList.remove("dragging-canastos"));
-    // Click fallback for touch: simple cycle through baskets
     chip.addEventListener("click", () => {
       const target = sub.items.find((it) => it.word === item.word);
       if (chip.classList.contains("correct")) return;
-      // Place in the correct basket directly
       const targetBasket = [...baskets.querySelectorAll(".canastos-basket")].find((b) => b.dataset.category === target.category);
       if (targetBasket) {
         chip.classList.add("correct");
@@ -5045,7 +5234,8 @@ function renderRedActivity(sub, reviewMode = false) {
   // Center concept
   const center = document.createElement("div");
   center.className = "red-center";
-  center.innerHTML = `<span class="red-center-emoji">${sub.centerEmoji}</span><span class="red-center-word">${sub.center}</span>`;
+  const centerImage = sub.centerImage ? `<img src="${sub.centerImage}" alt="${sub.center}" class="red-center-image" />` : `<span class="red-center-emoji">${sub.centerEmoji || "🔥"}</span>`;
+  center.innerHTML = `${centerImage}<span class="red-center-word">${sub.center}</span>`;
   container.appendChild(center);
 
   // Satellites
@@ -5058,7 +5248,8 @@ function renderRedActivity(sub, reviewMode = false) {
     satEl.className = "red-satellite";
     satEl.dataset.label = sat.label;
     satEl.dataset.related = sat.related ? "true" : "false";
-    satEl.innerHTML = `<span class="red-satellite-emoji">${sat.emoji}</span><span class="red-satellite-word">${sat.label}</span>`;
+    const satImage = sat.image ? `<img src="${sat.image}" alt="${sat.label}" class="red-satellite-image" />` : `<span class="red-satellite-emoji">${sat.emoji || "•"}</span>`;
+    satEl.innerHTML = `${satImage}<span class="red-satellite-word">${sat.label}</span>`;
     satEl.addEventListener("click", () => {
       // Already selected
       if (satEl.classList.contains("selected-satellite")) return;
@@ -5123,7 +5314,8 @@ function renderArbolActivity(sub, reviewMode = false) {
   // Category node at top
   const category = document.createElement("div");
   category.className = "arbol-category";
-  category.innerHTML = `<span class="arbol-category-emoji">${sub.categoryEmoji}</span><span class="arbol-category-name">${sub.category}</span>`;
+  const categoryImage = sub.categoryImage ? `<img src="${sub.categoryImage}" alt="${sub.category}" class="arbol-category-image" />` : `<span class="arbol-category-emoji">${sub.categoryEmoji || "🌱"}</span>`;
+  category.innerHTML = `${categoryImage}<span class="arbol-category-name">${sub.category}</span>`;
   container.appendChild(category);
 
   // Branch where terms are placed
@@ -5172,7 +5364,7 @@ function renderArbolActivity(sub, reviewMode = false) {
   const leaves = document.createElement("div");
   leaves.className = "arbol-leaves";
   leaves.id = "arbolLeaves";
-  leaves.textContent = "🌿";
+  leaves.innerHTML = `<img src="assets/images/unit_2/hojas.png" alt="hojas" class="arbol-leaves-image" />`;
   container.appendChild(leaves);
 
   // Term chips
@@ -5184,7 +5376,8 @@ function renderArbolActivity(sub, reviewMode = false) {
     chip.className = "arbol-term";
     chip.id = `arbolTerm-${term.label}`;
     chip.dataset.term = term.label;
-    chip.innerHTML = `<span class="arbol-term-emoji">${term.image}</span><span class="arbol-term-label">${term.label}</span>`;
+    const termImage = term.image ? `<img src="${term.image}" alt="${term.label}" class="arbol-term-image" />` : `<span class="arbol-term-emoji">${term.emoji || "•"}</span>`;
+    chip.innerHTML = `${termImage}<span class="arbol-term-label">${term.label}</span>`;
     chip.draggable = true;
     chip.tabIndex = 0;
     chip.addEventListener("dragstart", (e) => {

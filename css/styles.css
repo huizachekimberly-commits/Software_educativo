@@ -4911,95 +4911,138 @@ radial-gradient(circle at 83% 70%, #00b8ff 0 11%, transparent 11.5%),
   padding: 10px 0;
 }
 
-/* Maze board — relative container where the rabbit and walls are positioned */
 .laberinto-board {
   position: relative;
   width: 100%;
   max-width: 560px;
   min-height: 340px;
   background:
-    radial-gradient(circle at 50% 50%, #66bb6a 0%, #43a047 70%, #2e7d32 100%);
+    linear-gradient(180deg, rgba(117, 216, 255, 0.8) 0%, rgba(64, 153, 255, 0.7) 22%, rgba(88, 168, 84, 0.82) 22%, rgba(64, 158, 86, 0.88) 100%);
   border: 5px solid #1b5e20;
   border-radius: var(--radius-lg);
   box-shadow:
-    inset 0 0 40px rgba(0, 0, 0, 0.25),
+    inset 0 0 40px rgba(0, 0, 0, 0.18),
     0 12px 32px rgba(0, 0, 0, 0.2);
   overflow: hidden;
+  padding: 18px 14px 26px;
 }
 
-/* Ground path lines (decorative) */
-.laberinto-board::before {
+.laberinto-path-board::before {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, transparent 49.5%, rgba(255, 255, 255, 0.18) 49.5%, rgba(255, 255, 255, 0.18) 50.5%, transparent 50.5%),
-    linear-gradient(0deg, transparent 49.5%, rgba(255, 255, 255, 0.18) 49.5%, rgba(255, 255, 255, 0.18) 50.5%, transparent 50.5%);
-  background-size: 90px 90px;
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
+    linear-gradient(90deg, transparent 0 10%, rgba(255,255,255,0.2) 10% 11%, transparent 11% 89%, rgba(255,255,255,0.2) 89% 90%, transparent 90%);
   pointer-events: none;
 }
 
-/* Rabbit — centered in the maze */
+.laberinto-row {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(80px, 1fr));
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.laberinto-start,
+.laberinto-end {
+  position: absolute;
+  z-index: 1;
+  width: 82px;
+  height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.18);
+  font-size: 2rem;
+}
+
+.laberinto-start {
+  left: 6%;
+  top: 8%;
+}
+
+.laberinto-end {
+  right: 7%;
+  bottom: 8%;
+}
+
+.laberinto-start-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #0d3b2d;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .laberinto-rabbit {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: 12%;
+  top: 10%;
   transform: translate(-50%, -50%);
-  z-index: 3;
-  font-size: 4rem;
+  z-index: 5;
+  font-size: 3rem;
   line-height: 1;
-  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.3));
-  animation: bounce 2.3s ease-in-out infinite;
+  transition: left 0.55s ease, top 0.55s ease;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.25));
 }
 
 .laberinto-rabbit.hop {
   animation: popIn 0.4s var(--bounce);
 }
 
-/* Walls — positioned absolutely on the maze board */
-.laberinto-wall {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  min-width: 96px;
-  min-height: 64px;
-  padding: 10px 16px;
-  border: 4px solid #1b5e20;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #8d6e63, #6d4c41);
-  color: #ffffff;
-  font-weight: 900;
-  font-size: 1.4rem;
-  cursor: pointer;
-  transition: all 0.25s var(--bounce);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
-  text-transform: capitalize;
+.laberinto-stone {
+  position: relative;
   z-index: 2;
+  min-height: 72px;
+  padding: 12px 10px;
+  border: 4px solid #7d4c2d;
+  border-radius: 18px;
+  cursor: pointer;
+  color: #fff;
+  font-size: 1.12rem;
+  font-weight: 900;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  background-image: url("assets/images/unit_2/piedra.png");
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.15), 0 8px 18px rgba(0,0,0,0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.laberinto-wall:hover:not(.opened) {
-  transform: translate(-50%, -50%) scale(1.08);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-  border-color: #ffd54f;
+.laberinto-stone:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.25), 0 12px 22px rgba(0,0,0,0.22);
 }
 
-/* Correct wall opened — the path opens and the way is revealed */
-.laberinto-wall.opened {
-  background: linear-gradient(135deg, #66bb6a, #43a047);
-  border-color: #1b5e20;
-  transform: translate(-50%, -50%) scale(0.94);
-  box-shadow: 0 0 0 4px rgba(102, 187, 106, 0.5), 0 8px 20px rgba(0, 0, 0, 0.2);
-  animation: popIn 0.35s var(--bounce);
-  pointer-events: none;
-  opacity: 0.85;
+.laberinto-stone-word {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
-/* Solved state — the rabbit reaches home */
+.laberinto-stone.selected {
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 4px rgba(93, 187, 94, 0.28), 0 12px 22px rgba(0,0,0,0.18);
+}
+
+.laberinto-stone.wrong {
+  animation: shake 0.35s ease-in-out;
+  border-color: #c62828;
+  box-shadow: 0 0 0 4px rgba(198, 40, 40, 0.18), 0 10px 18px rgba(0,0,0,0.18);
+}
+
 .laberinto-board.laberinto-solved {
   animation: pulseGlow 1.5s ease-in-out infinite;
-}
-
-.laberinto-board.laberinto-solved .laberinto-rabbit {
-  animation: popIn 0.5s var(--bounce);
 }
 
 .laberinto-hint {
@@ -5024,6 +5067,519 @@ radial-gradient(circle at 83% 70%, #00b8ff 0 11%, transparent 11.5%),
   margin: 0;
   line-height: 1.5;
   min-height: 40px;
+}
+
+/* =============================================
+   ACTIVIDADES 11-15 — UNIDAD 2
+   Estilo general para tarjetas, paneles y textos
+   ============================================= */
+.asociacion-container,
+.memorama-container,
+.canastos-container,
+.red-container,
+.arbol-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 18px 14px 10px;
+}
+
+.asociacion-board,
+.canastos-baskets,
+.red-satellites,
+.arbol-terms {
+  display: grid;
+  gap: 14px;
+}
+
+.asociacion-board {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 360px;
+  padding: 18px 14px 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(219,234,254,0.9));
+  border: 2px solid rgba(86, 131, 219, 0.22);
+  border-radius: 22px;
+  box-shadow: 0 12px 26px rgba(40, 80, 130, 0.08);
+}
+
+.asociacion-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.asociacion-top,
+.asociacion-bottom {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 18px;
+}
+
+.asociacion-top {
+  padding-top: 6px;
+}
+
+.asociacion-bottom {
+  margin-top: auto;
+}
+
+.asociacion-icon,
+.asociacion-word-card,
+.memorama-card,
+.canastos-item,
+.canastos-basket,
+.red-satellite,
+.arbol-term {
+  border: none;
+  border-radius: 16px;
+  font-family: inherit;
+}
+
+.asociacion-icon,
+.asociacion-word-card {
+  min-height: 86px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.asociacion-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ecfeff, #cffafe);
+  border: 2px solid rgba(14, 165, 233, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+}
+
+.asociacion-icon img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 12px rgba(14, 116, 144, 0.12));
+}
+
+.asociacion-word-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1d4ed8;
+  border: 2px solid rgba(59, 130, 246, 0.28);
+}
+
+.asociacion-icon:hover,
+.asociacion-word-card:hover,
+.red-satellite:hover,
+.canastos-item:hover,
+.arbol-term:hover,
+.memorama-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(30, 64, 175, 0.12);
+}
+
+.asociacion-icon.selected,
+.asociacion-word-card.selected,
+.asociacion-icon.matched,
+.asociacion-word-card.matched {
+  background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+  border-color: #2563eb;
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.18), 0 12px 18px rgba(30, 64, 175, 0.12);
+}
+
+.asociacion-icon.matched,
+.asociacion-word-card.matched {
+  opacity: 0.95;
+}
+
+.asociacion-icon:disabled,
+.asociacion-word-card:disabled,
+.canastos-item.correct,
+.arbol-term.correct,
+.red-satellite.selected-satellite {
+  cursor: default;
+}
+
+.asociacion-icon.shake,
+.asociacion-word-card.shake {
+  animation: shake 0.35s ease-in-out;
+}
+
+.asociacion-hint,
+.memorama-hint,
+.canastos-hint,
+.red-hint,
+.arbol-hint {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ecfdf5, #d1fae5);
+  border: 2px dashed rgba(16, 185, 129, 0.35);
+  color: #065f46;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.asociacion-msg,
+.memorama-msg,
+.canastos-msg,
+.red-msg,
+.arbol-msg {
+  margin: 0;
+  text-align: center;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.memorama-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(72px, 1fr));
+  gap: 12px;
+  padding: 14px;
+  background: linear-gradient(180deg, #eef6ff, #e0f2fe);
+  border: 2px solid rgba(14, 116, 144, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 10px 22px rgba(0, 75, 112, 0.08);
+}
+
+.memorama-card {
+  position: relative;
+  min-height: 96px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #f8fafc, #dbeafe);
+  border: 2px solid rgba(59, 130, 246, 0.22);
+  color: #0f172a;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  perspective: 1000px;
+}
+
+.memorama-card.flipped,
+.memorama-card.matched {
+  background: linear-gradient(135deg, #fef3c7, #fcd34d);
+  border-color: #f59e0b;
+}
+
+.memorama-back,
+.memorama-front {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  transition: opacity 0.25s ease, transform 0.45s ease;
+  backface-visibility: hidden;
+}
+
+.memorama-back {
+  opacity: 1;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #fff;
+  border-radius: 14px;
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.memorama-front {
+  opacity: 0;
+  transform: rotateY(90deg);
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-radius: 14px;
+}
+
+.memorama-card.flipped .memorama-back,
+.memorama-card.matched .memorama-back {
+  opacity: 0;
+  transform: rotateY(-90deg);
+}
+
+.memorama-card.flipped .memorama-front,
+.memorama-card.matched .memorama-front {
+  opacity: 1;
+  transform: rotateY(0deg);
+}
+
+.memorama-icon {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 8px rgba(0,0,0,0.08));
+}
+
+.canastos-baskets {
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+}
+
+.canastos-basket {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-height: 132px;
+  padding: 16px 12px;
+  background: linear-gradient(180deg, #fef3c7, #fde68a);
+  border: 3px dashed rgba(146, 64, 14, 0.4);
+  color: #7c2d12;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.38);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.canastos-basket-image {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(120, 62, 0, 0.12));
+}
+
+.canastos-basket-name {
+  font-size: 1.05rem;
+}
+
+.canastos-basket.drag-over-canastos {
+  border-color: #f59e0b;
+  background: linear-gradient(180deg, #fef9c3, #fcd34d);
+  transform: scale(1.02);
+}
+
+.canastos-basket.shake {
+  animation: shake 0.35s ease-in-out;
+}
+
+.canastos-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(254,243,199,0.8));
+  border: 2px solid rgba(217, 119, 6, 0.15);
+  border-radius: 18px;
+}
+
+.canastos-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #fff7ed, #fed7aa);
+  border: 2px solid rgba(234, 88, 12, 0.2);
+  color: #9a4b00;
+  font-weight: 800;
+  cursor: grab;
+  box-shadow: 0 8px 18px rgba(120, 62, 0, 0.08);
+}
+
+.canastos-item-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.canastos-item.correct {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border-color: rgba(22, 163, 74, 0.3);
+  color: #166534;
+}
+
+.red-container {
+  gap: 20px;
+}
+
+.red-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 12px;
+  border-radius: 22px;
+  background: radial-gradient(circle at top, #fef3c7 0%, #fcd34d 36%, #f59e0b 100%);
+  border: 3px solid rgba(146, 64, 14, 0.18);
+  color: #7c2d12;
+  box-shadow: 0 10px 18px rgba(146, 64, 14, 0.12);
+}
+
+.red-center-emoji,
+.red-center-image {
+  font-size: 2.2rem;
+}
+
+.red-center-image,
+.red-satellite-image {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  display: block;
+}
+
+.red-center-word {
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.red-satellites {
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
+}
+
+.red-satellite {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  padding: 14px 10px;
+  background: linear-gradient(180deg, #f0fdf4, #dcfce7);
+  border: 2px solid rgba(22, 163, 74, 0.18);
+  color: #14532d;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.08);
+}
+
+.red-satellite.selected-satellite {
+  background: linear-gradient(180deg, #dcfce7, #bbf7d0);
+  border-color: #16a34a;
+}
+
+.red-satellite.rejected-satellite {
+  opacity: 0.55;
+  filter: grayscale(0.25);
+}
+
+.arbol-container {
+  padding-top: 8px;
+}
+
+.arbol-category {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border: 2px solid rgba(34, 197, 94, 0.2);
+  color: #14532d;
+  font-weight: 900;
+  font-size: 1.15rem;
+}
+
+.arbol-category-image,
+.arbol-term-image,
+.arbol-leaves-image {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  display: block;
+}
+
+.arbol-branch {
+  position: relative;
+  min-height: 152px;
+  padding: 18px 12px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fef3c7, #fde68a);
+  border: 3px dashed rgba(180, 83, 9, 0.35);
+  color: #7c2d12;
+  text-align: center;
+  font-weight: 800;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.arbol-branch.drag-over-arbol {
+  border-color: #f59e0b;
+  background: linear-gradient(180deg, #fef9c3, #fcd34d);
+}
+
+.arbol-leaves {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 48px;
+  font-size: 2rem;
+}
+
+.arbol-leaves-image {
+  width: 52px;
+  height: 52px;
+}
+
+.arbol-leaves.growing {
+  animation: popIn 0.45s var(--bounce);
+}
+
+.arbol-terms {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.arbol-term {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 104px;
+  padding: 12px 10px;
+  background: linear-gradient(135deg, #ecfeff, #cffafe);
+  border: 2px solid rgba(8, 145, 178, 0.2);
+  color: #0f172a;
+  font-weight: 700;
+  cursor: grab;
+  box-shadow: 0 8px 16px rgba(14, 116, 144, 0.08);
+}
+
+.arbol-term-emoji {
+  font-size: 1.8rem;
+}
+
+.arbol-term.correct {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.asociacion-word,
+.asociacion-image,
+.memorama-card,
+.canastos-item,
+.red-satellite,
+.arbol-term,
+.canastos-basket,
+.memorama-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+@media (max-width: 640px) {
+  .asociacion-board,
+  .canastos-baskets,
+  .red-satellites {
+    grid-template-columns: 1fr;
+  }
+
+  .memorama-grid {
+    grid-template-columns: repeat(3, minmax(65px, 1fr));
+  }
 }
 
 /* =============================================

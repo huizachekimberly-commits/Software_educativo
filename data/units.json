@@ -656,34 +656,39 @@
         },
         {
           "id": "laberinto",
-          "title": "El Laberinto del Conejo",
-          "prompt": "Elige el camino cuyas paredes digan 'casa' y evita los distractores.",
-          "speak": "El conejito esta atrapado en el centro. Elige el camino correcto cuyas paredes digan casa para que encuentre la salida.",
+          "title": "Puente de Piedras o Huellas (Camino Modular)",
+          "prompt": "El conejo debe saltar de piedra en piedra para cruzar el río y llegar a la casa.",
+          "speak": "El conejo salta sobre una hilera de piedras. En cada fila, toca la piedra que dice casa para avanzar. Si tocas una incorrecta, la piedra se hunde y debes probar otra vez.",
           "type": "laberinto",
-          "question": "Construye el camino correcto para el conejo eligiendo las paredes que dicen 'casa'.",
+          "question": "Selecciona la piedra correcta en cada fila para llevar al conejo a la otra orilla.",
           "target": "casa",
-          "paths": [
+          "rows": [
             {
-              "word": "casa",
-              "correct": true
+              "stones": [
+                { "word": "luna", "correct": false },
+                { "word": "casa", "correct": true },
+                { "word": "sol", "correct": false }
+              ]
             },
             {
-              "word": "luna",
-              "correct": false
+              "stones": [
+                { "word": "nube", "correct": false },
+                { "word": "casa", "correct": true },
+                { "word": "mago", "correct": false }
+              ]
             },
             {
-              "word": "casa",
-              "correct": true
-            },
-            {
-              "word": "sol",
-              "correct": false
+              "stones": [
+                { "word": "río", "correct": false },
+                { "word": "casa", "correct": true },
+                { "word": "piedra", "correct": false }
+              ]
             }
           ],
-          "needed": 2,
-          "answer": 2,
-          "success": "¡El conejo encontró la salida sin tropezar con las palabras incorrectas!",
-          "hint": "Elige solo las paredes que dicen casa. Evita luna y sol."
+          "needed": 3,
+          "answer": 3,
+          "success": "¡Perfecto! El conejo cruzó el puente de piedras y llegó a casa.",
+          "hint": "Busca en cada fila la piedra que dice 'casa'. Solo esa lleva al conejo a la otra orilla."
         },
         {
           "id": "asociacion",
@@ -695,12 +700,12 @@
           "pairs": [
             {
               "word": "río",
-              "image": "🌊",
+              "image": "assets/images/unit_1/ola.png",
               "answer": "río"
             },
             {
               "word": "árbol",
-              "image": "🌳",
+              "image": "assets/images/unit_1/arbol.png",
               "answer": "árbol"
             }
           ],
@@ -718,36 +723,42 @@
           "speak": "Voltea una carta con la palabra perro y encuentra su carta gemela que tiene la ilustracion de un animal.",
           "type": "memorama",
           "question": "Encuentra las parejas de conceptos.",
+          "targetLabel": "perro",
+          "targetKinds": [
+            "word",
+            "image"
+          ],
+          "targetHint": "Busca solamente la pareja de perro: una carta con palabra y otra con imagen.",
           "cards": [
             {
-              "label": "perro",
-              "kind": "word",
-              "emoji": "🐕"
-            },
-            {
-              "label": "perro",
-              "kind": "image",
-              "emoji": "🐕"
-            },
-            {
               "label": "gato",
               "kind": "word",
-              "emoji": "🐱"
+              "emoji": "assets/images/unit_1/cat1.png"
             },
             {
               "label": "gato",
               "kind": "image",
-              "emoji": "🐱"
+              "emoji": "assets/images/unit_1/cat1.png"
+            },
+            {
+              "label": "perro",
+              "kind": "word",
+              "emoji": "assets/images/unit_2/perro.png"
+            },
+            {
+              "label": "perro",
+              "kind": "image",
+              "emoji": "assets/images/unit_2/perro.png"
             },
             {
               "label": "pez",
               "kind": "word",
-              "emoji": "🐟"
+              "text": "pez"
             },
             {
               "label": "pez",
               "kind": "image",
-              "emoji": "🐟"
+              "emoji": "assets/images/unit_2/pez.png"
             }
           ],
           "pairs": 3,
@@ -765,29 +776,35 @@
           "baskets": [
             {
               "name": "Alimentos",
+              "image": "assets/images/unit_2/canasta.png",
               "emoji": "🍎"
             },
             {
               "name": "Herramientas",
+              "image": "assets/images/unit_2/canasta.png",
               "emoji": "🔨"
             },
             {
               "name": "Animales",
+              "image": "assets/images/unit_2/canasta.png",
               "emoji": "🐄"
             }
           ],
           "items": [
             {
               "word": "manzana",
-              "category": "Alimentos"
+              "category": "Alimentos",
+              "icon": "assets/images/unit_2/manzana.png"
             },
             {
               "word": "martillo",
-              "category": "Herramientas"
+              "category": "Herramientas",
+              "icon": "assets/images/unit_2/martillo.png"
             },
             {
-              "word": "vaca",
-              "category": "Animales"
+              "word": "conejo",
+              "category": "Animales",
+              "icon": "assets/images/unit_2/conejo.png"
             }
           ],
           "answer": 3,
@@ -802,22 +819,22 @@
           "type": "red",
           "question": "Toca las tarjetas relacionadas con 'Fuego'.",
           "center": "Fuego",
-          "centerEmoji": "🔥",
+          "centerImage": "assets/images/unit_2/fuego.png",
           "satellites": [
             {
               "label": "calor",
               "related": true,
-              "emoji": "🌡️"
+              "image": "assets/images/unit_2/termometro.png"
             },
             {
               "label": "humo",
               "related": true,
-              "emoji": "💨"
+              "image": "assets/images/unit_2/humo.png"
             },
             {
               "label": "hielo",
               "related": false,
-              "emoji": "🧊"
+              "image": "assets/images/unit_2/hielo.png"
             }
           ],
           "answer": [
@@ -831,24 +848,29 @@
           "id": "arbol",
           "title": "El Árbol de las Palabras",
           "prompt": "Ubica los términos específicos en la rama de Plantas.",
-          "speak": "Arrastra los terminos rosa y pino al nivel correcto dentro de la rama de Plantas. Cuando completes la jerarquia, creceran las hojas.",
+          "speak": "Arrastra los terminos rosa, pino y hojas al nivel correcto dentro de la rama de Plantas. Cuando completes la jerarquia, creceran las hojas.",
           "type": "arbol",
           "question": "Arrastra cada término a la rama de Plantas.",
           "category": "Plantas",
+          "categoryImage": "assets/images/unit_2/planta.png",
           "categoryEmoji": "🌱",
           "terms": [
             {
               "label": "rosa",
-              "image": "🌹"
+              "image": "assets/images/unit_2/rosa.png"
             },
             {
               "label": "pino",
-              "image": "🌲"
+              "image": "assets/images/unit_2/pino.png"
+            },
+            {
+              "label": "hojas",
+              "image": "assets/images/unit_2/hojas.png"
             }
           ],
-          "answer": 2,
+          "answer": 3,
           "success": "¡Las hojas del árbol crecieron al completar la jerarquía!",
-          "hint": "La rosa y el pino son plantas. Colócalos en el nido correcto del árbol."
+          "hint": "La rosa, el pino y las hojas son partes o elementos de una planta. Colócalos en el nido correcto del árbol."
         }
       ]
     },
