@@ -145,7 +145,9 @@ async function persistCurrentUser() {
   state.user.completed = [...state.completed];
   state.user.sound = "on";
   state.user.music = state.music ? "on" : "off";
-  state.user.unit1VideoSeen = hasSeenUnit1Video();
+  state.user.unit1VideoSeen = hasSeenUnitIntroVideo("castillo");
+  state.user.unit2VideoSeen = hasSeenUnitIntroVideo("bosque");
+  state.user.unit3VideoSeen = hasSeenUnitIntroVideo("montanas");
   cacheUserLocally(state.user);
   await saveCloudUser(state.user);
 }
@@ -168,6 +170,8 @@ function applyUserSession(user) {
   cacheUserLocally(user);
   renderAvatars();
   renderUnits();
+  renderLibrary();
+  renderMap();
   renderProgress();
   updateHeroAvatar();
   syncSoundButton();
@@ -383,9 +387,9 @@ async function restoreSession() {
 function initBackgroundMusic() {
   if (backgroundMusic) return; // Already initialized
 
-  backgroundMusic = new Audio("assets/music.mpeg");
+  backgroundMusic = new Audio("assets/music.mp3");
   backgroundMusic.loop = true;
-  backgroundMusic.volume = 0.13; // 13% volume 
+  backgroundMusic.volume = 0.51; // 13% volume 
 
   // Start playing if sound and music are enabled
   if (state.music) {
@@ -936,6 +940,8 @@ function completeSubActivity(unitId, index) {
     persistCurrentUser();
     renderProgress();
     renderUnits();
+    renderLibrary();
+    renderMap();
   }
 }
 
@@ -987,36 +993,60 @@ const isLocked = isUnitLocked(unit);
 }
 
 function renderLibrary() {
-  bookList.innerHTML = state.data.library
-    .map((book) => `
-      <article class="book">
-        <div class="book-icon">${book.icon}</div>
-        <div>
-          <h3>${book.title}</h3>
-          <p>${book.level}: ${book.summary}</p>
-        </div>
-      </article>
-    `)
+  const videoByUnitId = {
+    castillo: "assets/videos/unit1.mp4",
+    bosque: "assets/videos/unit2.mp4",
+    montanas: "assets/videos/unit3.mp4"
+  };
+
+  const libraryUnits = state.data.units.slice(0, 3);
+  bookList.innerHTML = libraryUnits
+    .map((unit) => {
+      const locked = isUnitLocked(unit);
+      const videoPath = videoByUnitId[unit.id] || "";
+      return `
+        <button type="button" class="book book-video ${locked ? "locked" : ""}" data-unit-id="${unit.id}" data-video-path="${videoPath}" ${locked ? "disabled" : ""}>
+          <div class="book-icon">${locked ? "🔒" : "🎬"}</div>
+          <div>
+            <h3>Video ${escapeHtml(unit.title)}</h3>
+            <p>${locked ? "Desbloquea esta unidad para ver su video." : "Abrir video de la unidad."}</p>
+          </div>
+        </button>
+      `;
+    })
     .join("");
+
+  bookList.querySelectorAll(".book-video").forEach((button) => {
+    button.addEventListener("click", () => {
+      const unitId = button.getAttribute("data-unit-id");
+      const videoPath = button.getAttribute("data-video-path");
+      const unit = state.data.units.find((item) => item.id === unitId);
+      if (!unit || !videoPath) return;
+      playUnitIntroVideo(unit, videoPath, { markAsSeen: false, skippable: true });
+    });
+  });
 }
 
-function renderMap() {
-  const positions = [
-    { left: "12%", top: "22%" },
-    { left: "42%", top: "60%" },
-    { left: "72%", top: "26%" }
-  ];
+// Map label coordinates for "Viaje lector".
+// Edit x/y values here to move each unit marker on the map image.
+const MAP_UNIT_LABEL_POSITIONS = {
+  castillo: { x: "36%", y: "50%" },
+  bosque: { x: "8%", y: "29%" },
+  montanas: { x: "72%", y: "20%" }
+};
 
+function renderMap() {
   mapBoard.innerHTML = "";
   state.data.units.forEach((unit, index) => {
     const stop = document.createElement("button");
     stop.type = "button";
     stop.className = "map-stop";
     const locked = isUnitLocked(unit);
+    const coords = MAP_UNIT_LABEL_POSITIONS[unit.id] || { x: "50%", y: `${20 + (index * 25)}%` };
     if (locked) stop.classList.add("map-stop-locked");
-    stop.style.left = positions[index].left;
-    stop.style.top = positions[index].top;
-    stop.innerHTML = `${locked ? "🔒" : unit.icon} Unidad ${unit.number}<small>${unit.title}</small>`;
+    stop.style.left = coords.x;
+    stop.style.top = coords.y;
+    stop.innerHTML = `${locked ? "🔒 " : ""}Unidad ${unit.number}<small>${unit.title}</small>`;
     stop.addEventListener("click", () => openActivity(unit.id));
     mapBoard.appendChild(stop);
   });
@@ -1027,7 +1057,7 @@ function getBadgeIcon(rewardName) {
   const iconMap = {
     "Insignia de la Letra Brillante": "assets/images/icons/insignia_de_la_letra_brillante_icon.png",
     "Hoja del Vocabulario": "assets/images/icons/hoja_del_vocabulario_icon.png",
-    "Corona del Narrador": "assets/images/icons/unit3_icon.png"
+    "Corona del Narrador": "assets/images/icons/corona_del_narrador_icon.png"
   };
   const path = iconMap[rewardName];
   if (path) {
@@ -1134,26 +1164,50 @@ function showToast(message) {
 /* =============================================
    UNIT 1 INTRO VIDEO — plays once (first time)
    ============================================= */
-function hasSeenUnit1Video() {
-  // Per-user tracking (persisted). Fallback to a per-account localStorage flag.
-  if (state.user && state.user.unit1VideoSeen) return true;
+function getUnitVideoTrackingKey(unitId) {
+  if (unitId === "castillo") return "unit1VideoSeen";
+  if (unitId === "bosque") return "unit2VideoSeen";
+  if (unitId === "montanas") return "unit3VideoSeen";
+  return `${unitId}VideoSeen`;
+}
+
+function getUnitIntroVideoPath(unitId) {
+  if (unitId === "castillo") return "assets/videos/unit1.mp4";
+  if (unitId === "bosque") return "assets/videos/unit2.mp4";
+  if (unitId === "montanas") return "assets/videos/unit3.mp4";
+  return "";
+}
+
+function hasSeenUnitIntroVideo(unitId) {
+  const trackingKey = getUnitVideoTrackingKey(unitId);
+  if (state.user && state.user[trackingKey]) return true;
   const accountId = state.user?.accountId || state.user?.username;
-  if (accountId && localStorage.getItem(`reino.unit1VideoSeen.${accountId}`) === "1") return true;
+  if (accountId && localStorage.getItem(`reino.${trackingKey}.${accountId}`) === "1") return true;
   return false;
 }
 
-function markUnit1VideoSeen() {
+function markUnitIntroVideoSeen(unitId) {
+  const trackingKey = getUnitVideoTrackingKey(unitId);
   const accountId = state.user?.accountId || state.user?.username;
   if (accountId) {
-    localStorage.setItem(`reino.unit1VideoSeen.${accountId}`, "1");
+    localStorage.setItem(`reino.${trackingKey}.${accountId}`, "1");
   }
   if (state.user) {
-    state.user.unit1VideoSeen = true;
+    state.user[trackingKey] = true;
     persistCurrentUser();
   }
 }
 
-function playUnit1IntroVideo(unit) {
+function playUnitIntroVideo(unit, videoPath, options = {}) {
+  const markAsSeen = options.markAsSeen !== false;
+  const onFinish = typeof options.onFinish === "function" ? options.onFinish : null;
+  const skippable = options.skippable === true;
+
+  if (!videoPath) {
+    if (onFinish) onFinish();
+    return;
+  }
+
   // Pause background music while the video plays
   if (backgroundMusic) backgroundMusic.pause();
 
@@ -1164,7 +1218,7 @@ function playUnit1IntroVideo(unit) {
 
   const video = document.createElement("video");
   video.id = "unit1IntroVideo";
-  video.src = "assets/videos/unit1.mp4";
+  video.src = videoPath;
   video.autoplay = true;
   video.playsInline = true;
   video.setAttribute("playsinline", "");
@@ -1172,19 +1226,31 @@ function playUnit1IntroVideo(unit) {
   video.removeAttribute("controls");
   video.style.pointerEvents = "none";
 
+  let closeBtn = null;
+  if (skippable) {
+    closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "video-overlay-close";
+    closeBtn.setAttribute("aria-label", "Cerrar video");
+    closeBtn.textContent = "×";
+    overlay.appendChild(closeBtn);
+  }
+
   overlay.appendChild(video);
   document.body.appendChild(overlay);
 
-  // Block user interaction (cannot be skipped via clicks/touches)
+  // Block user interaction (cannot be skipped via clicks/touches) for mandatory first-view videos.
   const blockEvent = (e) => {
     e.preventDefault();
     e.stopPropagation();
   };
-  overlay.addEventListener("click", blockEvent, true);
-  overlay.addEventListener("touchstart", blockEvent, true);
-  overlay.addEventListener("contextmenu", blockEvent, true);
+  if (!skippable) {
+    overlay.addEventListener("click", blockEvent, true);
+    overlay.addEventListener("touchstart", blockEvent, true);
+    overlay.addEventListener("contextmenu", blockEvent, true);
+  }
 
-  // Block keyboard shortcuts (Esc, space, arrows, F11, etc.)
+  // Block keyboard shortcuts for mandatory first-view videos.
   const blockKey = (e) => {
     if (e.key === "Escape" || e.key === " " || e.key === "F11" ||
         e.key === "ArrowLeft" || e.key === "ArrowRight" ||
@@ -1193,11 +1259,23 @@ function playUnit1IntroVideo(unit) {
       e.stopPropagation();
     }
   };
-  document.addEventListener("keydown", blockKey, true);
+  const closeByEscape = (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      finish({ skipped: true });
+    }
+  };
+  if (!skippable) {
+    document.addEventListener("keydown", blockKey, true);
+  } else {
+    document.addEventListener("keydown", closeByEscape, true);
+  }
 
-  // Block context menu
+  // Block context menu for mandatory first-view videos.
   const blockContext = (e) => e.preventDefault();
-  document.addEventListener("contextmenu", blockContext, true);
+  if (!skippable) {
+    document.addEventListener("contextmenu", blockContext, true);
+  }
 
   // Attempt native fullscreen
   const root = document.documentElement;
@@ -1206,13 +1284,21 @@ function playUnit1IntroVideo(unit) {
     try { reqFull.call(root); } catch (err) { /* fullscreen may be unavailable */ }
   }
 
-  const finish = () => {
+  let finished = false;
+  const cleanup = () => {
+    if (finished) return;
+    finished = true;
+
     // Remove the block listeners
-    overlay.removeEventListener("click", blockEvent, true);
-    overlay.removeEventListener("touchstart", blockEvent, true);
-    overlay.removeEventListener("contextmenu", blockEvent, true);
-    document.removeEventListener("keydown", blockKey, true);
-    document.removeEventListener("contextmenu", blockContext, true);
+    if (!skippable) {
+      overlay.removeEventListener("click", blockEvent, true);
+      overlay.removeEventListener("touchstart", blockEvent, true);
+      overlay.removeEventListener("contextmenu", blockEvent, true);
+      document.removeEventListener("keydown", blockKey, true);
+      document.removeEventListener("contextmenu", blockContext, true);
+    } else {
+      document.removeEventListener("keydown", closeByEscape, true);
+    }
 
     // Exit native fullscreen if we entered it
     const exitFull = document.exitFullscreen || document.webkitExitFullscreen;
@@ -1225,15 +1311,48 @@ function playUnit1IntroVideo(unit) {
 
     // Resume background music
     if (state.music && backgroundMusic) backgroundMusic.play().catch(() => {});
-
-    // Mark as seen and open the unit (castle map) now
-    markUnit1VideoSeen();
-    openActivity(unit.id);
   };
 
+  const finish = ({ skipped = false } = {}) => {
+    cleanup();
+
+    if (skipped && skippable) {
+      if (onFinish) onFinish();
+      return;
+    }
+
+    // Mark as seen and open the selected unit now
+    if (markAsSeen) {
+      markUnitIntroVideoSeen(unit.id);
+    }
+    if (onFinish) {
+      onFinish();
+    } else {
+      openActivity(unit.id);
+    }
+  };
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => finish({ skipped: true }));
+  }
+
   // Only proceed to the map once the video has fully ended
-  video.addEventListener("ended", finish, { once: true });
-  video.addEventListener("error", finish, { once: true });
+  video.addEventListener("ended", () => finish(), { once: true });
+  video.addEventListener("error", () => {
+    cleanup();
+
+    if (markAsSeen) {
+      showToast("El video de esta unidad aun no esta disponible. Continuamos con la actividad.");
+    } else {
+      showToast("Este video aun no esta disponible.");
+    }
+
+    if (onFinish) {
+      onFinish();
+    } else if (markAsSeen) {
+      openActivity(unit.id);
+    }
+  }, { once: true });
 }
 
 function openActivity(unitId) {
@@ -1246,10 +1365,11 @@ if (isUnitLocked(unit)) {
     return;
   }
 
-  // Unit 1 (Castillo): play the intro video the first time (cannot be skipped).
-  // The castle map is only shown after the video has fully ended.
-  if (unit.id === "castillo" && !hasSeenUnit1Video()) {
-    playUnit1IntroVideo(unit);
+  // Unit intro videos (first time only): unit1 and unit2 are active now.
+  // Unit3 is also supported and will work once assets/videos/unit3.mp4 exists.
+  if ((unit.id === "castillo" || unit.id === "bosque" || unit.id === "montanas") && !hasSeenUnitIntroVideo(unit.id)) {
+    const videoPath = getUnitIntroVideoPath(unit.id);
+    playUnitIntroVideo(unit, videoPath);
     return;
   }
 
@@ -1524,7 +1644,11 @@ function playCorrectThenFeedback(unitId, subIndex, onComplete) {
   }
 
   // 1. Pick a random correct sound from the unit-specific correct_sounds folder.
-  const correctFolder = unitId === "montanas" ? "assets/correct_sounds3" : "assets/correct_sounds2";
+  const correctFolder = unitId === "castillo"
+    ? "assets/correct_sounds"
+    : unitId === "montanas"
+    ? "assets/correct_sounds3"
+    : "assets/correct_sounds2";
   const maxPhrases = unitId === "montanas" ? 7 : 8;
   const correctSoundIndex = Math.floor(Math.random() * maxPhrases) + 1;
   const correctSound = new Audio(`${correctFolder}/phrase${correctSoundIndex}.mp3`);
@@ -1880,8 +2004,9 @@ state.redoble = null;
 
   // If activity is completed, show a completion panel first.
   const alreadyCompleted = isSubActivityCompleted(unitId, index);
+  const renderInReviewMode = alreadyCompleted && !forceReplay;
 
-  if (alreadyCompleted && !forceReplay) {
+  if (renderInReviewMode) {
     activityWorkspace.innerHTML = `
       <div class="completed-subactivity-panel">
         <h3>Has completado ${escapeHtml(sub.title)}</h3>
@@ -1915,10 +2040,10 @@ state.redoble = null;
       renderIntrusoActivity(sub);
       break;
     case "escudo":
-      renderEscudoActivity(sub, alreadyCompleted);
+      renderEscudoActivity(sub, renderInReviewMode);
       break;
     case "cofre":
-      renderCofreActivity(sub, alreadyCompleted);
+      renderCofreActivity(sub, renderInReviewMode);
       break;
     case "caldero":
       renderCalderoActivity(sub);
@@ -1933,22 +2058,22 @@ state.redoble = null;
       renderEscaleraActivity(sub);
       break;
     case "redoble":
-      renderRedobleActivity(sub, alreadyCompleted);
+      renderRedobleActivity(sub, renderInReviewMode);
       break;
     case "banquete":
-      renderBanqueteActivity(sub, alreadyCompleted);
+      renderBanqueteActivity(sub, renderInReviewMode);
       break;
     case "pergamino":
-      renderPergaminoActivity(sub, alreadyCompleted);
+      renderPergaminoActivity(sub, renderInReviewMode);
       break;
     case "mensaje":
-      renderMensajeActivity(sub, alreadyCompleted);
+      renderMensajeActivity(sub, renderInReviewMode);
       break;
     case "pasaje":
-      renderPasajeActivity(sub, alreadyCompleted);
+      renderPasajeActivity(sub, renderInReviewMode);
       break;
     case "palabra-oculta":
-      renderPalabraOcultaActivity(sub, alreadyCompleted);
+      renderPalabraOcultaActivity(sub, renderInReviewMode);
       break;
     case "oracion":
       renderOracionActivity(sub);
@@ -1966,76 +2091,76 @@ case "accion":
       renderAccionActivity(sub);
       break;
     case "camaleon":
-      renderCamaleonActivity(sub, alreadyCompleted);
+      renderCamaleonActivity(sub, renderInReviewMode);
       break;
     case "granja":
-      renderGranjaActivity(sub, alreadyCompleted);
+      renderGranjaActivity(sub, renderInReviewMode);
       break;
     case "inspector":
-      renderInspectorActivity(sub, alreadyCompleted);
+      renderInspectorActivity(sub, renderInReviewMode);
       break;
     case "foco":
-      renderFocoActivity(sub, alreadyCompleted);
+      renderFocoActivity(sub, renderInReviewMode);
       break;
     case "laberinto":
-      renderLaberintoActivity(sub, alreadyCompleted);
+      renderLaberintoActivity(sub, renderInReviewMode);
       break;
     case "asociacion":
-      renderAsociacionActivity(sub, alreadyCompleted);
+      renderAsociacionActivity(sub, renderInReviewMode);
       break;
     case "memorama":
-      renderMemoramaActivity(sub, alreadyCompleted);
+      renderMemoramaActivity(sub, renderInReviewMode);
       break;
     case "canastos":
-      renderCanastosActivity(sub, alreadyCompleted);
+      renderCanastosActivity(sub, renderInReviewMode);
       break;
     case "red":
-      renderRedActivity(sub, alreadyCompleted);
+      renderRedActivity(sub, renderInReviewMode);
       break;
     case "arbol":
-      renderArbolActivity(sub, alreadyCompleted);
+      renderArbolActivity(sub, renderInReviewMode);
       break;
     case "cuento":
-      renderCuentoActivity(sub, alreadyCompleted);
+      renderCuentoActivity(sub, renderInReviewMode);
       break;
     case "teatro":
-      renderTeatroActivity(sub, alreadyCompleted);
+      renderTeatroActivity(sub, renderInReviewMode);
       break;
     case "libro":
-      renderLibroActivity(sub, alreadyCompleted);
+      renderLibroActivity(sub, renderInReviewMode);
       break;
     case "capitulos":
-      renderCapitulosActivity(sub, alreadyCompleted);
+      renderCapitulosActivity(sub, renderInReviewMode);
       break;
     case "karaoke":
-      renderKaraokeActivity(sub, alreadyCompleted);
+      renderKaraokeActivity(sub, renderInReviewMode);
       break;
     case "personajes":
-      renderPersonajesActivity(sub, alreadyCompleted);
+      renderPersonajesActivity(sub, renderInReviewMode);
       break;
     case "quien":
       renderQuienActivity(sub);
       break;
     case "mapa":
-      renderMapaActivity(sub, alreadyCompleted);
+      renderMapaActivity(sub, renderInReviewMode);
       break;
     case "galeria":
-      renderGaleriaActivity(sub, alreadyCompleted);
+      renderGaleriaActivity(sub, renderInReviewMode);
       break;
     case "escenario":
       renderEscenarioActivity(sub);
       break;
     case "ordenar":
-      renderOrdenarActivity(sub, alreadyCompleted);
+      renderOrdenarActivity(sub, renderInReviewMode);
       break;
     case "linea":
-      renderLineaActivity(sub, alreadyCompleted);
+      renderLineaActivity(sub, renderInReviewMode);
       break;
     case "domino":
-      renderDominoActivity(sub, alreadyCompleted);
+      renderDominoActivity(sub, renderInReviewMode);
       break;
     case "cinta":
-      renderCintaActivity(sub, alreadyCompleted);
+      renderCintaActivity(sub, renderInReviewMode);
       break;
     case "antes":
       renderAntesActivity(sub);
@@ -4928,7 +5053,7 @@ function renderLaberintoActivity(sub, reviewMode = false) {
 
   const rabbit = document.createElement("div");
   rabbit.className = "laberinto-rabbit";
-  rabbit.textContent = "🐰";
+  rabbit.innerHTML = '<img src="assets/images/unit_2/conejo.png" alt="Conejo" class="laberinto-rabbit-image" />';
   rabbit.style.left = "12%";
   rabbit.style.top = "10%";
   board.appendChild(rabbit);
@@ -4949,7 +5074,7 @@ function renderLaberintoActivity(sub, reviewMode = false) {
       stoneButton.dataset.correct = String(isCorrect);
       stoneButton.dataset.row = String(rowIndex);
       stoneButton.dataset.word = String(stone.word || "");
-      stoneButton.innerHTML = `<span class="laberinto-stone-word">${stone.word}</span>`;
+      stoneButton.innerHTML = `<img src="assets/images/unit_2/piedra.png" alt="Piedra" class="laberinto-stone-image" /><span class="laberinto-stone-word">${stone.word}</span>`;
 
       stoneButton.addEventListener("click", () => {
         if (stoneButton.classList.contains("selected") || stoneButton.classList.contains("wrong")) return;
@@ -4973,7 +5098,6 @@ function renderLaberintoActivity(sub, reviewMode = false) {
 
           if (state.laberintoCorrect >= needed) {
             board.classList.add("laberinto-solved");
-            rabbit.textContent = "🏠";
             state.selectedAnswer = needed;
             feedback.className = "feedback ok";
             feedback.textContent = sub.success;
@@ -5001,7 +5125,7 @@ function renderLaberintoActivity(sub, reviewMode = false) {
 
   const finalStone = document.createElement("div");
   finalStone.className = "laberinto-end";
-  finalStone.innerHTML = '<span>🏠</span>';
+  finalStone.innerHTML = '<span class="laberinto-end-label">Meta</span>';
   board.appendChild(finalStone);
 
   container.appendChild(board);
@@ -5836,6 +5960,7 @@ function renderTeatroActivity(sub, reviewMode) {
   state.teatroIndex = 0;
   state.teatroDone = false;
   state.teatroListening = false;
+  state.teatroTransitioning = false;
 
   const teatroRoleImages = [
     "assets/images/unit_3/lobo.png",
@@ -5864,6 +5989,8 @@ function renderTeatroActivity(sub, reviewMode) {
 
   function renderScene() {
     const idx = state.teatroIndex;
+    state.teatroTransitioning = false;
+    nextBtn.disabled = false;
     if (state.teatroDone) return;
     if (idx >= sub.scenes.length) {
       state.teatroDone = true;
@@ -5880,7 +6007,7 @@ function renderTeatroActivity(sub, reviewMode) {
   }
 
   nextBtn.addEventListener("click", () => {
-    if (state.teatroDone || state.teatroListening) return;
+    if (state.teatroDone || state.teatroListening || state.teatroTransitioning) return;
 
     const scene = sub.scenes[state.teatroIndex];
     if (!scene) return;
@@ -5908,8 +6035,13 @@ function renderTeatroActivity(sub, reviewMode) {
       if (ok) {
         playTone("success");
         micStatus.textContent = `✓ Escuché: "${transcript}"`;
-        state.teatroIndex++;
-        renderScene();
+        state.teatroTransitioning = true;
+        nextBtn.disabled = true;
+        micStatus.textContent = "Muy bien. Preparando la siguiente escena...";
+        setTimeout(() => {
+          state.teatroIndex++;
+          renderScene();
+        }, 1200);
       } else {
         playTone("error");
         micStatus.textContent = `No coincidió. Escuché: "${transcript}"`;
@@ -7347,6 +7479,8 @@ function markCompleted(unitId) {
     persistCurrentUser();
     renderProgress();
     renderUnits();
+    renderLibrary();
+    renderMap();
   }
 }
 

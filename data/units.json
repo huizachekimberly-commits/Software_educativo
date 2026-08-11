@@ -417,7 +417,7 @@
       "title": "Bosque de las Palabras",
       "icon": "­ƒî│",
       "theme": "theme-forest",
-      "castleMapImage": "",
+      "castleMapImage": "assets/forest_images/forest_map.jpeg",
       "description": "Lee palabras y oraciones, amplía vocabulario y relaciona conceptos.",
       "content": [
         "Complemento de oraciones.",
@@ -880,7 +880,7 @@
       "title": "Montañas de los Cuentos",
       "icon": "⛰️",
       "theme": "theme-mountain",
-      "castleMapImage": "",
+      "castleMapImage": "assets/mountain_images/mountain_map.jpeg",
       "description": "Lee cuentos cortos e identifica personajes, lugares, acciones y secuencias.",
       "content": [
         "Lectura de cuentos cortos.",
