@@ -22,7 +22,8 @@ const state = {
   inCastleMap: false,
   cofreDropped: null,
   redoble: null,
-  frasePlaced: null
+  frasePlaced: null,
+  replaySubActivity: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -52,8 +53,17 @@ const authMessage = $("#authMessage");
 const showLoginButton = $("#showLogin");
 const showSignupButton = $("#showSignup");
 
+const SELECTABLE_AVATAR_IDS = new Set(["mago", "princesa", "caballero"]);
+const AVATAR_AUDIO_BY_ID = {
+  mago: ["assets/avatars/rey.mp3"],
+  caballero: ["assets/avatars/principe.mp3"],
+  princesa: ["assets/avatars/reina.mp3", "assets/avatars/reino.mp3"]
+};
+
 let threeRuntimePromise = null;
 let avatarViewer = null;
+let activityAvatarViewer = null;
+let activityAvatarRenderToken = 0;
 let firebaseRuntimePromise = null;
 let backgroundMusic = null;
 
@@ -151,6 +161,7 @@ function cacheUserLocally(user) {
 function applyUserSession(user) {
   state.user = user;
   state.avatar = user.avatar || "mago";
+  normalizeSelectedAvatar();
   state.completed = [...(user.completed || [])];
   state.sound = true;
   state.music = user.music !== "off";
@@ -402,6 +413,7 @@ async function init() {
       throw new Error(`HTTP Error: ${response.status}`);
     }
     state.data = await response.json();
+    normalizeSelectedAvatar();
   } catch (error) {
     console.error("Error loading units.json:", error);
     document.body.innerHTML = `
@@ -467,6 +479,12 @@ function bindGlobalEvents() {
   $("#closeActivity").addEventListener("click", closeActivity);
   $("#checkAnswer").addEventListener("click", checkAnswer);
   $("#listenPrompt").addEventListener("click", () => {
+    if (state.replaySubActivity) {
+      const { unitId, index } = state.replaySubActivity;
+      openSubActivity(unitId, index, { forceReplay: true });
+      return;
+    }
+
     // Handle sub-activities
     if (state.activeSubActivityIndex !== null && state.activeUnit?.subActivities) {
       const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
@@ -512,9 +530,168 @@ function syncSoundButton() {
   }
 }
 
+function getSelectableAvatars() {
+  if (!state.data?.avatars) return [];
+  const filtered = state.data.avatars.filter((avatar) => SELECTABLE_AVATAR_IDS.has(avatar.id));
+  return filtered.length ? filtered : state.data.avatars;
+}
+
+function getAvatarById(id) {
+  const selectable = getSelectableAvatars();
+  return selectable.find((avatar) => avatar.id === id) || selectable[0] || null;
+}
+
+function normalizeSelectedAvatar() {
+  const selected = getAvatarById(state.avatar);
+  if (!selected) return;
+  if (state.avatar !== selected.id) {
+    state.avatar = selected.id;
+    localStorage.setItem("reino.avatar", selected.id);
+  }
+}
+
+function playAvatarVoice(avatarId) {
+  const candidates = AVATAR_AUDIO_BY_ID[avatarId] || [];
+  if (!candidates.length) return;
+
+  const playCandidate = (index) => {
+    if (index >= candidates.length) return;
+    const audio = new Audio(candidates[index]);
+    audio.preload = "auto";
+    let fallbackQueued = false;
+    audio.addEventListener("error", () => {
+      if (fallbackQueued) return;
+      fallbackQueued = true;
+      setTimeout(() => playCandidate(index + 1), 0);
+    }, { once: true });
+    safePlayAudio(audio);
+  };
+
+  playCandidate(0);
+}
+
+function updateActivityAvatarBadge() {
+  const activityCard = activityZone?.querySelector(".activity-card");
+  if (!activityCard) return;
+
+  let badge = document.getElementById("activityAvatarBadge");
+  if (!badge) {
+    badge = document.createElement("div");
+    badge.id = "activityAvatarBadge";
+    badge.className = "activity-avatar-badge";
+    activityCard.appendChild(badge);
+  }
+
+  const avatar = getAvatarById(state.avatar);
+  if (!avatar) {
+    badge.hidden = true;
+    stopActivityAvatarViewer();
+    return;
+  }
+
+  badge.hidden = false;
+  badge.innerHTML = `
+    <div class="activity-avatar-model" data-role="activity-avatar-model"></div>
+  `;
+
+  const modelHost = badge.querySelector('[data-role="activity-avatar-model"]');
+  renderActivityAvatarModel(avatar, modelHost);
+}
+
+async function renderActivityAvatarModel(avatar, host) {
+  if (!host) return;
+
+  const renderToken = ++activityAvatarRenderToken;
+  stopActivityAvatarViewer();
+
+  const showFallback = () => {
+    host.innerHTML = `<span class="activity-avatar-fallback">${escapeHtml(avatar.emoji || "A")}</span>`;
+  };
+
+  if (!avatar.model) {
+    showFallback();
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  host.innerHTML = "";
+  host.appendChild(canvas);
+
+  try {
+    const { THREE, FBXLoader } = await loadThreeRuntime();
+    if (renderToken !== activityAvatarRenderToken || !host.isConnected) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 1000);
+    camera.position.set(0, 0.6, 5.2);
+    camera.lookAt(0, 0.05, 0);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    keyLight.position.set(3, 5, 4);
+    const fillLight = new THREE.HemisphereLight(0xffffff, 0x8dc7b3, 1.45);
+    scene.add(keyLight, fillLight);
+
+    const loader = new FBXLoader();
+    const model = await loader.loadAsync(avatar.model);
+    const texture = avatar.texture ? await loadAvatarTexture(THREE, avatar.texture) : null;
+    if (renderToken !== activityAvatarRenderToken || !host.isConnected) {
+      renderer.dispose();
+      return;
+    }
+
+    prepareModel(THREE, model, texture);
+    scene.add(model);
+
+    const resize = () => {
+      const size = Math.max(host.clientWidth || 34, 34);
+      renderer.setSize(size, size, false);
+      camera.aspect = 1;
+      camera.updateProjectionMatrix();
+    };
+
+    let frame = 0;
+    const animate = () => {
+      frame = requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+    animate();
+
+    activityAvatarViewer = { renderer, scene, frame, resize };
+  } catch (error) {
+    if (renderToken === activityAvatarRenderToken) {
+      showFallback();
+    }
+  }
+}
+
+function stopActivityAvatarViewer() {
+  if (!activityAvatarViewer) return;
+
+  cancelAnimationFrame(activityAvatarViewer.frame);
+  window.removeEventListener("resize", activityAvatarViewer.resize);
+  activityAvatarViewer.scene.traverse((object) => {
+    if (!object.isMesh) return;
+    object.geometry?.dispose?.();
+    if (Array.isArray(object.material)) {
+      object.material.forEach((material) => material.dispose?.());
+    } else {
+      object.material?.dispose?.();
+    }
+  });
+  activityAvatarViewer.renderer.dispose();
+  activityAvatarViewer = null;
+}
+
 function renderAvatars() {
   avatarGrid.innerHTML = "";
-  state.data.avatars.forEach((avatar) => {
+  const selectableAvatars = getSelectableAvatars();
+  selectableAvatars.forEach((avatar) => {
     const button = document.createElement("button");
     button.className = "avatar-choice";
     button.type = "button";
@@ -523,7 +700,7 @@ function renderAvatars() {
       <span class="avatar-emoji">${avatar.emoji}</span>
       <span class="avatar-meta">
         <span class="avatar-name">${avatar.name}</span>
-        <span class="avatar-type">${avatar.model ? "Modelo 3D FBX" : "Avatar visual"}</span>
+        <span class="avatar-type">Toca para escuchar su voz</span>
       </span>
     `;
     button.addEventListener("click", () => {
@@ -532,6 +709,8 @@ function renderAvatars() {
       persistCurrentUser();
       renderAvatars();
       updateHeroAvatar();
+      updateActivityAvatarBadge();
+      playAvatarVoice(avatar.id);
       playTone("tap");
     });
     avatarGrid.appendChild(button);
@@ -539,7 +718,8 @@ function renderAvatars() {
 }
 
 function updateHeroAvatar() {
-  const avatar = state.data.avatars.find((item) => item.id === state.avatar) || state.data.avatars[0];
+  const avatar = getAvatarById(state.avatar);
+  if (!avatar) return;
   renderHeroAvatar(avatar);
 }
 
@@ -590,7 +770,6 @@ async function renderHeroAvatar(avatar) {
     let frame = 0;
     const animate = () => {
       frame = requestAnimationFrame(animate);
-      model.rotation.y += 0.008;
       renderer.render(scene, camera);
     };
 
@@ -671,14 +850,15 @@ function applyStandingPose(model) {
     if (child.isBone) bones[child.name] = child;
   });
 
-  setBoneRotation(bones["shoulder.L"], 0, 0, -0.15);
-  setBoneRotation(bones["shoulder.R"], 0, 0, 0.15);
-  setBoneRotation(bones["upper_arm.L"], 0.08, 0.05, -1.18);
-  setBoneRotation(bones["upper_arm.R"], 0.08, -0.05, 1.18);
-  setBoneRotation(bones["forearm.L"], 0, 0.05, -0.22);
-  setBoneRotation(bones["forearm.R"], 0, -0.05, 0.22);
-  setBoneRotation(bones["hand.L"], 0, 0, -0.08);
-  setBoneRotation(bones["hand.R"], 0, 0, 0.08);
+  // Neutral standing pose with relaxed arms.
+  setBoneRotation(bones["shoulder.L"], 0, 0, -0.05);
+  setBoneRotation(bones["shoulder.R"], 0, 0, 0.05);
+  setBoneRotation(bones["upper_arm.L"], 0.03, 0.02, -0.35);
+  setBoneRotation(bones["upper_arm.R"], 0.03, -0.02, 0.35);
+  setBoneRotation(bones["forearm.L"], 0, 0.02, -0.06);
+  setBoneRotation(bones["forearm.R"], 0, -0.02, 0.06);
+  setBoneRotation(bones["hand.L"], 0, 0, -0.02);
+  setBoneRotation(bones["hand.R"], 0, 0, 0.02);
 
   model.updateMatrixWorld(true);
 }
@@ -1080,6 +1260,7 @@ if (isUnitLocked(unit)) {
   state.escudoExpired = false;
   state.cofreDropped = null;
   state.activeSubActivityIndex = null;
+  state.replaySubActivity = null;
   state.audioLock = false; // release any stuck audio lock when opening a new activity
   state.checkingLock = false; // re-enable checkAnswer for new activity
 
@@ -1094,6 +1275,7 @@ if (isUnitLocked(unit)) {
     state.inCastleMap = true;
     activityZone.classList.add("unit-fullscreen");
     renderCastleMap(unit);
+    updateActivityAvatarBadge();
     activityZone.hidden = false;
     playTone("open");
     return;
@@ -1113,12 +1295,14 @@ if (isUnitLocked(unit)) {
   activityWorkspace.innerHTML = "";
   $("#checkAnswer").hidden = false;
   $("#listenPrompt").hidden = false;
+  $("#listenPrompt").textContent = "Escuchar";
   $("#pronunciationBtn").hidden = false;
 
   if (unit.activity.type === "choice") renderChoiceActivity(unit.activity);
   if (unit.activity.type === "input") renderInputActivity(unit.activity);
   if (unit.activity.type === "sequence") renderSequenceActivity(unit.activity);
 
+  updateActivityAvatarBadge();
   activityZone.hidden = false;
   playTone("open");
 }
@@ -1252,9 +1436,9 @@ function getUnitSoundFolder(unitId, subIndex) {
   if (unitId === "bosque") {
     return `assets/unit_${unitNumber}_sounds/theme1`;
   }
-  // Unit 3 (Montañas) has no MP3 folder: fall back to theme1-style path
+  // Unit 3 (Montañas) uses a flat folder: assets/unit_3_sounds/
   if (unitId === "montanas") {
-    return `assets/unit_${unitNumber}_sounds/theme1`;
+    return `assets/unit_${unitNumber}_sounds`;
   }
   return `assets/unit_${unitNumber}_sounds`;
 }
@@ -1262,26 +1446,46 @@ function getUnitSoundFolder(unitId, subIndex) {
 function playUnitSound(unitId, subIndex) {
   const activityNumber = subIndex + 1;
   const folder = getUnitSoundFolder(unitId, subIndex);
-  const audioPath = `${folder}/activity_${activityNumber}.mp3`;
+  const audioCandidates = [`${folder}/activity_${activityNumber}.mp3`];
+  // Backward compatibility: existing unit 3 file has a typo in its name.
+  if (unitId === "montanas" && activityNumber === 2) {
+    audioCandidates.push(`${folder}/activiy_2.mp3`);
+  }
   const unit = state.data?.units?.find((u) => u.id === unitId);
   const sub = unit?.subActivities?.[subIndex];
 
-  // Narración por voz si no existe el MP3
-  fetch(audioPath, { method: "HEAD" })
-    .then((res) => {
-      if (res.ok) {
-        const audio = new Audio(audioPath);
-        safePlayAudio(audio);
-      } else if (sub?.speak) {
-        speak(sub.speak);
-      } else {
-        speak(sub?.prompt || "Escucha con atención la instrucción.");
-      }
-    })
-    .catch(() => {
-      if (sub?.speak) speak(sub.speak);
-      else speak(sub?.prompt || "Escucha con atención la instrucción.");
-    });
+  const fallbackToSpeech = () => {
+    if (sub?.speak) {
+      speak(sub.speak);
+    } else {
+      speak(sub?.prompt || "Escucha con atención la instrucción.");
+    }
+  };
+
+  const tryPlay = (candidateIndex = 0) => {
+    if (candidateIndex >= audioCandidates.length) {
+      fallbackToSpeech();
+      return;
+    }
+
+    const audioPath = audioCandidates[candidateIndex];
+
+    // Narración por voz si no existe el MP3
+    fetch(audioPath, { method: "HEAD" })
+      .then((res) => {
+        if (res.ok) {
+          const audio = new Audio(audioPath);
+          safePlayAudio(audio);
+        } else {
+          tryPlay(candidateIndex + 1);
+        }
+      })
+      .catch(() => {
+        tryPlay(candidateIndex + 1);
+      });
+  };
+
+  tryPlay();
 }
 
 function buildOptionAudioName(optionText) {
@@ -1319,9 +1523,11 @@ function playCorrectThenFeedback(unitId, subIndex, onComplete) {
     return;
   }
 
-  // 1. Pick a random correct sound from assets/correct_sounds2/phrase1-8.mp3
-  const correctSoundIndex = Math.floor(Math.random() * 8) + 1; // 1 to 8
-  const correctSound = new Audio(`assets/correct_sounds2/phrase${correctSoundIndex}.mp3`);
+  // 1. Pick a random correct sound from the unit-specific correct_sounds folder.
+  const correctFolder = unitId === "montanas" ? "assets/correct_sounds3" : "assets/correct_sounds2";
+  const maxPhrases = unitId === "montanas" ? 7 : 8;
+  const correctSoundIndex = Math.floor(Math.random() * maxPhrases) + 1;
+  const correctSound = new Audio(`${correctFolder}/phrase${correctSoundIndex}.mp3`);
 
   // 2. Determine feedback file dynamically based on unit number
   const activityNumber = subIndex + 1;
@@ -1557,11 +1763,61 @@ const SUB_ACTIVITY_BACKGROUNDS = [
   "assets/castle_images/b15.jpeg"
 ];
 
-function openSubActivity(unitId, index) {
+const SUB_ACTIVITY_BACKGROUNDS_FOREST = [
+  "assets/forest_images/b1 (1).jpeg",
+  "assets/forest_images/b1 (2).jpeg",
+  "assets/forest_images/b1 (3).jpeg",
+  "assets/forest_images/b1 (4).jpeg",
+  "assets/forest_images/b1 (5).jpeg",
+  "assets/forest_images/b1 (6).jpeg",
+  "assets/forest_images/b1 (7).jpeg",
+  "assets/forest_images/b1 (8).jpeg",
+  "assets/forest_images/b1 (9).jpeg",
+  "assets/forest_images/b1 (10).jpeg",
+  "assets/forest_images/b1 (11).jpeg",
+  "assets/forest_images/b1 (12).jpeg",
+  "assets/forest_images/b1 (13).jpeg",
+  "assets/forest_images/b1 (14).jpeg",
+  // Unit 2 has only 14 backgrounds; reuse b1 for activity 15.
+  "assets/forest_images/b1 (1).jpeg"
+];
+
+const SUB_ACTIVITY_BACKGROUNDS_MOUNTAIN = [
+  "assets/mountain_images/b (1).jpeg",
+  "assets/mountain_images/b (2).jpeg",
+  "assets/mountain_images/b (3).jpeg",
+  "assets/mountain_images/b (4).jpeg",
+  "assets/mountain_images/b (5).jpeg",
+  "assets/mountain_images/b (6).jpeg",
+  "assets/mountain_images/b (7).jpeg",
+  "assets/mountain_images/b (8).jpeg",
+  "assets/mountain_images/b (9).jpeg",
+  "assets/mountain_images/b (10).jpeg",
+  "assets/mountain_images/b (11).jpeg",
+  "assets/mountain_images/b (12).jpeg",
+  "assets/mountain_images/b (13).jpeg",
+  "assets/mountain_images/b (14).jpeg",
+  "assets/mountain_images/b (15).jpeg"
+];
+
+function getSubActivityBackgroundByUnit(unitId, index) {
+  const byUnit = unitId === "bosque"
+    ? SUB_ACTIVITY_BACKGROUNDS_FOREST
+    : unitId === "montanas"
+    ? SUB_ACTIVITY_BACKGROUNDS_MOUNTAIN
+    : SUB_ACTIVITY_BACKGROUNDS;
+
+  if (!Array.isArray(byUnit) || !byUnit.length) return "";
+  if (index < 0) return byUnit[0];
+  return byUnit[index] || byUnit[byUnit.length - 1];
+}
+
+function openSubActivity(unitId, index, options = {}) {
   const unit = state.data.units.find((u) => u.id === unitId);
   if (!unit) return;
   const sub = unit.subActivities[index];
   if (!sub) return;
+  const forceReplay = Boolean(options.forceReplay);
 
   state.activeSubActivityIndex = index;
   state.selectedAnswer = null;
@@ -1581,7 +1837,7 @@ state.redoble = null;
   activityScene.hidden = true;
   activityZone.classList.add("unit-fullscreen");
 
-// Bosque unit uses a themed CSS gradient background instead of castle images
+  // Keep unit-specific gradient tint and add per-activity image background layer.
   if (unit.id === "bosque") {
     activityZone.classList.add("has-forest-bg");
   } else {
@@ -1591,14 +1847,13 @@ state.redoble = null;
   // Montañas unit uses its own mountain-themed gradient background
   if (unit.id === "montanas") {
     activityZone.classList.add("has-mountain-bg");
-    const bgLayer = document.getElementById("subActivityBg");
-    if (bgLayer) bgLayer.style.display = "none";
   } else {
     activityZone.classList.remove("has-mountain-bg");
   }
 
-  // Set background image inside the activity card (b1 for index 0, b2 for index 1, etc.)
-  if (unit.id !== "bosque" && unit.id !== "montanas" && index >= 0 && index < SUB_ACTIVITY_BACKGROUNDS.length) {
+  // Set background image inside the activity card for each unit: activity 1->b1, activity 2->b2, etc.
+  const backgroundImagePath = getSubActivityBackgroundByUnit(unit.id, index);
+  if (backgroundImagePath) {
     let bgLayer = document.getElementById("subActivityBg");
     if (!bgLayer) {
       bgLayer = document.createElement("div");
@@ -1609,7 +1864,7 @@ state.redoble = null;
         content.insertBefore(bgLayer, content.firstChild);
       }
     }
-    bgLayer.style.backgroundImage = `url("${SUB_ACTIVITY_BACKGROUNDS[index]}")`;
+    bgLayer.style.backgroundImage = `url("${backgroundImagePath}")`;
     bgLayer.style.display = "block";
     activityZone.classList.add("has-castle-bg");
   }
@@ -1620,19 +1875,32 @@ state.redoble = null;
   feedback.className = "feedback";
   feedback.textContent = "";
   activityWorkspace.innerHTML = "";
+  updateActivityAvatarBadge();
+  state.replaySubActivity = null;
 
-  // If activity is completed â†’ review mode: no check button, show success feedback
+  // If activity is completed, show a completion panel first.
   const alreadyCompleted = isSubActivityCompleted(unitId, index);
 
-  if (alreadyCompleted) {
+  if (alreadyCompleted && !forceReplay) {
+    activityWorkspace.innerHTML = `
+      <div class="completed-subactivity-panel">
+        <h3>Has completado ${escapeHtml(sub.title)}</h3>
+        <p>Puedes repasar esta actividad cuando quieras sin afectar tu progreso ni tus medallas.</p>
+      </div>
+    `;
+
     $("#checkAnswer").hidden = true;
     $("#listenPrompt").hidden = false;
+    $("#listenPrompt").textContent = "Repasar actividad";
     $("#pronunciationBtn").hidden = true;
     feedback.className = "feedback ok";
-    feedback.textContent = `¡Completaste "${sub.title}"! Usa el botón "Escuchar" para repasar las instrucciones.`;
+    feedback.textContent = `Has completado ${sub.title}.`;
+    state.replaySubActivity = { unitId, index };
+    return;
   } else {
-$("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete" || sub.type === "mensaje" || sub.type === "palabra-oculta" || sub.type === "camaleon" || sub.type === "granja" || sub.type === "inspector" || sub.type === "foco" || sub.type === "laberinto" || sub.type === "asociacion" || sub.type === "memorama" || sub.type === "canastos" || sub.type === "red" || sub.type === "arbol" || sub.type === "teatro" || sub.type === "libro" || sub.type === "capitulos" || sub.type === "karaoke" || sub.type === "personajes" || sub.type === "mapa" || sub.type === "galeria" || sub.type === "linea" || sub.type === "domino" || sub.type === "cinta"; // Auto-checked
+    $("#checkAnswer").hidden = sub.type === "escudo" || sub.type === "redoble" || sub.type === "banquete" || sub.type === "mensaje" || sub.type === "palabra-oculta" || sub.type === "camaleon" || sub.type === "granja" || sub.type === "inspector" || sub.type === "foco" || sub.type === "laberinto" || sub.type === "asociacion" || sub.type === "memorama" || sub.type === "canastos" || sub.type === "red" || sub.type === "arbol" || sub.type === "teatro" || sub.type === "libro" || sub.type === "capitulos" || sub.type === "karaoke" || sub.type === "personajes" || sub.type === "mapa" || sub.type === "galeria" || sub.type === "linea" || sub.type === "domino" || sub.type === "cinta"; // Auto-checked
     $("#listenPrompt").hidden = false;
+    $("#listenPrompt").textContent = "Escuchar";
     $("#pronunciationBtn").hidden = true;
   }
 
@@ -4331,11 +4599,9 @@ function renderGranjaActivity(sub, reviewMode = false) {
     celebrateConfetti();
     animateActivitySuccess(sub);
 
-    const correctSoundIndex = Math.floor(Math.random() * 8) + 1;
-    const correctSound = new Audio(`assets/correct_sounds2/phrase${correctSoundIndex}.mp3`);
     const cuackSound = new Audio("assets/unit_2_sounds/theme1/cuack.mp3");
 
-    safePlayAudio(correctSound, () => {
+    playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
       safePlayAudio(cuackSound, () => {
         openActivity(state.activeUnit.id);
       });
@@ -5451,9 +5717,28 @@ function renderCuentoActivity(sub, reviewMode) {
 
   const narrateBtn = document.createElement("button");
   narrateBtn.className = "primary-btn cuento-listen";
-  narrateBtn.textContent = "🔊 Escuchar el cuento";
+  narrateBtn.textContent = "Escuchar el cuento";
   narrateBtn.addEventListener("click", () => {
-    speak(sub.story);
+    const unitId = state.activeUnit?.id;
+    const subIndex = state.activeSubActivityIndex;
+    const defaultAudioPath = "assets/unit_3_sounds/activity_1.1.mp3";
+    const folder = unitId ? getUnitSoundFolder(unitId, subIndex ?? 0) : "assets/unit_3_sounds";
+    const audioPath = `${folder}/activity_1.1.mp3`;
+    const preferredPath = unitId === "montanas" ? audioPath : defaultAudioPath;
+
+    fetch(preferredPath, { method: "HEAD" })
+      .then((res) => {
+        if (res.ok) {
+          const audio = new Audio(preferredPath);
+          safePlayAudio(audio);
+        } else {
+          speak(sub.story);
+        }
+      })
+      .catch(() => {
+        speak(sub.story);
+      });
+
     highlightCuentoWords();
   });
   container.appendChild(narrateBtn);
@@ -5531,8 +5816,14 @@ function renderTeatroActivity(sub, reviewMode) {
   const nextBtn = document.createElement("button");
   nextBtn.className = "primary-btn teatro-next";
   nextBtn.id = "teatroNext";
-  nextBtn.textContent = "¡Leí en voz alta! Siguiente escena";
+  nextBtn.textContent = "🎙️ Hablar frase";
   container.appendChild(nextBtn);
+
+  const micStatus = document.createElement("p");
+  micStatus.className = "teatro-mic-status";
+  micStatus.id = "teatroMicStatus";
+  micStatus.textContent = "Di en voz alta la frase mostrada para avanzar.";
+  container.appendChild(micStatus);
 
   if (reviewMode) {
     const msg = document.createElement("p");
@@ -5544,6 +5835,32 @@ function renderTeatroActivity(sub, reviewMode) {
 
   state.teatroIndex = 0;
   state.teatroDone = false;
+  state.teatroListening = false;
+
+  const teatroRoleImages = [
+    "assets/images/unit_3/lobo.png",
+    "assets/images/unit_3/caperucita_roja.png",
+    "assets/images/unit_3/leñador.png"
+  ];
+
+  function normalizeSpeechText(text) {
+    return normalize(String(text || "").toLowerCase())
+      .replace(/[^a-z0-9áéíóúüñ\s]/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function isSpeechMatch(transcript, expectedText) {
+    const spoken = normalizeSpeechText(transcript);
+    const expected = normalizeSpeechText(expectedText);
+    if (!spoken || !expected) return false;
+    if (spoken.includes(expected)) return true;
+
+    const expectedWords = expected.split(" ").filter((w) => w.length > 2);
+    const matchedWords = expectedWords.filter((w) => spoken.includes(w)).length;
+    const threshold = Math.max(2, Math.ceil(expectedWords.length * 0.6));
+    return matchedWords >= threshold;
+  }
 
   function renderScene() {
     const idx = state.teatroIndex;
@@ -5556,14 +5873,61 @@ function renderTeatroActivity(sub, reviewMode) {
     }
     const scene = sub.scenes[idx];
     stage.className = "teatro-stage scene-" + idx;
-    bubble.innerHTML = `<span class="teatro-emoji">${scene.emoji}</span><span class="teatro-text">${escapeHtml(scene.text)}</span>`;
+    const roleImage = scene.image || teatroRoleImages[idx] || "assets/images/unit_3/lobo.png";
+    bubble.innerHTML = `<img src="${roleImage}" alt="personaje" class="teatro-role-image" /><span class="teatro-text">${escapeHtml(scene.text)}</span>`;
     counter.textContent = `Escena ${idx + 1} de ${sub.scenes.length}`;
+    micStatus.textContent = "Di la frase mostrada y luego presiona el botón del micrófono.";
   }
 
   nextBtn.addEventListener("click", () => {
-    if (state.teatroDone) return;
-    state.teatroIndex++;
-    renderScene();
+    if (state.teatroDone || state.teatroListening) return;
+
+    const scene = sub.scenes[state.teatroIndex];
+    if (!scene) return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      feedback.className = "feedback try";
+      feedback.textContent = "Tu navegador no permite reconocimiento de voz para esta actividad.";
+      micStatus.textContent = "No hay soporte de micrófono en este navegador.";
+      return;
+    }
+
+    state.teatroListening = true;
+    micStatus.textContent = "Escuchando... di la frase completa.";
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "es-MX";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results?.[0]?.[0]?.transcript || "";
+      const ok = isSpeechMatch(transcript, scene.text);
+
+      if (ok) {
+        playTone("success");
+        micStatus.textContent = `✓ Escuché: "${transcript}"`;
+        state.teatroIndex++;
+        renderScene();
+      } else {
+        playTone("error");
+        micStatus.textContent = `No coincidió. Escuché: "${transcript}"`;
+        feedback.className = "feedback try";
+        feedback.textContent = "Pronuncia la frase completa de nuevo para continuar.";
+      }
+    };
+
+    recognition.onerror = () => {
+      playTone("error");
+      micStatus.textContent = "No pude escucharte. Revisa permiso del micrófono e intenta otra vez.";
+    };
+
+    recognition.onend = () => {
+      state.teatroListening = false;
+    };
+
+    recognition.start();
   });
 
   renderScene();
@@ -5576,14 +5940,34 @@ function renderLibroActivity(sub, reviewMode) {
   container.className = "libro-container";
 
   const book = document.createElement("div");
-  book.className = "libro-book";
+  book.className = "libro-book-frame";
   book.id = "libroBook";
-  container.appendChild(book);
+
+  const bookImage = document.createElement("img");
+  bookImage.className = "libro-book-image";
+  bookImage.src = sub.bookImage || "assets/images/unit_3/libro.png";
+  bookImage.alt = "Libro";
+  bookImage.draggable = false;
+  book.appendChild(bookImage);
 
   const page = document.createElement("div");
-  page.className = "libro-page";
+  page.className = "libro-page-overlay";
   page.id = "libroPage";
+
+  // Editable coordinates so you can align the text with the book art.
+  const libroLayout = {
+    x: 15,
+    y: 32,
+    width: 68,
+    height: 58,
+    ...(sub.pageLayout || {})
+  };
+  page.style.left = `${libroLayout.x}%`;
+  page.style.top = `${libroLayout.y}%`;
+  page.style.width = `${libroLayout.width}%`;
+  page.style.height = `${libroLayout.height}%`;
   book.appendChild(page);
+  container.appendChild(book);
 
   const defBox = document.createElement("div");
   defBox.className = "libro-def";
@@ -5612,16 +5996,28 @@ function renderLibroActivity(sub, reviewMode) {
   state.libroPage = 0;
   state.libroExplored = 0;
 
+  function playPageTurnSound() {
+    const folder = getUnitSoundFolder(state.activeUnit?.id || "montanas", state.activeSubActivityIndex || 0);
+    const pageAudio = new Audio(`${folder}/hoja.mp3`);
+    safePlayAudio(pageAudio);
+  }
+
   function renderPage() {
     const pageText = sub.pages[state.libroPage];
-    const html = pageText.split(" ").map((w) => {
-      const clean = w.replace(/[.,;:!¿?]/g, "").toLowerCase();
-      const kw = sub.keywords.find((k) => k.word === clean);
-      if (kw) {
-        return `<button type="button" class="libro-keyword" data-word="${kw.word}">${escapeHtml(w)}</button>`;
-      }
-      return `<span>${escapeHtml(w)}</span>`;
-    }).join(" ");
+    const html = String(pageText)
+      .split(/\r?\n/)
+      .map((line) => line
+        .split(" ")
+        .map((w) => {
+          const clean = w.replace(/[.,;:!¿?]/g, "").toLowerCase();
+          const kw = sub.keywords.find((k) => k.word === clean);
+          if (kw) {
+            return `<button type="button" class="libro-keyword" data-word="${kw.word}">${escapeHtml(w)}</button>`;
+          }
+          return `<span>${escapeHtml(w)}</span>`;
+        })
+        .join(" "))
+      .join("<br />");
     page.innerHTML = html;
 
     page.querySelectorAll(".libro-keyword").forEach((btn) => {
@@ -5629,6 +6025,9 @@ function renderLibroActivity(sub, reviewMode) {
         const kw = sub.keywords.find((k) => k.word === btn.dataset.word);
         if (!kw || btn.classList.contains("discovered")) return;
         btn.classList.add("discovered");
+        btn.classList.remove("magic-burst");
+        void btn.offsetWidth;
+        btn.classList.add("magic-burst");
         defBox.innerHTML = `${kw.emoji} <strong>${kw.word}</strong>: ${kw.def}`;
         state.libroExplored++;
         playTone("success");
@@ -5641,10 +6040,18 @@ function renderLibroActivity(sub, reviewMode) {
   }
 
   prevBtn.addEventListener("click", () => {
-    if (state.libroPage > 0) { state.libroPage--; renderPage(); }
+    if (state.libroPage > 0) {
+      state.libroPage--;
+      playPageTurnSound();
+      renderPage();
+    }
   });
   nextBtn.addEventListener("click", () => {
-    if (state.libroPage < sub.pages.length - 1) { state.libroPage++; renderPage(); }
+    if (state.libroPage < sub.pages.length - 1) {
+      state.libroPage++;
+      playPageTurnSound();
+      renderPage();
+    }
   });
 
   renderPage();
@@ -5754,17 +6161,17 @@ function renderKaraokeActivity(sub, reviewMode) {
   cursor.textContent = "🎤";
   stage.appendChild(cursor);
 
-  const doneBtn = document.createElement("button");
-  doneBtn.className = "primary-btn karaoke-done";
-  doneBtn.textContent = "✔ Terminé de leer la estrofa";
-  container.appendChild(doneBtn);
+  const followStatus = document.createElement("p");
+  followStatus.className = "karaoke-follow-status";
+  followStatus.id = "karaokeFollowStatus";
+  followStatus.textContent = "Sigue cada palabra con tu cursor para volverla verde.";
+  container.appendChild(followStatus);
 
   if (reviewMode) {
     const msg = document.createElement("p");
     msg.className = "karaoke-msg";
     msg.textContent = "¡Ya leíste la estrofa con ritmo!";
     container.appendChild(msg);
-    doneBtn.disabled = true;
   }
 
   const wordEls = [];
@@ -5772,31 +6179,135 @@ function renderKaraokeActivity(sub, reviewMode) {
     const span = document.createElement("span");
     span.className = "karaoke-word";
     span.textContent = w;
+    span.dataset.index = String(wordEls.length);
     wordsRow.appendChild(span);
     wordEls.push(span);
   });
 
+  let pointerX = null;
+  let pointerY = null;
   let idx = 0;
+  let hitCount = 0;
+
+  function isPointerOverWord(wordEl) {
+    if (!wordEl || pointerX === null || pointerY === null) return false;
+    const rect = wordEl.getBoundingClientRect();
+    return pointerX >= rect.left && pointerX <= rect.right && pointerY >= rect.top && pointerY <= rect.bottom;
+  }
+
+  function updateFollowGlow() {
+    wordEls.forEach((wordEl, wordIndex) => {
+      const isActive = wordIndex === idx;
+      const isFollowing = isActive && isPointerOverWord(wordEl);
+      wordEl.classList.toggle("following-karaoke", isFollowing);
+    });
+
+    if (state.karaokeFollowRunning) {
+      state.karaokeFollowRaf = requestAnimationFrame(updateFollowGlow);
+    }
+  }
+
+  stage.addEventListener("pointermove", (event) => {
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+  });
+  stage.addEventListener("pointerdown", (event) => {
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+  });
+
   if (wordEls[0]) wordEls[0].classList.add("active-karaoke");
+  state.karaokeFollowRunning = true;
+  updateFollowGlow();
+
   state.karaokeTimer = setInterval(() => {
     if (state.activeSubActivityIndex === null) {
       if (state.karaokeTimer) { clearInterval(state.karaokeTimer); state.karaokeTimer = null; }
+      state.karaokeFollowRunning = false;
+      if (state.karaokeFollowRaf) {
+        cancelAnimationFrame(state.karaokeFollowRaf);
+        state.karaokeFollowRaf = null;
+      }
       return;
     }
-    if (wordEls[idx]) wordEls[idx].classList.remove("active-karaoke");
-    idx = (idx + 1) % wordEls.length;
-    if (wordEls[idx]) wordEls[idx].classList.add("active-karaoke");
-    cursor.style.left = (wordEls[idx].offsetLeft + wordEls[idx].offsetWidth / 2 - 16) + "px";
-    cursor.style.top = (wordEls[idx].offsetTop - 40) + "px";
+
+    const currentWord = wordEls[idx];
+    if (currentWord) {
+      const followed = isPointerOverWord(currentWord);
+      currentWord.classList.toggle("followed-karaoke", followed);
+      currentWord.classList.toggle("missed-karaoke", !followed);
+      if (followed) {
+        hitCount++;
+      }
+      currentWord.classList.remove("active-karaoke");
+    }
+
+    idx += 1;
+    if (idx >= wordEls.length) {
+      if (hitCount >= wordEls.length) {
+        if (state.karaokeTimer) {
+          clearInterval(state.karaokeTimer);
+          state.karaokeTimer = null;
+        }
+        state.karaokeFollowRunning = false;
+        if (state.karaokeFollowRaf) {
+          cancelAnimationFrame(state.karaokeFollowRaf);
+          state.karaokeFollowRaf = null;
+        }
+        followStatus.textContent = "¡Excelente! Seguiste todo el ritmo con el cursor.";
+        state.selectedAnswer = true;
+        completeUnit3Activity(sub);
+        return;
+      }
+
+      idx = 0;
+      hitCount = 0;
+      wordEls.forEach((wordEl) => {
+        wordEl.classList.remove("followed-karaoke", "missed-karaoke", "following-karaoke");
+      });
+      followStatus.textContent = "Inténtalo de nuevo: sigue cada palabra cuando se ilumina.";
+    }
+
+    if (wordEls[idx]) {
+      wordEls[idx].classList.add("active-karaoke");
+      cursor.style.left = (wordEls[idx].offsetLeft + wordEls[idx].offsetWidth / 2 - 16) + "px";
+      cursor.style.top = (wordEls[idx].offsetTop - 40) + "px";
+    }
   }, 700);
 
-  doneBtn.addEventListener("click", () => {
-    if (state.karaokeTimer) { clearInterval(state.karaokeTimer); state.karaokeTimer = null; }
-    state.selectedAnswer = true;
-    completeUnit3Activity(sub);
-  });
-
   activityWorkspace.appendChild(container);
+}
+
+function getUnit3ImagePath(name) {
+  const value = normalize(String(name || "")).toLowerCase();
+  if (!value) return "";
+  if (value.includes("caperucita")) return "assets/images/unit_3/caperucita_roja.png";
+  if (value.includes("lobo")) return "assets/images/unit_3/lobo.png";
+  if (value.includes("bosque")) return "assets/images/unit_3/bosque.png";
+  if (value.includes("casa")) return "assets/images/unit_3/casa.png";
+  if (value.includes("camino")) return "assets/images/unit_3/camino.png";
+  if (value.includes("abuela") || value.includes("abuelita")) return "assets/images/unit_3/abuela.png";
+  if (value.includes("madre") || value.includes("mama")) return "assets/images/unit_3/mama.png";
+  if (value.includes("lenador") || value.includes("leñador")) return "assets/images/unit_3/leñador.png";
+  if (value.includes("playa")) return "assets/images/unit_3/playa.png";
+  if (value.includes("castillo")) return "assets/images/unit_3/castillo.png";
+  if (value.includes("dragon")) return "assets/images/unit_3/dragon.png";
+  if (value.includes("robot")) return "assets/images/unit_3/robot.png";
+  return "";
+}
+
+function buildUnit3ImageMarkup(name, className) {
+  const raw = String(name || "").trim();
+  const directPath = /^(assets\/|\.\/|\.\.\/|https?:\/\/|data:image\/)/i.test(raw)
+    || /\.(png|jpe?g|webp|gif|svg)$/i.test(raw);
+  if (directPath) {
+    return `<img src="${raw}" alt="${escapeHtml(raw.split("/").pop() || "imagen")}" class="${className}" />`;
+  }
+  const path = getUnit3ImagePath(name);
+  if (!path) {
+    return `<span class="${className} fallback-unit3-image">${escapeHtml(String(name || "?"))}</span>`;
+  }
+  return `<img src="${path}" alt="${escapeHtml(String(name || "imagen"))}" class="${className}" />`;
 }
 
 /* ---------- 6. PERSONAJES: drag to Personajes / Escenarios ---------- */
@@ -5812,7 +6323,7 @@ function renderPersonajesActivity(sub, reviewMode) {
     const catEl = document.createElement("div");
     catEl.className = "personajes-cat";
     catEl.dataset.category = cat.name;
-    catEl.innerHTML = `<span class="personajes-cat-emoji">${cat.emoji}</span><span class="personajes-cat-name">${cat.name}</span>`;
+    catEl.innerHTML = `<span class="personajes-cat-name">${cat.name}</span><span class="personajes-cat-hint">Suelta aquí las tarjetas correctas</span>`;
     catEl.addEventListener("dragover", (e) => { e.preventDefault(); catEl.classList.add("drag-over-personajes"); });
     catEl.addEventListener("dragleave", () => catEl.classList.remove("drag-over-personajes"));
     catEl.addEventListener("drop", (e) => {
@@ -5832,6 +6343,12 @@ function renderPersonajesActivity(sub, reviewMode) {
           completeUnit3Activity(sub);
         }
       } else {
+        if (chip) {
+          chip.classList.add("wrong-drop-personajes");
+          setTimeout(() => chip.classList.remove("wrong-drop-personajes"), 450);
+        }
+        catEl.classList.add("wrong-drop-zone");
+        setTimeout(() => catEl.classList.remove("wrong-drop-zone"), 450);
         playTone("error");
       }
     });
@@ -5847,28 +6364,11 @@ function renderPersonajesActivity(sub, reviewMode) {
     chip.className = "personajes-item";
     chip.id = "personajesItem-" + item.word;
     chip.dataset.word = item.word;
-    chip.innerHTML = `<span class="personajes-item-emoji">${item.emoji}</span><span class="personajes-item-word">${item.word}</span>`;
+    chip.innerHTML = `${buildUnit3ImageMarkup(item.word, "personajes-item-image")}<span class="personajes-item-word">${item.word}</span>`;
     chip.draggable = true;
     chip.tabIndex = 0;
     chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", item.word); chip.classList.add("dragging-personajes"); });
     chip.addEventListener("dragend", () => chip.classList.remove("dragging-personajes"));
-    // click fallback for touch
-    chip.addEventListener("click", () => {
-      if (chip.classList.contains("correct")) return;
-      const targetCat = sub.categories.find((c) => c.name === item.category).name;
-      const catEl = [...catsRow.querySelectorAll(".personajes-cat")].find((c) => c.dataset.category === targetCat);
-      if (catEl) {
-        chip.classList.add("correct");
-        chip.draggable = false;
-        catEl.appendChild(chip);
-        state.personajesMatched++;
-        playTone("success");
-        if (state.personajesMatched >= sub.items.length) {
-          state.selectedAnswer = sub.answer;
-          completeUnit3Activity(sub);
-        }
-      }
-    });
     itemsRow.appendChild(chip);
   });
   container.appendChild(itemsRow);
@@ -5900,7 +6400,7 @@ function renderQuienActivity(sub) {
     btn.type = "button";
     btn.className = "quien-char";
     btn.dataset.name = ch.name;
-    btn.innerHTML = `<span class="quien-char-emoji">${ch.emoji}</span><span class="quien-char-name">${ch.name}</span>`;
+    btn.innerHTML = `${buildUnit3ImageMarkup(ch.image || ch.name, "quien-char-image")}<span class="quien-char-name">${ch.name}</span>`;
     btn.addEventListener("click", () => {
       document.querySelectorAll(".quien-char").forEach((b) => b.classList.remove("selected-quien"));
       btn.classList.add("selected-quien");
@@ -5927,7 +6427,7 @@ function renderMapaActivity(sub, reviewMode) {
     const zoneEl = document.createElement("div");
     zoneEl.className = "mapa-zone";
     zoneEl.dataset.zone = zone.name;
-    zoneEl.innerHTML = `<span class="mapa-zone-emoji">${zone.emoji}</span><span class="mapa-zone-name">${zone.name}</span><span class="mapa-zone-event"></span>`;
+    zoneEl.innerHTML = `${buildUnit3ImageMarkup(zone.image || zone.name, "mapa-zone-image")}<span class="mapa-zone-name">${zone.name}</span><span class="mapa-zone-event"></span>`;
     zoneEl.addEventListener("dragover", (e) => { e.preventDefault(); zoneEl.classList.add("drag-over-mapa"); });
     zoneEl.addEventListener("dragleave", () => zoneEl.classList.remove("drag-over-mapa"));
     zoneEl.addEventListener("drop", (e) => {
@@ -5948,6 +6448,12 @@ function renderMapaActivity(sub, reviewMode) {
           completeUnit3Activity(sub);
         }
       } else {
+        if (chip) {
+          chip.classList.add("wrong-drop-mapa");
+          setTimeout(() => chip.classList.remove("wrong-drop-mapa"), 450);
+        }
+        zoneEl.classList.add("wrong-drop-zone");
+        setTimeout(() => zoneEl.classList.remove("wrong-drop-zone"), 450);
         playTone("error");
       }
     });
@@ -5963,27 +6469,11 @@ function renderMapaActivity(sub, reviewMode) {
     chip.className = "mapa-item";
     chip.id = "mapaItem-" + item.word;
     chip.dataset.zone = item.zone;
-    chip.innerHTML = `<span class="mapa-item-emoji">${item.emoji}</span><span class="mapa-item-word">${item.word}</span>`;
+    chip.innerHTML = `${buildUnit3ImageMarkup(item.image || item.word, "mapa-item-image")}<span class="mapa-item-word">${item.word}</span>`;
     chip.draggable = true;
     chip.tabIndex = 0;
     chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", item.word); chip.classList.add("dragging-mapa"); });
     chip.addEventListener("dragend", () => chip.classList.remove("dragging-mapa"));
-    chip.addEventListener("click", () => {
-      if (chip.classList.contains("correct")) return;
-      const zoneEl = [...zonesRow.querySelectorAll(".mapa-zone")].find((z) => z.dataset.zone === item.zone);
-      if (zoneEl) {
-        chip.classList.add("correct");
-        chip.draggable = false;
-        zoneEl.appendChild(chip);
-        zoneEl.querySelector(".mapa-zone-event").textContent = "📌 " + item.zone;
-        state.mapaMatched++;
-        playTone("success");
-        if (state.mapaMatched >= sub.items.length) {
-          state.selectedAnswer = sub.answer;
-          completeUnit3Activity(sub);
-        }
-      }
-    });
     tray.appendChild(chip);
   });
   container.appendChild(tray);
@@ -6013,7 +6503,7 @@ function renderGaleriaActivity(sub, reviewMode) {
     card.type = "button";
     card.className = "galeria-char";
     card.dataset.correct = ch.correct ? "true" : "false";
-    card.innerHTML = `<span class="galeria-char-emoji">${ch.emoji}</span><span class="galeria-char-name">${ch.name}</span>`;
+    card.innerHTML = `<span class="galeria-char-frame">${buildUnit3ImageMarkup(ch.image || ch.name, "galeria-char-image")}</span><span class="galeria-char-name">${ch.name}</span>`;
     card.addEventListener("click", () => {
       if (card.classList.contains("resolved")) return;
       if (ch.correct) {
@@ -6055,7 +6545,12 @@ function renderEscenarioActivity(sub) {
   const scene = document.createElement("div");
   scene.className = "escenario-scene";
   scene.id = "escenarioScene";
-  scene.textContent = "🌄 ¿En qué lugar ocurrió?";
+  const sceneImage = document.createElement("img");
+  sceneImage.className = "escenario-scene-image";
+  sceneImage.src = getUnit3ImagePath(sub.sceneImage || "bosque");
+  sceneImage.alt = "Bosque";
+  sceneImage.draggable = false;
+  scene.appendChild(sceneImage);
   container.appendChild(scene);
 
   const question = document.createElement("p");
@@ -6070,12 +6565,13 @@ function renderEscenarioActivity(sub) {
     btn.type = "button";
     btn.className = "escenario-option";
     btn.dataset.label = opt.label;
-    btn.innerHTML = `<span class="escenario-option-emoji">${opt.emoji}</span><span class="escenario-option-label">${opt.label}</span>`;
+    btn.innerHTML = `${buildUnit3ImageMarkup(opt.image || opt.label, "escenario-option-image")}<span class="escenario-option-label">${opt.label}</span>`;
     btn.addEventListener("click", () => {
       document.querySelectorAll(".escenario-option").forEach((b) => b.classList.remove("selected-escenario"));
       btn.classList.add("selected-escenario");
       state.selectedAnswer = opt.label;
-      scene.textContent = opt.emoji + " " + opt.scene;
+      sceneImage.src = getUnit3ImagePath(opt.image || opt.label) || getUnit3ImagePath("bosque");
+      sceneImage.alt = opt.label;
       playTone("tap");
     });
     optionsRow.appendChild(btn);
@@ -6108,28 +6604,43 @@ function renderOrdenarActivity(sub, reviewMode) {
   tray.className = "ordenar-tray";
   const shuffled = [...sub.items].sort(() => Math.random() - 0.5);
   const itemMap = {};
+
+  function placeOrdenarChip(label) {
+    const chip = itemMap[label] || document.getElementById("ordenarItem-" + label);
+    if (!chip || chip.classList.contains("used")) return;
+    const next = state.sequenceAnswer.length;
+    if (next >= sub.items.length) return;
+    const slot = document.getElementById("ordenarSlot" + next);
+    if (slot) {
+      slot.innerHTML = `<span class="ordenar-slot-order">${next + 1}.</span><span class="ordenar-slot-chip">${chip.innerHTML}</span>`;
+      slot.classList.add("filled-ordenar");
+      slot.dataset.label = label;
+    }
+    chip.classList.add("used");
+    state.sequenceAnswer.push(label);
+    playTone("tap");
+  }
+
   shuffled.forEach((item) => {
     const chip = document.createElement("div");
     chip.className = "ordenar-item";
     chip.id = "ordenarItem-" + item.label;
     chip.dataset.label = item.label;
-    chip.innerHTML = `<span class="ordenar-item-emoji">${item.emoji}</span><span class="ordenar-item-label">${item.label}</span>`;
+    chip.innerHTML = `${buildUnit3ImageMarkup(item.image || item.label, "ordenar-item-image")}<span class="ordenar-item-label">${item.label}</span>`;
     chip.draggable = true;
     chip.tabIndex = 0;
     itemMap[item.label] = chip;
     chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", item.label); chip.classList.add("dragging-ordenar"); });
     chip.addEventListener("dragend", () => chip.classList.remove("dragging-ordenar"));
-    chip.addEventListener("click", () => {
-      if (chip.classList.contains("used")) return;
-      const next = state.sequenceAnswer.length;
-      if (next >= sub.items.length) return;
-      const slot = document.getElementById("ordenarSlot" + next);
-      if (slot) { slot.textContent = (next + 1) + ". " + item.label; slot.classList.add("filled-ordenar"); }
-      chip.classList.add("used");
-      state.sequenceAnswer.push(item.label);
-      playTone("tap");
-    });
+    chip.addEventListener("click", () => placeOrdenarChip(item.label));
     tray.appendChild(chip);
+  });
+
+  slots.addEventListener("dragover", (e) => e.preventDefault());
+  slots.addEventListener("drop", (e) => {
+    e.preventDefault();
+    const label = e.dataTransfer.getData("text/plain");
+    placeOrdenarChip(label);
   });
   container.appendChild(tray);
 
@@ -6143,6 +6654,7 @@ function renderOrdenarActivity(sub, reviewMode) {
       const label = state.sequenceAnswer.pop();
       slot.textContent = (last + 1) + ". ___";
       slot.classList.remove("filled-ordenar");
+      delete slot.dataset.label;
       const chip = itemMap[label];
       if (chip) chip.classList.remove("used");
       playTone("tap");
@@ -6168,11 +6680,28 @@ function renderLineaActivity(sub, reviewMode) {
 
   const catsRow = document.createElement("div");
   catsRow.className = "linea-cats";
+
+  function updateLineaCompletion() {
+    if (state.lineaMatched >= sub.items.length) {
+      state.selectedAnswer = sub.answer;
+      completeUnit3Activity(sub);
+    }
+  }
+
+  function returnLineaChip(chip) {
+    if (!chip || !chip.classList.contains("correct")) return;
+    chip.classList.remove("correct");
+    chip.draggable = true;
+    tray.appendChild(chip);
+    state.lineaMatched = Math.max(0, state.lineaMatched - 1);
+    playTone("tap");
+  }
+
   sub.categories.forEach((cat) => {
     const catEl = document.createElement("div");
     catEl.className = "linea-cat";
     catEl.dataset.category = cat.name;
-    catEl.innerHTML = `<span class="linea-cat-emoji">${cat.emoji}</span><span class="linea-cat-name">${cat.name}</span>`;
+    catEl.innerHTML = `<span class="linea-cat-name">${cat.name}</span><span class="linea-cat-hint">Suelta aquí la tarjeta correcta</span>`;
     catEl.addEventListener("dragover", (e) => { e.preventDefault(); catEl.classList.add("drag-over-linea"); });
     catEl.addEventListener("dragleave", () => catEl.classList.remove("drag-over-linea"));
     catEl.addEventListener("drop", (e) => {
@@ -6187,11 +6716,14 @@ function renderLineaActivity(sub, reviewMode) {
         catEl.appendChild(chip);
         state.lineaMatched++;
         playTone("success");
-        if (state.lineaMatched >= sub.items.length) {
-          state.selectedAnswer = sub.answer;
-          completeUnit3Activity(sub);
-        }
+        updateLineaCompletion();
       } else {
+        if (chip) {
+          chip.classList.add("wrong-drop-linea");
+          setTimeout(() => chip.classList.remove("wrong-drop-linea"), 420);
+        }
+        catEl.classList.add("wrong-drop-zone");
+        setTimeout(() => catEl.classList.remove("wrong-drop-zone"), 420);
         playTone("error");
       }
     });
@@ -6207,29 +6739,25 @@ function renderLineaActivity(sub, reviewMode) {
     chip.className = "linea-item";
     chip.id = "lineaItem-" + item.word;
     chip.dataset.category = item.category;
-    chip.innerHTML = `<span class="linea-item-emoji">${item.emoji}</span><span class="linea-item-word">${item.word}</span>`;
+    chip.innerHTML = `${buildUnit3ImageMarkup(item.image || item.word, "linea-item-image")}<span class="linea-item-word">${item.word}</span>`;
     chip.draggable = true;
     chip.tabIndex = 0;
     chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", item.word); chip.classList.add("dragging-linea"); });
     chip.addEventListener("dragend", () => chip.classList.remove("dragging-linea"));
     chip.addEventListener("click", () => {
-      if (chip.classList.contains("correct")) return;
-      const catEl = [...catsRow.querySelectorAll(".linea-cat")].find((c) => c.dataset.category === item.category);
-      if (catEl) {
-        chip.classList.add("correct");
-        chip.draggable = false;
-        catEl.appendChild(chip);
-        state.lineaMatched++;
-        playTone("success");
-        if (state.lineaMatched >= sub.items.length) {
-          state.selectedAnswer = sub.answer;
-          completeUnit3Activity(sub);
-        }
+      if (chip.classList.contains("correct")) {
+        returnLineaChip(chip);
       }
     });
     tray.appendChild(chip);
   });
   container.appendChild(tray);
+
+  catsRow.addEventListener("click", (e) => {
+    const chip = e.target.closest(".linea-item.correct");
+    if (!chip) return;
+    returnLineaChip(chip);
+  });
 
   if (reviewMode) {
     const msg = document.createElement("p");
@@ -6247,6 +6775,13 @@ function renderDominoActivity(sub, reviewMode) {
   container.className = "domino-container";
 
   state.dominoPlaced = [];
+  state.dominoExpectedStart = null;
+  state.dominoExpectedTail = null;
+
+  const chainInfo = document.createElement("p");
+  chainInfo.className = "domino-chain-info";
+  chainInfo.textContent = "Arrastra una ficha para iniciar la cadena de causa-efecto.";
+  container.appendChild(chainInfo);
 
   const chain = document.createElement("div");
   chain.className = "domino-chain";
@@ -6261,7 +6796,7 @@ function renderDominoActivity(sub, reviewMode) {
     chip.className = "domino-piece";
     chip.id = "dominoPiece-" + piece.text;
     chip.dataset.text = piece.text;
-    chip.innerHTML = `<span class="domino-piece-emoji">${piece.emoji}</span><span class="domino-piece-text">${piece.text}</span><span class="domino-piece-next">→ ${piece.next}</span>`;
+    chip.innerHTML = `<span class="domino-piece-half domino-half-top">${buildUnit3ImageMarkup(piece.text, "domino-piece-image")}<span class="domino-piece-text">${piece.text}</span></span><span class="domino-piece-divider"></span><span class="domino-piece-half domino-half-bottom"><span class="domino-piece-next-label">Conduce a:</span><span class="domino-piece-next">${piece.next}</span></span>`;
     chip.draggable = true;
     chip.tabIndex = 0;
     chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", piece.text); chip.classList.add("dragging-domino"); });
@@ -6293,20 +6828,42 @@ function renderDominoActivity(sub, reviewMode) {
 function placeDomino(sub, text) {
   const chip = document.getElementById("dominoPiece-" + text);
   if (!chip || chip.classList.contains("placed")) return;
-  const nextExpected = sub.answer[state.dominoPlaced.length];
-  if (text !== nextExpected) {
+
+  const piece = sub.pieces.find((p) => p.text === text);
+  if (!piece) return;
+
+  const chainInfo = document.querySelector(".domino-chain-info");
+
+  if (!state.dominoPlaced.length) {
+    const startText = sub.answer?.[0] || "";
+    if (text !== startText) {
+      chip.classList.add("shake");
+      setTimeout(() => chip.classList.remove("shake"), 400);
+      if (chainInfo) chainInfo.textContent = `La cadena debe iniciar con: ${startText}`;
+      playTone("error");
+      return;
+    }
+    state.dominoExpectedStart = text;
+    state.dominoExpectedTail = piece.next;
+  } else if (text !== state.dominoExpectedTail) {
     chip.classList.add("shake");
     setTimeout(() => chip.classList.remove("shake"), 400);
+    if (chainInfo) chainInfo.textContent = `Después de "${state.dominoPlaced[state.dominoPlaced.length - 1]}" sigue: ${state.dominoExpectedTail}`;
     playTone("error");
     return;
   }
+
   chip.classList.add("placed");
   chip.draggable = false;
   document.getElementById("dominoChain").appendChild(chip);
   state.dominoPlaced.push(text);
+  state.dominoExpectedTail = piece.next;
+  if (chainInfo) chainInfo.textContent = `Cadena actual: ${state.dominoPlaced.join(" → ")}`;
   playTone("success");
-  if (state.dominoPlaced.length >= sub.answer.length) {
+
+  if (state.dominoPlaced.length >= sub.pieces.length && state.dominoExpectedTail === sub.answer[sub.answer.length - 1]) {
     state.selectedAnswer = sub.answer;
+    if (chainInfo) chainInfo.textContent = "¡Cadena completa sin interrupciones!";
     completeUnit3Activity(sub);
   }
 }
@@ -6318,6 +6875,12 @@ function renderCintaActivity(sub, reviewMode) {
 
   state.cintaOrder = [];
 
+  const info = document.createElement("p");
+  info.className = "cinta-info";
+  info.id = "cintaInfo";
+  info.textContent = "Ordena libremente los fotogramas. Puedes quitar el último tocándolo.";
+  container.appendChild(info);
+
   const film = document.createElement("div");
   film.className = "cinta-film";
   film.id = "cintaFilm";
@@ -6327,19 +6890,45 @@ function renderCintaActivity(sub, reviewMode) {
   tray.className = "cinta-tray";
   const shuffled = [...sub.frames].sort(() => Math.random() - 0.5);
   const frameMap = {};
+
+  function placeCintaInNextSlot(text) {
+    const chip = frameMap[text] || document.getElementById("cintaFrame-" + text);
+    if (!chip || chip.classList.contains("placed")) return;
+    chip.classList.add("placed");
+    chip.draggable = false;
+    document.getElementById("cintaFilm").appendChild(chip);
+    state.cintaOrder.push(text);
+    playTone("tap");
+
+    const playBtn = document.getElementById("cintaPlayBtn");
+    if (playBtn) playBtn.disabled = state.cintaOrder.length < sub.answer.length;
+  }
+
   shuffled.forEach((frame) => {
     const chip = document.createElement("div");
     chip.className = "cinta-frame";
     chip.id = "cintaFrame-" + frame.text;
     chip.dataset.text = frame.text;
-    chip.innerHTML = `<span class="cinta-frame-emoji">${frame.emoji}</span><span class="cinta-frame-text">${frame.text}</span>`;
+    chip.innerHTML = `${buildUnit3ImageMarkup(frame.image || frame.text, "cinta-frame-image")}<span class="cinta-frame-text">${frame.text}</span>`;
     chip.draggable = true;
     chip.tabIndex = 0;
     frameMap[frame.text] = chip;
     chip.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", frame.text); chip.classList.add("dragging-cinta"); });
     chip.addEventListener("dragend", () => chip.classList.remove("dragging-cinta"));
     chip.addEventListener("click", () => {
-      placeCinta(sub, frame.text);
+      if (chip.classList.contains("placed")) {
+        const last = state.cintaOrder[state.cintaOrder.length - 1];
+        if (last !== frame.text) return;
+        state.cintaOrder.pop();
+        chip.classList.remove("placed", "playing-cinta");
+        chip.draggable = true;
+        tray.appendChild(chip);
+        const playBtn = document.getElementById("cintaPlayBtn");
+        if (playBtn) playBtn.disabled = true;
+        playTone("tap");
+        return;
+      }
+      placeCintaInNextSlot(frame.text);
     });
     tray.appendChild(chip);
   });
@@ -6349,7 +6938,7 @@ function renderCintaActivity(sub, reviewMode) {
   film.addEventListener("drop", (e) => {
     e.preventDefault();
     const text = e.dataTransfer.getData("text/plain");
-    placeCinta(sub, text);
+    placeCintaInNextSlot(text);
   });
 
 const playBtn = document.createElement("button");
@@ -6395,6 +6984,18 @@ function placeCinta(sub, text) {
 function playCinta() {
   const film = document.getElementById("cintaFilm");
   if (!film || state.cintaOrder.length === 0) return;
+  const info = document.getElementById("cintaInfo");
+
+  const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
+  const isCorrectOrder = sub.answer.every((item, idx) => state.cintaOrder[idx] === item);
+  if (!isCorrectOrder) {
+    feedback.className = "feedback try";
+    feedback.textContent = "El orden aún no es correcto. Ajusta los fotogramas y prueba de nuevo.";
+    if (info) info.textContent = "Hay un error en la secuencia: toca el último fotograma para corregir.";
+    playTone("error");
+    return;
+  }
+
   const frames = film.querySelectorAll(".cinta-frame");
   if (state.cintaTimer) { clearInterval(state.cintaTimer); state.cintaTimer = null; }
   frames.forEach((f) => f.classList.remove("playing-cinta"));
@@ -6406,9 +7007,38 @@ function playCinta() {
     if (i >= frames.length) {
       clearInterval(state.cintaTimer);
       state.cintaTimer = null;
-      const sub = state.activeUnit.subActivities[state.activeSubActivityIndex];
-      state.selectedAnswer = sub.answer;
-      completeUnit3Activity(sub);
+
+      const videoWrap = document.createElement("div");
+      videoWrap.className = "cinta-video-wrap";
+      const video = document.createElement("video");
+      video.className = "cinta-video";
+      video.id = "cintaVideo";
+      video.src = "assets/videos/caperucita.mp4";
+      video.controls = false;
+      video.autoplay = true;
+      video.muted = false;
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+      video.preload = "auto";
+      videoWrap.appendChild(video);
+      film.replaceChildren(videoWrap);
+
+      if (info) info.textContent = "Reproduciendo la secuencia final...";
+
+      video.addEventListener("ended", () => {
+        state.selectedAnswer = sub.answer;
+        feedback.className = "feedback ok";
+        feedback.textContent = sub.success + " ¡Has completado esta actividad!";
+        completeSubActivity(state.activeUnit.id, state.activeSubActivityIndex);
+        playTone("success");
+        celebrateConfetti();
+        animateActivitySuccess(sub);
+        playCorrectThenFeedback(state.activeUnit.id, state.activeSubActivityIndex, () => {
+          openActivity(state.activeUnit.id);
+        });
+      }, { once: true });
+
       return;
     }
     frames[i]?.classList.add("playing-cinta");
@@ -6721,6 +7351,8 @@ function markCompleted(unitId) {
 }
 
 function closeActivity() {
+  stopActivityAvatarViewer();
+
   // Cleanup escudo timer if active
   if (state.escudoTimerCleanup) {
     state.escudoTimerCleanup();
@@ -6746,10 +7378,20 @@ function closeActivity() {
     accionVideo.pause();
     accionVideo.currentTime = 0;
   }
+  const cintaVideo = document.getElementById("cintaVideo");
+  if (cintaVideo) {
+    cintaVideo.pause();
+    cintaVideo.currentTime = 0;
+  }
   // Unit 3 cleanup: stop karaoke cursor interval
   if (state.karaokeTimer) {
     clearInterval(state.karaokeTimer);
     state.karaokeTimer = null;
+  }
+  state.karaokeFollowRunning = false;
+  if (state.karaokeFollowRaf) {
+    cancelAnimationFrame(state.karaokeFollowRaf);
+    state.karaokeFollowRaf = null;
   }
   // Unit 3 cleanup: stop cinta playback interval
   if (state.cintaTimer) {
@@ -6770,6 +7412,7 @@ function closeActivity() {
   state.activeSubActivityIndex = null;
   state.inCastleMap = false;
   state.escudoStarted = false;
+  state.replaySubActivity = null;
 }
 
 function practicePronunciation() {

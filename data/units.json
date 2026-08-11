@@ -388,7 +388,7 @@
             "PERRO": "assets/unit_1_sounds/theme3/perro.mp3",
             "CORRE": "assets/unit_1_sounds/theme3/corre.mp3"
           },
-          "success": "¡Excelente! Ordenaste las palabras correctamente: EL PERRO CORRE. ¡Has descubierto el pasaje oculto!",
+          "success": "¡Excelente! Ordenaste las palabras correctamente: EL PERRO CORRE.",
           "hint": "Escucha la oración completa y presta atención al orden de las palabras."
         },
         {
@@ -406,7 +406,7 @@
             "O"
           ],
           "answer": "GATO",
-          "success": "¡Excelente! Completaste la palabra GATO. ¡El gato salió del castillo!",
+          "success": "¡Excelente! Completaste la palabra GATO.",
           "hint": "Escucha la pista: es un animal que dice miau, toma leche y empieza con G."
         }
       ]
@@ -617,7 +617,7 @@
           ],
           "answer": "pato",
           "success": "¡Cuac! Desplegaste el letrero 'pato' y escuchaste el sonido del animal.",
-          "hint": "El letrero del pato está detrás de una barda. El pato nada y dice cuac."
+          "hint": "El letrero del está detrás de un árbol."
         },
         {
           "id": "inspector",
@@ -631,7 +631,7 @@
           "need": 3,
           "answer": 3,
           "success": "¡Inspector genial! Sellaste las 3 veces que aparece 'sol'.",
-          "hint": "Busca la palabra sol en cada oración: sol, sol y sol."
+          "hint": "Busca la palabra sol en cada oración."
         },
         {
           "id": "foco",
@@ -808,13 +808,13 @@
             }
           ],
           "answer": 3,
-          "success": "¡Todos los canastos recibieron sus fichas! Sonido de confirmación.",
-          "hint": "La manzana es un alimento, el martillo es una herramienta y la vaca es un animal."
+          "success": "¡Todos los canastos recibieron sus fichas!.",
+          "hint": "La manzana es un alimento, el martillo es una herramienta y la vaca..."
         },
         {
           "id": "red",
           "title": "La Red de Conexiones",
-          "prompt": "Dispara hilos hacia las tarjetas que se relacionan con 'Fuego'.",
+          "prompt": "Haz click las tarjetas que se relacionan con 'Fuego'.",
           "speak": "Conecta el concepto fuego con las tarjetas que guardan relacion: calor y humo. Descarta la tarjeta hielo.",
           "type": "red",
           "question": "Toca las tarjetas relacionadas con 'Fuego'.",
@@ -841,8 +841,8 @@
             "calor",
             "humo"
           ],
-          "success": "¡Se formó una red conceptual iluminada alrededor del centro!",
-          "hint": "El fuego produce calor y humo. El hielo es frío, no tiene relación."
+          "success": "¡La relación es la correcta!",
+          "hint": "El fuego produce calor y humo."
         },
         {
           "id": "arbol",
@@ -870,7 +870,7 @@
           ],
           "answer": 3,
           "success": "¡Las hojas del árbol crecieron al completar la jerarquía!",
-          "hint": "La rosa, el pino y las hojas son partes o elementos de una planta. Colócalos en el nido correcto del árbol."
+          "hint": "La rosa, el pino y las hojas son partes o elementos de una planta."
         }
       ]
     },
@@ -945,7 +945,7 @@
             "Voy a casa de mi abuelita.",
             "¡Corre, Caperucita, corre!"
           ],
-          "success": "¡Excelente! Las sombras representaron la obra completa.",
+          "success": "¡Excelente! has representado la obra completa.",
           "hint": "Lee cada burbuja en voz alta del primero al último."
         },
         {
@@ -955,24 +955,21 @@
           "speak": "Toca cada palabra magica del cuento para ver su definicion divertida.",
           "type": "libro",
           "pages": [
-            "El lobo se escondió detrás de un árbol.",
-            "Caperucita llevó la cesta por el bosque.",
-            "El leñador escuchó la voz de la abuelita."
+            "El lobo se escondió \n detrás de un árbol \n para sorprender \n a caperucita.",
+            "Caperucita llevó la \n cesta por el bosque \n rumbo a la casa \n de su abuelita.",
+            "El leñador escuchó la voz \n de la abuelita y \n corrió a ayudarla \n del lobo."
           ],
           "keywords": [
             {
               "word": "lobo",
-              "emoji": "🐺",
               "def": "El lobo es un animal grande que vive en el bosque y aúlla a la luna."
             },
             {
               "word": "bosque",
-              "emoji": "🌲",
               "def": "El bosque es un lugar lleno de árboles altos y verdes."
             },
             {
               "word": "cesta",
-              "emoji": "🧺",
               "def": "La cesta es un canasto que se usa para llevar comida."
             }
           ],
@@ -1101,19 +1098,22 @@
           "characters": [
             {
               "name": "El Lobo",
-              "emoji": "🐺"
-            },
-            {
-              "name": "Caperucita",
-              "emoji": "🔴"
+              "emoji": "🐺",
+              "image": "assets/images/unit_3/lobo.png"
             },
             {
               "name": "La Madre",
-              "emoji": "👩"
+              "emoji": "👩",
+              "image": "assets/images/unit_3/mama.png"
+            },
+            {
+              "name": "Caperucita",
+              "emoji": "🔴",
+              "image": "assets/images/unit_3/caperucita_roja.png"
             }
           ],
           "answer": "El Lobo",
-          "success": "¡Se encendió el haz de luz! El lobo fue quien dijo la frase.",
+          "success": "¡El lobo fue quien dijo la frase.!",
           "hint": "¿Quién esperó a Caperucita en el camino para preguntarle?"
         },
         {
@@ -1126,16 +1126,19 @@
             {
               "name": "El Camino",
               "emoji": "🛤️",
+              "image": "assets/images/unit_3/camino.png",
               "events": "Caperucita caminó por el camino hacia la casa."
             },
             {
               "name": "El Bosque",
               "emoji": "🌲",
+              "image": "assets/images/unit_3/bosque.png",
               "events": "El lobo se encontró con Caperucita en el bosque."
             },
             {
               "name": "La Casa",
               "emoji": "🏠",
+              "image": "assets/images/unit_3/casa.png",
               "events": "La abuelita estaba en su casa."
             }
           ],
@@ -1143,17 +1146,20 @@
             {
               "word": "Caperucita",
               "zone": "El Camino",
-              "emoji": "🔴"
+              "emoji": "🔴",
+              "image": "assets/images/unit_3/caperucita_roja.png"
             },
             {
               "word": "Lobo",
               "zone": "El Bosque",
-              "emoji": "🐺"
+              "emoji": "🐺",
+              "image": "assets/images/unit_3/lobo.png"
             },
             {
               "word": "Abuelita",
               "zone": "La Casa",
-              "emoji": "👵"
+              "emoji": "👵",
+              "image": "assets/images/unit_3/abuela.png"
             }
           ],
           "answer": 3,
@@ -1170,31 +1176,37 @@
             {
               "name": "Caperucita",
               "emoji": "🔴",
+              "image": "assets/images/unit_3/caperucita_roja.png",
               "correct": true
             },
             {
               "name": "El Lobo",
               "emoji": "🐺",
+              "image": "assets/images/unit_3/lobo.png",
               "correct": true
             },
             {
               "name": "La Abuelita",
               "emoji": "👵",
+              "image": "assets/images/unit_3/abuela.png",
               "correct": true
             },
             {
               "name": "El Leñador",
               "emoji": "🪵",
+              "image": "assets/images/unit_3/leñador.png",
               "correct": true
             },
             {
               "name": "Un Dragón",
               "emoji": "🐉",
+              "image": "assets/images/unit_3/dragon.png",
               "correct": false
             },
             {
               "name": "Un Robot",
               "emoji": "🤖",
+              "image": "assets/images/unit_3/robot.png",
               "correct": false
             }
           ],
@@ -1208,21 +1220,25 @@
           "prompt": "Elige el paisaje donde se desarrolló el suceso clave.",
           "speak": "Elige el lugar donde Caperucita se encontro con el lobo.",
           "type": "escenario",
+          "sceneImage": "bosque",
           "question": "¿Dónde se encontró Caperucita con el lobo?",
           "options": [
             {
               "label": "El bosque",
               "emoji": "🌲",
+              "image": "assets/images/unit_3/bosque.png",
               "scene": "el bosque frondoso y oscuro"
             },
             {
               "label": "La playa",
               "emoji": "🏖️",
+              "image": "assets/images/unit_3/playa.png",
               "scene": "la playa soleada"
             },
             {
               "label": "El castillo",
               "emoji": "🏰",
+              "image": "assets/images/unit_3/castillo.png",
               "scene": "el castillo de piedra"
             }
           ],
@@ -1234,26 +1250,29 @@
           "id": "ordenar",
           "title": "Ordena la Historia",
           "prompt": "Arrastra las viñetas a los espacios del 1 al 3 en orden lógico.",
-          "speak": "Ordena: primero sale de casa, luego encuentra al lobo, al final llega a la casa.",
+          "speak": "Ordena: primero Caperucita sale de su casa, luego encuentra al lobo y al final el leñador salva a todos.",
           "type": "ordenar",
           "items": [
             {
-              "label": "Caperucita sale de casa",
-              "emoji": "🏠"
+              "label": "Caperucita sale de su casa",
+              "emoji": "🏠",
+              "image": "assets/images/unit_3/casa.png"
             },
             {
               "label": "Encuentra al lobo",
-              "emoji": "🐺"
+              "emoji": "🐺",
+              "image": "assets/images/unit_3/lobo.png"
             },
             {
-              "label": "Llega a la casa",
-              "emoji": "🏡"
+              "label": "El leñador salva a todos",
+              "emoji": "🏡",
+              "image": "assets/images/unit_3/leñador.png"
             }
           ],
           "answer": [
-            "Caperucita sale de casa",
+            "Caperucita sale de su casa",
             "Encuentra al lobo",
-            "Llega a la casa"
+            "El leñador salva a todos"
           ],
           "success": "¡Las viñetas se acomodaron en la línea reproduciendo la historia en orden!",
           "hint": "¿Qué pasó primero? ¿Qué pasó después? ¿Qué pasó al final?"
@@ -1282,17 +1301,20 @@
             {
               "word": "Caperucita sale de casa",
               "category": "Inicio",
-              "emoji": "🏠"
+              "emoji": "🏠",
+              "image": "assets/images/unit_3/casa.png"
             },
             {
               "word": "El lobo la engaña",
               "category": "Desarrollo",
-              "emoji": "🐺"
+              "emoji": "🐺",
+              "image": "assets/images/unit_3/lobo.png"
             },
             {
               "word": "El leñador salva a todos",
               "category": "Desenlace",
-              "emoji": "🪵"
+              "emoji": "🪵",
+              "image": "assets/images/unit_3/leñador.png"
             }
           ],
           "answer": 3,
@@ -1340,15 +1362,18 @@
           "frames": [
             {
               "text": "Caperucita sale",
-              "emoji": "🏠"
+              "emoji": "🏠",
+              "image": "assets/images/unit_3/casa.png"
             },
             {
               "text": "Encuentra al lobo",
-              "emoji": "🐺"
+              "emoji": "🐺",
+              "image": "assets/images/unit_3/lobo.png"
             },
             {
               "text": "El rescate",
-              "emoji": "🪵"
+              "emoji": "🪵",
+              "image": "assets/images/unit_3/leñador.png"
             }
           ],
           "answer": [
