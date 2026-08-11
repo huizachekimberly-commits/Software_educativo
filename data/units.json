@@ -4,6 +4,7 @@
       "id": "mago",
       "name": "Rey Lector",
       "emoji": "R",
+      "portrait": "assets/images/king_portrait.png",
       "model": "assets/avatars/King.fbx",
       "texture": "assets/avatars/Texture.png"
     },
@@ -11,6 +12,7 @@
       "id": "princesa",
       "name": "Reina Alba",
       "emoji": "Q",
+      "portrait": "assets/images/queen_portrait.png",
       "model": "assets/avatars/Queen.fbx",
       "texture": "assets/avatars/Texture.png"
     },
@@ -18,6 +20,7 @@
       "id": "caballero",
       "name": "Principe Leo",
       "emoji": "P",
+      "portrait": "assets/images/prince_portrait.png",
       "model": "assets/avatars/Prince.fbx",
       "texture": "assets/avatars/Texture.png"
     },

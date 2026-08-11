@@ -59,6 +59,11 @@ const AVATAR_AUDIO_BY_ID = {
   caballero: ["assets/avatars/principe.mp3"],
   princesa: ["assets/avatars/reina.mp3", "assets/avatars/reino.mp3"]
 };
+const AVATAR_PORTRAIT_BY_ID = {
+  mago: "assets/images/king_portrait.png",
+  princesa: "assets/images/queen_portrait.png",
+  caballero: "assets/images/prince_portrait.png"
+};
 
 let threeRuntimePromise = null;
 let avatarViewer = null;
@@ -574,6 +579,11 @@ function playAvatarVoice(avatarId) {
   playCandidate(0);
 }
 
+function getAvatarPortraitPath(avatar) {
+  if (!avatar) return "";
+  return avatar.portrait || AVATAR_PORTRAIT_BY_ID[avatar.id] || "";
+}
+
 function updateActivityAvatarBadge() {
   const activityCard = activityZone?.querySelector(".activity-card");
   if (!activityCard) return;
@@ -609,6 +619,11 @@ async function renderActivityAvatarModel(avatar, host) {
   stopActivityAvatarViewer();
 
   const showFallback = () => {
+    const portrait = getAvatarPortraitPath(avatar);
+    if (portrait) {
+      host.innerHTML = `<img class="activity-avatar-portrait" src="${escapeHtml(portrait)}" alt="${escapeHtml(avatar.name || "Avatar")}" />`;
+      return;
+    }
     host.innerHTML = `<span class="activity-avatar-fallback">${escapeHtml(avatar.emoji || "A")}</span>`;
   };
 
@@ -700,10 +715,12 @@ function renderAvatars() {
     button.className = "avatar-choice";
     button.type = "button";
     button.setAttribute("aria-pressed", String(avatar.id === state.avatar));
+    const portrait = getAvatarPortraitPath(avatar);
     button.innerHTML = `
-      <span class="avatar-emoji">${avatar.emoji}</span>
+      ${portrait
+    ? `<img class="avatar-portrait" src="${escapeHtml(portrait)}" alt="${escapeHtml(avatar.name)}" />`
+    : `<span class="avatar-emoji">${escapeHtml(avatar.emoji || "A")}</span>`}
       <span class="avatar-meta">
-        <span class="avatar-name">${avatar.name}</span>
         <span class="avatar-type">Toca para escuchar su voz</span>
       </span>
     `;
@@ -878,8 +895,11 @@ function setBoneRotation(bone, x = 0, y = 0, z = 0) {
 function renderAvatarFallback(avatar, message) {
   stopAvatarViewer();
   heroAvatar.classList.remove("has-3d");
+  const portrait = getAvatarPortraitPath(avatar);
   heroAvatar.innerHTML = `
-    <span class="avatar-fallback-symbol">${avatar.emoji}</span>
+    ${portrait
+    ? `<img class="avatar-fallback-portrait" src="${escapeHtml(portrait)}" alt="${escapeHtml(avatar.name || "Avatar")}" />`
+    : `<span class="avatar-fallback-symbol">${escapeHtml(avatar.emoji || "A")}</span>`}
     <span class="avatar-loading">${message}</span>
   `;
 }

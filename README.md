@@ -1,197 +1,237 @@
-# Aventura de Lectura en el Reino de las Palabras
+# Reino de las Palabras
 
-App web educativa hecha con HTML, CSS y JavaScript puro. Funciona con Live Server en Visual Studio Code y guarda el progreso del estudiante en `localStorage`.
+Aplicacion web educativa para lectura inicial, construida con HTML, CSS y JavaScript sin frameworks. Incluye actividades interactivas por unidad, narracion, audio de instrucciones, biblioteca de video, mapa de progreso y sistema de cuentas con persistencia local y opcion de sincronizacion en Firebase.
 
-## Jerarquia
+## Resumen
+
+La aplicacion esta orientada a trabajo escolar guiado y practica autonoma. El estudiante avanza por rutas de actividades, desbloquea unidades, repasa actividades ya completadas y conserva su progreso entre sesiones.
+
+Estado funcional actual:
+
+- 3 unidades activas: castillo, bosque y montanas.
+- Mapa de viaje lector con nodos bloqueados/desbloqueados.
+- Biblioteca con video por unidad y reglas de desbloqueo.
+- Actividades de seleccion, arrastre, memoria, secuencias, lectura y voz.
+- Avatares con soporte 3D en formato FBX.
+
+## Tecnologias
+
+- HTML5
+- CSS3
+- JavaScript (ES Modules en runtime para cargas dinamicas)
+- Web Speech API (sintesis y reconocimiento de voz, segun navegador)
+- Web Audio / HTMLAudioElement
+- Three.js + FBXLoader (desde CDN)
+- Firebase Firestore (opcional)
+
+## Estructura del Proyecto
 
 ```text
-lectura-reino/
+lectura-reino-limpio/
 ├── index.html
 ├── css/
-│   └── styles.css
+│   ├── styles.css
+│   └── unit3.css
 ├── js/
-│   └── app.js
-└── data/
-    └── units.json
+│   ├── app.js
+│   ├── firebase-config.js
+│   └── unit3_render.js
+├── data/
+│   └── units.json
+├── assets/
+│   ├── avatars/
+│   ├── images/
+│   ├── videos/
+│   ├── unit_1_sounds/
+│   ├── unit_2_sounds/
+│   ├── unit_3_sounds/
+│   ├── correct_sounds/
+│   ├── correct_sounds2/
+│   └── correct_sounds3/
+└── scripts de verificacion y mantenimiento
 ```
 
-## Que incluye
+## Flujo Pedagogico
 
-- Pantalla principal con menu, avatar lector, progreso, recompensas, biblioteca y mapa.
-- Cuatro unidades educativas:
-  - Castillo de las Letras.
-  - Bosque de las Palabras.
-  - Montanas de los Cuentos.
-  - Oceano de la Comprension Lectora.
-- Actividades interactivas por unidad.
-- Narracion con Web Speech API.
-- Practica de pronunciacion cuando el navegador permite reconocimiento de voz.
-- Efectos de sonido generados con Web Audio API.
-- Animaciones CSS y escenarios visuales.
+1. Inicio de sesion o registro de estudiante.
+2. Seleccion de avatar.
+3. Seleccion de unidad disponible.
+4. Avance actividad por actividad con desbloqueo secuencial.
+5. Retroalimentacion auditiva y visual inmediata.
+6. Registro de progreso y medallas.
+7. Opcion de repaso de actividades completadas sin alterar progreso.
 
-## Probar con Live Server
+## Caracteristicas Principales
 
-1. Abre Visual Studio Code.
-2. Abre la carpeta `lectura-reino`.
-3. Instala la extension Live Server si no la tienes.
-4. Haz clic derecho sobre `index.html`.
-5. Selecciona `Open with Live Server`.
+### 1) Unidades y actividades
 
-> Importante: usa Live Server porque la app lee `data/units.json` con `fetch`. Si abres el HTML directo, algunos navegadores bloquean esa lectura.
+- Cada unidad define subactividades en data/units.json.
+- Las subactividades pueden bloquearse por prerequisitos.
+- El motor de render en js/app.js enruta por type y pinta la actividad correspondiente.
 
-## Editar contenido
+### 2) Mapa y progreso
 
-Para cambiar unidades, actividades, evaluaciones, retroalimentacion, biblioteca o avatares, edita:
+- Mapa general de unidades con posiciones configurables.
+- Mapa interno por unidad con avance secuencial.
+- Barra/porcentaje de progreso global.
+- Insignias por unidad completada.
 
-```text
-data/units.json
-```
+### 3) Audio y retroalimentacion
 
-## Que modificar en VS Code
+- Audio instruccional por actividad.
+- Carpeta de frases de acierto por unidad:
+  - Unidad 1: assets/correct_sounds
+  - Unidad 2: assets/correct_sounds2
+  - Unidad 3: assets/correct_sounds3
+- Secuencia de exito: frase correcta aleatoria y luego feedback de actividad.
 
-Para cambiar la pantalla de inicio:
+### 4) Video por unidad
 
-```text
-index.html
-```
+- Video introductorio por unidad.
+- Reproduccion obligatoria la primera vez (si aplica).
+- Reproduccion opcional desde biblioteca cuando la unidad este desbloqueada.
 
-Busca:
+### 5) Cuentas y persistencia
 
-```html
-<section class="hero hero-split" id="inicio">
-```
+- Persistencia local con localStorage.
+- Soporte de sincronizacion con Firestore cuando la configuracion esta habilitada.
 
-Ahi esta la mitad izquierda con el titulo del reino y la mitad derecha con el selector de avatares.
+### 6) Avatares 3D
 
-Para cambiar colores, tamanos, animaciones y distribucion:
+- Carga dinamica de modelos FBX y textura.
+- Render del avatar principal y render dentro de actividades.
+- Ajuste de pose base en codigo.
 
-```text
-css/styles.css
-```
+## Requisitos
 
-Busca estas clases:
+- Visual Studio Code.
+- Extension Live Server.
+- Navegador moderno (Chrome o Edge recomendados).
+- Conexion a internet para cargar Three.js desde CDN y para Firebase si se usa sincronizacion.
 
-```css
-.hero
-.hero-copy
-.hero-avatar-panel
-.avatar-grid-vertical
-.avatar-choice
-```
+## Ejecucion Local
 
-Para cambiar nombres, iconos o futuros modelos de avatar:
+1. Abrir la carpeta del proyecto en Visual Studio Code.
+2. Verificar que index.html este en la raiz.
+3. Iniciar Live Server sobre index.html.
+4. Abrir la URL local generada por Live Server.
 
-```text
-data/units.json
-```
+Importante: no abrir index.html con doble clic. La app usa fetch sobre data/units.json y requiere servidor local.
 
-Busca:
+## Configuracion de Contenido
 
-```json
-"avatars"
-```
+Archivo principal de contenido:
 
-Para modificar como se dibujan o seleccionan los avatares:
+- data/units.json
 
-```text
-js/app.js
-```
+Desde este archivo puedes ajustar:
 
-Busca:
+- Titulo, descripcion y dependencia de unidades.
+- Lista de subactividades y tipo de actividad.
+- Preguntas, opciones, respuestas, pistas y mensajes de exito.
+- Rutas de imagen, audio y video.
 
-```js
-function renderAvatars()
-function updateHeroAvatar()
-```
+## Configuracion Visual
 
-## Avatares 3D
+Archivos principales:
 
-La app ya puede mostrar modelos 3D reales en formato `.fbx` usando Three.js. Los modelos actuales estan en:
+- css/styles.css
+- css/unit3.css
 
-```text
-assets/avatars/
-```
+Se recomienda separar cambios por bloques:
 
-Modelos agregados:
+- layout general
+- mapa y nodos
+- estilos por actividad
+- animaciones
 
-```text
-assets/avatars/King.fbx
-assets/avatars/Queen.fbx
-assets/avatars/Prince.fbx
-assets/avatars/Texture.png
-```
+## Configuracion Funcional
 
-La relacion entre avatar y modelo se modifica en:
+Archivo principal de logica:
 
-```text
-data/units.json
-```
+- js/app.js
 
-Busca:
+Secciones clave:
 
-```json
-"model": "assets/avatars/King.fbx"
-"texture": "assets/avatars/Texture.png"
-```
+- estado global
+- autenticacion y persistencia
+- render de unidades, biblioteca y mapa
+- openSubActivity y enrutamiento por tipo
+- motor de audio y feedback
+- integracion de reconocimiento de voz
+- renderizado de avatar 3D
 
-La carga 3D se modifica en:
+## Configuracion Firebase (Opcional)
 
-```text
-js/app.js
-```
+Archivo:
 
-Busca:
+- js/firebase-config.js
 
-```js
-function renderHeroAvatar()
-function loadAvatarTexture()
-function loadThreeRuntime()
-function prepareModel()
-function applyStandingPose()
-```
+Pasos generales:
 
-Importante: como los archivos son `.fbx`, la app carga Three.js desde CDN. Para ver los modelos 3D necesitas internet al probar con Live Server. Si quieres que funcione 100% offline, conviene convertir los modelos a `.glb` o descargar Three.js dentro del proyecto.
+1. Crear proyecto en Firebase.
+2. Habilitar Firestore.
+3. Completar credenciales web en js/firebase-config.js.
+4. Verificar reglas de seguridad de Firestore.
 
-## Ajustar pose de los modelos 3D
+Si Firebase no responde, la app continua usando localStorage.
 
-Si los brazos quedan muy abiertos o cruzados, modifica estos valores en:
+## Personalizacion Frecuente
 
-```text
-js/app.js
-```
+### Mover nodos del mapa de unidades
 
-Busca:
+En js/app.js modificar el objeto de posiciones del mapa general.
 
-```js
-function applyStandingPose(model)
-```
+### Cambiar fondos por actividad
 
-Los valores principales son:
+En js/app.js revisar arreglos de rutas por unidad para backgrounds de subactividades.
 
-```js
-setBoneRotation(bones["upper_arm.L"], 0.08, 0.05, -1.18);
-setBoneRotation(bones["upper_arm.R"], 0.08, -0.05, 1.18);
-```
+### Ajustar voz y reconocimiento
 
-Para acercar mas los brazos al cuerpo, aumenta un poco la magnitud de `-1.18` y `1.18`. Para regresarlos hacia pose T, usa valores mas cercanos a `0`.
+En js/app.js revisar:
 
-## Subir a GitHub
+- llamadas a speechSynthesis
+- bloques SpeechRecognition/webkitSpeechRecognition
 
-Desde la terminal dentro de `lectura-reino`:
+### Cambiar animaciones
 
-```bash
-git init
-git add .
-git commit -m "Version inicial de app educativa"
-git branch -M main
-git remote add origin https://github.com/TU_USUARIO/TU_REPOSITORIO.git
-git push -u origin main
-```
+En css/styles.css editar keyframes y transiciones de cada actividad.
 
-Para futuras versiones:
+## Troubleshooting
 
-```bash
-git add .
-git commit -m "Mejora actividades y diseno"
-git push
-```
+### No carga la app
+
+- Verifica que estes usando Live Server.
+- Revisa la consola del navegador para errores de fetch a data/units.json.
+
+### No se escucha audio
+
+- Verifica permisos del navegador.
+- Confirma rutas de audio en units.json.
+- Valida que no haya bloqueo por autoplay hasta primer clic.
+
+### No funciona el microfono
+
+- Usa HTTPS o localhost.
+- Permite acceso al microfono.
+- Verifica compatibilidad del navegador con SpeechRecognition.
+
+### No carga avatar 3D
+
+- Revisa rutas de model y texture en units.json.
+- Verifica conexion para cargar Three.js desde CDN.
+
+## Calidad y Verificacion
+
+El repositorio incluye scripts auxiliares de verificacion para contenido y consistencia de archivos (json/html/imports/estados). Puedes ejecutarlos segun tu flujo interno para validar integridad antes de publicar cambios.
+
+## Mantenimiento Recomendado
+
+- Mantener data/units.json como fuente unica de contenido pedagogico.
+- Versionar cambios por unidad o por actividad para facilitar rollback.
+- Probar cada actividad en modo normal y en modo repaso.
+- Verificar rutas de assets despues de mover archivos.
+
+## Licencia
+
+Define aqui la licencia del proyecto segun tu institucion o equipo.
